@@ -1,0 +1,28 @@
+## generic files to ignore
+*~
+*.lock
+*.DS_Store
+*.swp
+*.out
+*.class
+
+## Idea
+*.iml
+*.ipr
+*.iws
+.idea/
+.geany
+
+## maven output
+/target
+*/target
+/reports
+*/reports
+
+## eclipse project
+.settings
+.classpath
+.project
+
+bin/
+logs/
