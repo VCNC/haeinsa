@@ -3,21 +3,18 @@ package kr.co.vcnc.haeinsa;
 import java.io.IOException;
 import java.util.List;
 
-import kr.co.vcnc.haeinsa.thrift.RowLock;
-import kr.co.vcnc.haeinsa.thrift.RowState;
+import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Delete;
-import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 
-public interface Table {
-	interface PrivateIface extends Table {
+public interface HaeinsaTable {
+	interface PrivateIface extends HaeinsaTable {
 		void prewrite(RowTransactionState rowTxState, byte[] row, boolean isPrimary) throws IOException;
 		
 		void applyDeletes(RowTransactionState rowTxState, byte[] row) throws IOException;
@@ -38,12 +35,12 @@ public interface Table {
 		void commitPrimary(RowTransactionState rowTxState, byte[] row) throws IOException;
 			
 		/**
-		 * get {@link RowLock}
+		 * get {@link TRowLock}
 		 * @param row row
 		 * @return row lock
 		 * @throws IOException
 		 */
-		RowLock getRowLock(byte[] row) throws IOException;
+		TRowLock getRowLock(byte[] row) throws IOException;
 		
 		/**
 		 * make primary row from {@link RowState#PREWRITTEN} to {@link RowState#ABORTED}  
@@ -54,7 +51,7 @@ public interface Table {
 		void abortPrimary(RowTransactionState rowTxState, byte[] row) throws IOException;
 		
 		/**
-		 * delete primary row's puts({@link RowLock#puts}).
+		 * delete primary row's puts({@link TRowLock#puts}).
 		 * @param rowTxState
 		 * @param row
 		 * @throws IOException
@@ -92,7 +89,7 @@ public interface Table {
 	   * @throws IOException if a remote or network exception occurs.
 	   * @since 0.20.0
 	   */
-	  Result get(Transaction tx, Get get) throws IOException;
+	  Result get(Transaction tx, HaeinsaGet get) throws IOException;
 
 	  /**
 	   * Extracts certain cells from the given rows, in batch.
@@ -108,7 +105,7 @@ public interface Table {
 	   *
 	   * @since 0.90.0
 	   */
-	  Result[] get(Transaction tx, List<Get> gets) throws IOException;
+	  Result[] get(Transaction tx, List<HaeinsaGet> gets) throws IOException;
 
 	  /**
 	   * Returns a scanner on the current table as specified by the {@link Scan}
@@ -152,7 +149,7 @@ public interface Table {
 	   * @throws IOException if a remote or network exception occurs.
 	   * @since 0.20.0
 	   */
-	  void put(Transaction tx, Put put) throws IOException;
+	  void put(Transaction tx, HaeinsaPut put) throws IOException;
 
 	  /**
 	   * Puts some data in the table, in batch.
@@ -170,7 +167,7 @@ public interface Table {
 	   * @throws IOException if a remote or network exception occurs.
 	   * @since 0.20.0
 	   */
-	  void put(Transaction tx, List<Put> puts) throws IOException;
+	  void put(Transaction tx, List<HaeinsaPut> puts) throws IOException;
 
 	  /**
 	   * Deletes the specified cells/row.
@@ -179,7 +176,7 @@ public interface Table {
 	   * @throws IOException if a remote or network exception occurs.
 	   * @since 0.20.0
 	   */
-	  void delete(Transaction tx, Delete delete) throws IOException;
+	  void delete(Transaction tx, HaeinsaDelete delete) throws IOException;
 
 	  /**
 	   * Deletes the specified cells/rows in bulk.
@@ -192,7 +189,7 @@ public interface Table {
 	   * that have not be successfully applied.
 	   * @since 0.20.1
 	   */
-	  void delete(Transaction tx, List<Delete> deletes) throws IOException;
+	  void delete(Transaction tx, List<HaeinsaDelete> deletes) throws IOException;
 
 	  /**
 	   * Releases any resources help or pending changes in internal buffers.

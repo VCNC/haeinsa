@@ -6,8 +6,8 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.hadoop.hbase.util.Bytes;
 
-public final class Constants {
-	private Constants(){}
+public final class HaeinsaConstants {
+	private HaeinsaConstants(){}
 	
 	static {
 		Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));

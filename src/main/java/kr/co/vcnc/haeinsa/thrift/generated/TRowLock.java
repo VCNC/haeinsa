@@ -3,7 +3,7 @@
  *
  * DO NOT EDIT UNLESS YOU ARE SURE THAT YOU KNOW WHAT YOU ARE DOING
  */
-package kr.co.vcnc.haeinsa.thrift;
+package kr.co.vcnc.haeinsa.thrift.generated;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -20,45 +20,48 @@ import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields>, java.io.Serializable, Cloneable {
-  private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("RowLock");
+public class TRowLock implements org.apache.thrift.TBase<TRowLock, TRowLock._Fields>, java.io.Serializable, Cloneable {
+  private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("TRowLock");
 
   private static final org.apache.thrift.protocol.TField VERSION_FIELD_DESC = new org.apache.thrift.protocol.TField("version", org.apache.thrift.protocol.TType.I32, (short)1);
   private static final org.apache.thrift.protocol.TField STATE_FIELD_DESC = new org.apache.thrift.protocol.TField("state", org.apache.thrift.protocol.TType.I32, (short)2);
   private static final org.apache.thrift.protocol.TField COMMIT_TIMESTAMP_FIELD_DESC = new org.apache.thrift.protocol.TField("commitTimestamp", org.apache.thrift.protocol.TType.I64, (short)3);
-  private static final org.apache.thrift.protocol.TField TIMEOUT_FIELD_DESC = new org.apache.thrift.protocol.TField("timeout", org.apache.thrift.protocol.TType.I64, (short)4);
-  private static final org.apache.thrift.protocol.TField PRIMARY_FIELD_DESC = new org.apache.thrift.protocol.TField("primary", org.apache.thrift.protocol.TType.STRUCT, (short)5);
-  private static final org.apache.thrift.protocol.TField SECONDARIES_FIELD_DESC = new org.apache.thrift.protocol.TField("secondaries", org.apache.thrift.protocol.TType.LIST, (short)6);
-  private static final org.apache.thrift.protocol.TField PUTS_FIELD_DESC = new org.apache.thrift.protocol.TField("puts", org.apache.thrift.protocol.TType.LIST, (short)7);
-  private static final org.apache.thrift.protocol.TField DELETES_FIELD_DESC = new org.apache.thrift.protocol.TField("deletes", org.apache.thrift.protocol.TType.LIST, (short)8);
+  private static final org.apache.thrift.protocol.TField CURRENT_TIMESTMAP_FIELD_DESC = new org.apache.thrift.protocol.TField("currentTimestmap", org.apache.thrift.protocol.TType.I64, (short)4);
+  private static final org.apache.thrift.protocol.TField TIMEOUT_FIELD_DESC = new org.apache.thrift.protocol.TField("timeout", org.apache.thrift.protocol.TType.I64, (short)5);
+  private static final org.apache.thrift.protocol.TField PRIMARY_FIELD_DESC = new org.apache.thrift.protocol.TField("primary", org.apache.thrift.protocol.TType.STRUCT, (short)6);
+  private static final org.apache.thrift.protocol.TField SECONDARIES_FIELD_DESC = new org.apache.thrift.protocol.TField("secondaries", org.apache.thrift.protocol.TType.LIST, (short)7);
+  private static final org.apache.thrift.protocol.TField PREWRITTEN_FIELD_DESC = new org.apache.thrift.protocol.TField("prewritten", org.apache.thrift.protocol.TType.LIST, (short)8);
+  private static final org.apache.thrift.protocol.TField MUTATIONS_FIELD_DESC = new org.apache.thrift.protocol.TField("mutations", org.apache.thrift.protocol.TType.LIST, (short)9);
 
   public int version;
   /**
    * 
-   * @see RowState
+   * @see TRowLockState
    */
-  public RowState state;
+  public TRowLockState state;
   public long commitTimestamp;
+  public long currentTimestmap;
   public long timeout;
-  public RowKey primary;
-  public List<RowKey> secondaries;
-  public List<CellKey> puts;
-  public List<CellKey> deletes;
+  public TRowKey primary;
+  public List<TRowKey> secondaries;
+  public List<TCellKey> prewritten;
+  public List<TMutation> mutations;
 
   /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
     VERSION((short)1, "version"),
     /**
      * 
-     * @see RowState
+     * @see TRowLockState
      */
     STATE((short)2, "state"),
     COMMIT_TIMESTAMP((short)3, "commitTimestamp"),
-    TIMEOUT((short)4, "timeout"),
-    PRIMARY((short)5, "primary"),
-    SECONDARIES((short)6, "secondaries"),
-    PUTS((short)7, "puts"),
-    DELETES((short)8, "deletes");
+    CURRENT_TIMESTMAP((short)4, "currentTimestmap"),
+    TIMEOUT((short)5, "timeout"),
+    PRIMARY((short)6, "primary"),
+    SECONDARIES((short)7, "secondaries"),
+    PREWRITTEN((short)8, "prewritten"),
+    MUTATIONS((short)9, "mutations");
 
     private static final Map<String, _Fields> byName = new HashMap<String, _Fields>();
 
@@ -79,16 +82,18 @@ public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields
           return STATE;
         case 3: // COMMIT_TIMESTAMP
           return COMMIT_TIMESTAMP;
-        case 4: // TIMEOUT
+        case 4: // CURRENT_TIMESTMAP
+          return CURRENT_TIMESTMAP;
+        case 5: // TIMEOUT
           return TIMEOUT;
-        case 5: // PRIMARY
+        case 6: // PRIMARY
           return PRIMARY;
-        case 6: // SECONDARIES
+        case 7: // SECONDARIES
           return SECONDARIES;
-        case 7: // PUTS
-          return PUTS;
-        case 8: // DELETES
-          return DELETES;
+        case 8: // PREWRITTEN
+          return PREWRITTEN;
+        case 9: // MUTATIONS
+          return MUTATIONS;
         default:
           return null;
       }
@@ -131,8 +136,9 @@ public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields
   // isset id assignments
   private static final int __VERSION_ISSET_ID = 0;
   private static final int __COMMITTIMESTAMP_ISSET_ID = 1;
-  private static final int __TIMEOUT_ISSET_ID = 2;
-  private BitSet __isset_bit_vector = new BitSet(3);
+  private static final int __CURRENTTIMESTMAP_ISSET_ID = 2;
+  private static final int __TIMEOUT_ISSET_ID = 3;
+  private BitSet __isset_bit_vector = new BitSet(4);
 
   public static final Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
   static {
@@ -140,32 +146,34 @@ public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields
     tmpMap.put(_Fields.VERSION, new org.apache.thrift.meta_data.FieldMetaData("version", org.apache.thrift.TFieldRequirementType.REQUIRED, 
         new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.I32)));
     tmpMap.put(_Fields.STATE, new org.apache.thrift.meta_data.FieldMetaData("state", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-        new org.apache.thrift.meta_data.EnumMetaData(org.apache.thrift.protocol.TType.ENUM, RowState.class)));
+        new org.apache.thrift.meta_data.EnumMetaData(org.apache.thrift.protocol.TType.ENUM, TRowLockState.class)));
     tmpMap.put(_Fields.COMMIT_TIMESTAMP, new org.apache.thrift.meta_data.FieldMetaData("commitTimestamp", org.apache.thrift.TFieldRequirementType.REQUIRED, 
+        new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.I64)));
+    tmpMap.put(_Fields.CURRENT_TIMESTMAP, new org.apache.thrift.meta_data.FieldMetaData("currentTimestmap", org.apache.thrift.TFieldRequirementType.OPTIONAL, 
         new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.I64)));
     tmpMap.put(_Fields.TIMEOUT, new org.apache.thrift.meta_data.FieldMetaData("timeout", org.apache.thrift.TFieldRequirementType.OPTIONAL, 
         new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.I64)));
     tmpMap.put(_Fields.PRIMARY, new org.apache.thrift.meta_data.FieldMetaData("primary", org.apache.thrift.TFieldRequirementType.OPTIONAL, 
-        new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, RowKey.class)));
+        new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TRowKey.class)));
     tmpMap.put(_Fields.SECONDARIES, new org.apache.thrift.meta_data.FieldMetaData("secondaries", org.apache.thrift.TFieldRequirementType.OPTIONAL, 
         new org.apache.thrift.meta_data.ListMetaData(org.apache.thrift.protocol.TType.LIST, 
-            new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, RowKey.class))));
-    tmpMap.put(_Fields.PUTS, new org.apache.thrift.meta_data.FieldMetaData("puts", org.apache.thrift.TFieldRequirementType.OPTIONAL, 
+            new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TRowKey.class))));
+    tmpMap.put(_Fields.PREWRITTEN, new org.apache.thrift.meta_data.FieldMetaData("prewritten", org.apache.thrift.TFieldRequirementType.OPTIONAL, 
         new org.apache.thrift.meta_data.ListMetaData(org.apache.thrift.protocol.TType.LIST, 
-            new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, CellKey.class))));
-    tmpMap.put(_Fields.DELETES, new org.apache.thrift.meta_data.FieldMetaData("deletes", org.apache.thrift.TFieldRequirementType.OPTIONAL, 
+            new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TCellKey.class))));
+    tmpMap.put(_Fields.MUTATIONS, new org.apache.thrift.meta_data.FieldMetaData("mutations", org.apache.thrift.TFieldRequirementType.OPTIONAL, 
         new org.apache.thrift.meta_data.ListMetaData(org.apache.thrift.protocol.TType.LIST, 
-            new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, CellKey.class))));
+            new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, TMutation.class))));
     metaDataMap = Collections.unmodifiableMap(tmpMap);
-    org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(RowLock.class, metaDataMap);
+    org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(TRowLock.class, metaDataMap);
   }
 
-  public RowLock() {
+  public TRowLock() {
   }
 
-  public RowLock(
+  public TRowLock(
     int version,
-    RowState state,
+    TRowLockState state,
     long commitTimestamp)
   {
     this();
@@ -179,7 +187,7 @@ public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields
   /**
    * Performs a deep copy on <i>other</i>.
    */
-  public RowLock(RowLock other) {
+  public TRowLock(TRowLock other) {
     __isset_bit_vector.clear();
     __isset_bit_vector.or(other.__isset_bit_vector);
     this.version = other.version;
@@ -187,35 +195,36 @@ public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields
       this.state = other.state;
     }
     this.commitTimestamp = other.commitTimestamp;
+    this.currentTimestmap = other.currentTimestmap;
     this.timeout = other.timeout;
     if (other.isSetPrimary()) {
-      this.primary = new RowKey(other.primary);
+      this.primary = new TRowKey(other.primary);
     }
     if (other.isSetSecondaries()) {
-      List<RowKey> __this__secondaries = new ArrayList<RowKey>();
-      for (RowKey other_element : other.secondaries) {
-        __this__secondaries.add(new RowKey(other_element));
+      List<TRowKey> __this__secondaries = new ArrayList<TRowKey>();
+      for (TRowKey other_element : other.secondaries) {
+        __this__secondaries.add(new TRowKey(other_element));
       }
       this.secondaries = __this__secondaries;
     }
-    if (other.isSetPuts()) {
-      List<CellKey> __this__puts = new ArrayList<CellKey>();
-      for (CellKey other_element : other.puts) {
-        __this__puts.add(new CellKey(other_element));
+    if (other.isSetPrewritten()) {
+      List<TCellKey> __this__prewritten = new ArrayList<TCellKey>();
+      for (TCellKey other_element : other.prewritten) {
+        __this__prewritten.add(new TCellKey(other_element));
       }
-      this.puts = __this__puts;
+      this.prewritten = __this__prewritten;
     }
-    if (other.isSetDeletes()) {
-      List<CellKey> __this__deletes = new ArrayList<CellKey>();
-      for (CellKey other_element : other.deletes) {
-        __this__deletes.add(new CellKey(other_element));
+    if (other.isSetMutations()) {
+      List<TMutation> __this__mutations = new ArrayList<TMutation>();
+      for (TMutation other_element : other.mutations) {
+        __this__mutations.add(new TMutation(other_element));
       }
-      this.deletes = __this__deletes;
+      this.mutations = __this__mutations;
     }
   }
 
-  public RowLock deepCopy() {
-    return new RowLock(this);
+  public TRowLock deepCopy() {
+    return new TRowLock(this);
   }
 
   @Override
@@ -225,19 +234,21 @@ public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields
     this.state = null;
     setCommitTimestampIsSet(false);
     this.commitTimestamp = 0;
+    setCurrentTimestmapIsSet(false);
+    this.currentTimestmap = 0;
     setTimeoutIsSet(false);
     this.timeout = 0;
     this.primary = null;
     this.secondaries = null;
-    this.puts = null;
-    this.deletes = null;
+    this.prewritten = null;
+    this.mutations = null;
   }
 
   public int getVersion() {
     return this.version;
   }
 
-  public RowLock setVersion(int version) {
+  public TRowLock setVersion(int version) {
     this.version = version;
     setVersionIsSet(true);
     return this;
@@ -258,17 +269,17 @@ public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields
 
   /**
    * 
-   * @see RowState
+   * @see TRowLockState
    */
-  public RowState getState() {
+  public TRowLockState getState() {
     return this.state;
   }
 
   /**
    * 
-   * @see RowState
+   * @see TRowLockState
    */
-  public RowLock setState(RowState state) {
+  public TRowLock setState(TRowLockState state) {
     this.state = state;
     return this;
   }
@@ -292,7 +303,7 @@ public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields
     return this.commitTimestamp;
   }
 
-  public RowLock setCommitTimestamp(long commitTimestamp) {
+  public TRowLock setCommitTimestamp(long commitTimestamp) {
     this.commitTimestamp = commitTimestamp;
     setCommitTimestampIsSet(true);
     return this;
@@ -311,11 +322,34 @@ public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields
     __isset_bit_vector.set(__COMMITTIMESTAMP_ISSET_ID, value);
   }
 
+  public long getCurrentTimestmap() {
+    return this.currentTimestmap;
+  }
+
+  public TRowLock setCurrentTimestmap(long currentTimestmap) {
+    this.currentTimestmap = currentTimestmap;
+    setCurrentTimestmapIsSet(true);
+    return this;
+  }
+
+  public void unsetCurrentTimestmap() {
+    __isset_bit_vector.clear(__CURRENTTIMESTMAP_ISSET_ID);
+  }
+
+  /** Returns true if field currentTimestmap is set (has been assigned a value) and false otherwise */
+  public boolean isSetCurrentTimestmap() {
+    return __isset_bit_vector.get(__CURRENTTIMESTMAP_ISSET_ID);
+  }
+
+  public void setCurrentTimestmapIsSet(boolean value) {
+    __isset_bit_vector.set(__CURRENTTIMESTMAP_ISSET_ID, value);
+  }
+
   public long getTimeout() {
     return this.timeout;
   }
 
-  public RowLock setTimeout(long timeout) {
+  public TRowLock setTimeout(long timeout) {
     this.timeout = timeout;
     setTimeoutIsSet(true);
     return this;
@@ -334,11 +368,11 @@ public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields
     __isset_bit_vector.set(__TIMEOUT_ISSET_ID, value);
   }
 
-  public RowKey getPrimary() {
+  public TRowKey getPrimary() {
     return this.primary;
   }
 
-  public RowLock setPrimary(RowKey primary) {
+  public TRowLock setPrimary(TRowKey primary) {
     this.primary = primary;
     return this;
   }
@@ -362,22 +396,22 @@ public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields
     return (this.secondaries == null) ? 0 : this.secondaries.size();
   }
 
-  public java.util.Iterator<RowKey> getSecondariesIterator() {
+  public java.util.Iterator<TRowKey> getSecondariesIterator() {
     return (this.secondaries == null) ? null : this.secondaries.iterator();
   }
 
-  public void addToSecondaries(RowKey elem) {
+  public void addToSecondaries(TRowKey elem) {
     if (this.secondaries == null) {
-      this.secondaries = new ArrayList<RowKey>();
+      this.secondaries = new ArrayList<TRowKey>();
     }
     this.secondaries.add(elem);
   }
 
-  public List<RowKey> getSecondaries() {
+  public List<TRowKey> getSecondaries() {
     return this.secondaries;
   }
 
-  public RowLock setSecondaries(List<RowKey> secondaries) {
+  public TRowLock setSecondaries(List<TRowKey> secondaries) {
     this.secondaries = secondaries;
     return this;
   }
@@ -397,81 +431,81 @@ public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields
     }
   }
 
-  public int getPutsSize() {
-    return (this.puts == null) ? 0 : this.puts.size();
+  public int getPrewrittenSize() {
+    return (this.prewritten == null) ? 0 : this.prewritten.size();
   }
 
-  public java.util.Iterator<CellKey> getPutsIterator() {
-    return (this.puts == null) ? null : this.puts.iterator();
+  public java.util.Iterator<TCellKey> getPrewrittenIterator() {
+    return (this.prewritten == null) ? null : this.prewritten.iterator();
   }
 
-  public void addToPuts(CellKey elem) {
-    if (this.puts == null) {
-      this.puts = new ArrayList<CellKey>();
+  public void addToPrewritten(TCellKey elem) {
+    if (this.prewritten == null) {
+      this.prewritten = new ArrayList<TCellKey>();
     }
-    this.puts.add(elem);
+    this.prewritten.add(elem);
   }
 
-  public List<CellKey> getPuts() {
-    return this.puts;
+  public List<TCellKey> getPrewritten() {
+    return this.prewritten;
   }
 
-  public RowLock setPuts(List<CellKey> puts) {
-    this.puts = puts;
+  public TRowLock setPrewritten(List<TCellKey> prewritten) {
+    this.prewritten = prewritten;
     return this;
   }
 
-  public void unsetPuts() {
-    this.puts = null;
+  public void unsetPrewritten() {
+    this.prewritten = null;
   }
 
-  /** Returns true if field puts is set (has been assigned a value) and false otherwise */
-  public boolean isSetPuts() {
-    return this.puts != null;
+  /** Returns true if field prewritten is set (has been assigned a value) and false otherwise */
+  public boolean isSetPrewritten() {
+    return this.prewritten != null;
   }
 
-  public void setPutsIsSet(boolean value) {
+  public void setPrewrittenIsSet(boolean value) {
     if (!value) {
-      this.puts = null;
+      this.prewritten = null;
     }
   }
 
-  public int getDeletesSize() {
-    return (this.deletes == null) ? 0 : this.deletes.size();
+  public int getMutationsSize() {
+    return (this.mutations == null) ? 0 : this.mutations.size();
   }
 
-  public java.util.Iterator<CellKey> getDeletesIterator() {
-    return (this.deletes == null) ? null : this.deletes.iterator();
+  public java.util.Iterator<TMutation> getMutationsIterator() {
+    return (this.mutations == null) ? null : this.mutations.iterator();
   }
 
-  public void addToDeletes(CellKey elem) {
-    if (this.deletes == null) {
-      this.deletes = new ArrayList<CellKey>();
+  public void addToMutations(TMutation elem) {
+    if (this.mutations == null) {
+      this.mutations = new ArrayList<TMutation>();
     }
-    this.deletes.add(elem);
+    this.mutations.add(elem);
   }
 
-  public List<CellKey> getDeletes() {
-    return this.deletes;
+  public List<TMutation> getMutations() {
+    return this.mutations;
   }
 
-  public RowLock setDeletes(List<CellKey> deletes) {
-    this.deletes = deletes;
+  public TRowLock setMutations(List<TMutation> mutations) {
+    this.mutations = mutations;
     return this;
   }
 
-  public void unsetDeletes() {
-    this.deletes = null;
+  public void unsetMutations() {
+    this.mutations = null;
   }
 
-  /** Returns true if field deletes is set (has been assigned a value) and false otherwise */
-  public boolean isSetDeletes() {
-    return this.deletes != null;
+  /** Returns true if field mutations is set (has been assigned a value) and false otherwise */
+  public boolean isSetMutations() {
+    return this.mutations != null;
   }
 
-  public void setDeletesIsSet(boolean value) {
+  public void setMutationsIsSet(boolean value) {
     if (!value) {
-      this.deletes = null;
+      this.mutations = null;
     }
   }
 
@@ -489,7 +523,7 @@ public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields
       if (value == null) {
         unsetState();
       } else {
-        setState((RowState)value);
+        setState((TRowLockState)value);
       }
       break;
 
@@ -498,6 +532,14 @@ public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields
         unsetCommitTimestamp();
       } else {
         setCommitTimestamp((Long)value);
+      }
+      break;
+
+    case CURRENT_TIMESTMAP:
+      if (value == null) {
+        unsetCurrentTimestmap();
+      } else {
+        setCurrentTimestmap((Long)value);
       }
       break;
 
@@ -513,7 +555,7 @@ public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields
       if (value == null) {
         unsetPrimary();
       } else {
-        setPrimary((RowKey)value);
+        setPrimary((TRowKey)value);
       }
       break;
 
@@ -521,23 +563,23 @@ public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields
       if (value == null) {
         unsetSecondaries();
       } else {
-        setSecondaries((List<RowKey>)value);
+        setSecondaries((List<TRowKey>)value);
       }
       break;
 
-    case PUTS:
+    case PREWRITTEN:
       if (value == null) {
-        unsetPuts();
+        unsetPrewritten();
       } else {
-        setPuts((List<CellKey>)value);
+        setPrewritten((List<TCellKey>)value);
       }
       break;
 
-    case DELETES:
+    case MUTATIONS:
       if (value == null) {
-        unsetDeletes();
+        unsetMutations();
       } else {
-        setDeletes((List<CellKey>)value);
+        setMutations((List<TMutation>)value);
       }
       break;
 
@@ -555,6 +597,9 @@ public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields
     case COMMIT_TIMESTAMP:
       return new Long(getCommitTimestamp());
 
+    case CURRENT_TIMESTMAP:
+      return new Long(getCurrentTimestmap());
+
     case TIMEOUT:
       return new Long(getTimeout());
 
@@ -564,11 +609,11 @@ public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields
     case SECONDARIES:
       return getSecondaries();
 
-    case PUTS:
-      return getPuts();
+    case PREWRITTEN:
+      return getPrewritten();
 
-    case DELETES:
-      return getDeletes();
+    case MUTATIONS:
+      return getMutations();
 
     }
     throw new IllegalStateException();
@@ -587,16 +632,18 @@ public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields
       return isSetState();
     case COMMIT_TIMESTAMP:
       return isSetCommitTimestamp();
+    case CURRENT_TIMESTMAP:
+      return isSetCurrentTimestmap();
     case TIMEOUT:
       return isSetTimeout();
     case PRIMARY:
       return isSetPrimary();
     case SECONDARIES:
       return isSetSecondaries();
-    case PUTS:
-      return isSetPuts();
-    case DELETES:
-      return isSetDeletes();
+    case PREWRITTEN:
+      return isSetPrewritten();
+    case MUTATIONS:
+      return isSetMutations();
     }
     throw new IllegalStateException();
   }
@@ -605,12 +652,12 @@ public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields
   public boolean equals(Object that) {
     if (that == null)
       return false;
-    if (that instanceof RowLock)
-      return this.equals((RowLock)that);
+    if (that instanceof TRowLock)
+      return this.equals((TRowLock)that);
     return false;
   }
 
-  public boolean equals(RowLock that) {
+  public boolean equals(TRowLock that) {
     if (that == null)
       return false;
 
@@ -641,6 +688,15 @@ public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields
         return false;
     }
 
+    boolean this_present_currentTimestmap = true && this.isSetCurrentTimestmap();
+    boolean that_present_currentTimestmap = true && that.isSetCurrentTimestmap();
+    if (this_present_currentTimestmap || that_present_currentTimestmap) {
+      if (!(this_present_currentTimestmap && that_present_currentTimestmap))
+        return false;
+      if (this.currentTimestmap != that.currentTimestmap)
+        return false;
+    }
+
     boolean this_present_timeout = true && this.isSetTimeout();
     boolean that_present_timeout = true && that.isSetTimeout();
     if (this_present_timeout || that_present_timeout) {
@@ -668,21 +724,21 @@ public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields
         return false;
     }
 
-    boolean this_present_puts = true && this.isSetPuts();
-    boolean that_present_puts = true && that.isSetPuts();
-    if (this_present_puts || that_present_puts) {
-      if (!(this_present_puts && that_present_puts))
+    boolean this_present_prewritten = true && this.isSetPrewritten();
+    boolean that_present_prewritten = true && that.isSetPrewritten();
+    if (this_present_prewritten || that_present_prewritten) {
+      if (!(this_present_prewritten && that_present_prewritten))
         return false;
-      if (!this.puts.equals(that.puts))
+      if (!this.prewritten.equals(that.prewritten))
         return false;
     }
 
-    boolean this_present_deletes = true && this.isSetDeletes();
-    boolean that_present_deletes = true && that.isSetDeletes();
-    if (this_present_deletes || that_present_deletes) {
-      if (!(this_present_deletes && that_present_deletes))
+    boolean this_present_mutations = true && this.isSetMutations();
+    boolean that_present_mutations = true && that.isSetMutations();
+    if (this_present_mutations || that_present_mutations) {
+      if (!(this_present_mutations && that_present_mutations))
         return false;
-      if (!this.deletes.equals(that.deletes))
+      if (!this.mutations.equals(that.mutations))
         return false;
     }
 
@@ -694,13 +750,13 @@ public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields
     return 0;
   }
 
-  public int compareTo(RowLock other) {
+  public int compareTo(TRowLock other) {
     if (!getClass().equals(other.getClass())) {
       return getClass().getName().compareTo(other.getClass().getName());
     }
 
     int lastComparison = 0;
-    RowLock typedOther = (RowLock)other;
+    TRowLock typedOther = (TRowLock)other;
 
     lastComparison = Boolean.valueOf(isSetVersion()).compareTo(typedOther.isSetVersion());
     if (lastComparison != 0) {
@@ -728,6 +784,16 @@ public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields
     }
     if (isSetCommitTimestamp()) {
       lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.commitTimestamp, typedOther.commitTimestamp);
+      if (lastComparison != 0) {
+        return lastComparison;
+      }
+    }
+    lastComparison = Boolean.valueOf(isSetCurrentTimestmap()).compareTo(typedOther.isSetCurrentTimestmap());
+    if (lastComparison != 0) {
+      return lastComparison;
+    }
+    if (isSetCurrentTimestmap()) {
+      lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.currentTimestmap, typedOther.currentTimestmap);
       if (lastComparison != 0) {
         return lastComparison;
       }
@@ -762,22 +828,22 @@ public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields
         return lastComparison;
       }
     }
-    lastComparison = Boolean.valueOf(isSetPuts()).compareTo(typedOther.isSetPuts());
+    lastComparison = Boolean.valueOf(isSetPrewritten()).compareTo(typedOther.isSetPrewritten());
     if (lastComparison != 0) {
       return lastComparison;
     }
-    if (isSetPuts()) {
-      lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.puts, typedOther.puts);
+    if (isSetPrewritten()) {
+      lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.prewritten, typedOther.prewritten);
       if (lastComparison != 0) {
         return lastComparison;
       }
     }
-    lastComparison = Boolean.valueOf(isSetDeletes()).compareTo(typedOther.isSetDeletes());
+    lastComparison = Boolean.valueOf(isSetMutations()).compareTo(typedOther.isSetMutations());
     if (lastComparison != 0) {
       return lastComparison;
     }
-    if (isSetDeletes()) {
-      lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.deletes, typedOther.deletes);
+    if (isSetMutations()) {
+      lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.mutations, typedOther.mutations);
       if (lastComparison != 0) {
         return lastComparison;
       }
@@ -809,7 +875,7 @@ public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields
           break;
         case 2: // STATE
           if (field.type == org.apache.thrift.protocol.TType.I32) {
-            this.state = RowState.findByValue(iprot.readI32());
+            this.state = TRowLockState.findByValue(iprot.readI32());
           } else { 
             org.apache.thrift.protocol.TProtocolUtil.skip(iprot, field.type);
           }
@@ -822,7 +888,15 @@ public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields
             org.apache.thrift.protocol.TProtocolUtil.skip(iprot, field.type);
           }
           break;
-        case 4: // TIMEOUT
+        case 4: // CURRENT_TIMESTMAP
+          if (field.type == org.apache.thrift.protocol.TType.I64) {
+            this.currentTimestmap = iprot.readI64();
+            setCurrentTimestmapIsSet(true);
+          } else { 
+            org.apache.thrift.protocol.TProtocolUtil.skip(iprot, field.type);
+          }
+          break;
+        case 5: // TIMEOUT
           if (field.type == org.apache.thrift.protocol.TType.I64) {
             this.timeout = iprot.readI64();
             setTimeoutIsSet(true);
@@ -830,25 +904,25 @@ public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields
             org.apache.thrift.protocol.TProtocolUtil.skip(iprot, field.type);
           }
           break;
-        case 5: // PRIMARY
+        case 6: // PRIMARY
           if (field.type == org.apache.thrift.protocol.TType.STRUCT) {
-            this.primary = new RowKey();
+            this.primary = new TRowKey();
             this.primary.read(iprot);
           } else { 
             org.apache.thrift.protocol.TProtocolUtil.skip(iprot, field.type);
           }
           break;
-        case 6: // SECONDARIES
+        case 7: // SECONDARIES
           if (field.type == org.apache.thrift.protocol.TType.LIST) {
             {
-              org.apache.thrift.protocol.TList _list0 = iprot.readListBegin();
-              this.secondaries = new ArrayList<RowKey>(_list0.size);
-              for (int _i1 = 0; _i1 < _list0.size; ++_i1)
+              org.apache.thrift.protocol.TList _list12 = iprot.readListBegin();
+              this.secondaries = new ArrayList<TRowKey>(_list12.size);
+              for (int _i13 = 0; _i13 < _list12.size; ++_i13)
               {
-                RowKey _elem2;
-                _elem2 = new RowKey();
-                _elem2.read(iprot);
-                this.secondaries.add(_elem2);
+                TRowKey _elem14;
+                _elem14 = new TRowKey();
+                _elem14.read(iprot);
+                this.secondaries.add(_elem14);
               }
               iprot.readListEnd();
             }
@@ -856,17 +930,17 @@ public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields
             org.apache.thrift.protocol.TProtocolUtil.skip(iprot, field.type);
           }
           break;
-        case 7: // PUTS
+        case 8: // PREWRITTEN
           if (field.type == org.apache.thrift.protocol.TType.LIST) {
             {
-              org.apache.thrift.protocol.TList _list3 = iprot.readListBegin();
-              this.puts = new ArrayList<CellKey>(_list3.size);
-              for (int _i4 = 0; _i4 < _list3.size; ++_i4)
+              org.apache.thrift.protocol.TList _list15 = iprot.readListBegin();
+              this.prewritten = new ArrayList<TCellKey>(_list15.size);
+              for (int _i16 = 0; _i16 < _list15.size; ++_i16)
               {
-                CellKey _elem5;
-                _elem5 = new CellKey();
-                _elem5.read(iprot);
-                this.puts.add(_elem5);
+                TCellKey _elem17;
+                _elem17 = new TCellKey();
+                _elem17.read(iprot);
+                this.prewritten.add(_elem17);
               }
               iprot.readListEnd();
             }
@@ -874,17 +948,17 @@ public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields
             org.apache.thrift.protocol.TProtocolUtil.skip(iprot, field.type);
           }
           break;
-        case 8: // DELETES
+        case 9: // MUTATIONS
           if (field.type == org.apache.thrift.protocol.TType.LIST) {
             {
-              org.apache.thrift.protocol.TList _list6 = iprot.readListBegin();
-              this.deletes = new ArrayList<CellKey>(_list6.size);
-              for (int _i7 = 0; _i7 < _list6.size; ++_i7)
+              org.apache.thrift.protocol.TList _list18 = iprot.readListBegin();
+              this.mutations = new ArrayList<TMutation>(_list18.size);
+              for (int _i19 = 0; _i19 < _list18.size; ++_i19)
               {
-                CellKey _elem8;
-                _elem8 = new CellKey();
-                _elem8.read(iprot);
-                this.deletes.add(_elem8);
+                TMutation _elem20;
+                _elem20 = new TMutation();
+                _elem20.read(iprot);
+                this.mutations.add(_elem20);
               }
               iprot.readListEnd();
             }
@@ -924,6 +998,11 @@ public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields
     oprot.writeFieldBegin(COMMIT_TIMESTAMP_FIELD_DESC);
     oprot.writeI64(this.commitTimestamp);
     oprot.writeFieldEnd();
+    if (isSetCurrentTimestmap()) {
+      oprot.writeFieldBegin(CURRENT_TIMESTMAP_FIELD_DESC);
+      oprot.writeI64(this.currentTimestmap);
+      oprot.writeFieldEnd();
+    }
     if (isSetTimeout()) {
       oprot.writeFieldBegin(TIMEOUT_FIELD_DESC);
       oprot.writeI64(this.timeout);
@@ -941,37 +1020,37 @@ public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields
         oprot.writeFieldBegin(SECONDARIES_FIELD_DESC);
         {
           oprot.writeListBegin(new org.apache.thrift.protocol.TList(org.apache.thrift.protocol.TType.STRUCT, this.secondaries.size()));
-          for (RowKey _iter9 : this.secondaries)
+          for (TRowKey _iter21 : this.secondaries)
           {
-            _iter9.write(oprot);
+            _iter21.write(oprot);
           }
           oprot.writeListEnd();
         }
         oprot.writeFieldEnd();
       }
     }
-    if (this.puts != null) {
-      if (isSetPuts()) {
-        oprot.writeFieldBegin(PUTS_FIELD_DESC);
+    if (this.prewritten != null) {
+      if (isSetPrewritten()) {
+        oprot.writeFieldBegin(PREWRITTEN_FIELD_DESC);
         {
-          oprot.writeListBegin(new org.apache.thrift.protocol.TList(org.apache.thrift.protocol.TType.STRUCT, this.puts.size()));
-          for (CellKey _iter10 : this.puts)
+          oprot.writeListBegin(new org.apache.thrift.protocol.TList(org.apache.thrift.protocol.TType.STRUCT, this.prewritten.size()));
+          for (TCellKey _iter22 : this.prewritten)
           {
-            _iter10.write(oprot);
+            _iter22.write(oprot);
           }
           oprot.writeListEnd();
         }
         oprot.writeFieldEnd();
       }
     }
-    if (this.deletes != null) {
-      if (isSetDeletes()) {
-        oprot.writeFieldBegin(DELETES_FIELD_DESC);
+    if (this.mutations != null) {
+      if (isSetMutations()) {
+        oprot.writeFieldBegin(MUTATIONS_FIELD_DESC);
         {
-          oprot.writeListBegin(new org.apache.thrift.protocol.TList(org.apache.thrift.protocol.TType.STRUCT, this.deletes.size()));
-          for (CellKey _iter11 : this.deletes)
+          oprot.writeListBegin(new org.apache.thrift.protocol.TList(org.apache.thrift.protocol.TType.STRUCT, this.mutations.size()));
+          for (TMutation _iter23 : this.mutations)
           {
-            _iter11.write(oprot);
+            _iter23.write(oprot);
           }
           oprot.writeListEnd();
         }
@@ -984,7 +1063,7 @@ public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields
 
   @Override
   public String toString() {
-    StringBuilder sb = new StringBuilder("RowLock(");
+    StringBuilder sb = new StringBuilder("TRowLock(");
     boolean first = true;
 
     sb.append("version:");
@@ -1002,6 +1081,12 @@ public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields
     sb.append("commitTimestamp:");
     sb.append(this.commitTimestamp);
     first = false;
+    if (isSetCurrentTimestmap()) {
+      if (!first) sb.append(", ");
+      sb.append("currentTimestmap:");
+      sb.append(this.currentTimestmap);
+      first = false;
+    }
     if (isSetTimeout()) {
       if (!first) sb.append(", ");
       sb.append("timeout:");
@@ -1028,23 +1113,23 @@ public class RowLock implements org.apache.thrift.TBase<RowLock, RowLock._Fields
       }
       first = false;
     }
-    if (isSetPuts()) {
+    if (isSetPrewritten()) {
       if (!first) sb.append(", ");
-      sb.append("puts:");
-      if (this.puts == null) {
+      sb.append("prewritten:");
+      if (this.prewritten == null) {
         sb.append("null");
       } else {
-        sb.append(this.puts);
+        sb.append(this.prewritten);
       }
       first = false;
     }
-    if (isSetDeletes()) {
+    if (isSetMutations()) {
       if (!first) sb.append(", ");
-      sb.append("deletes:");
-      if (this.deletes == null) {
+      sb.append("mutations:");
+      if (this.mutations == null) {
         sb.append("null");
       } else {
-        sb.append(this.deletes);
+        sb.append(this.mutations);
       }
       first = false;
     }

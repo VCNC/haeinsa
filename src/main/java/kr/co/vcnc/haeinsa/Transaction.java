@@ -1,12 +1,12 @@
 package kr.co.vcnc.haeinsa;
 
-import static kr.co.vcnc.haeinsa.Constants.ROW_LOCK_MIN_TIMESTAMP;
+import static kr.co.vcnc.haeinsa.HaeinsaConstants.ROW_LOCK_MIN_TIMESTAMP;
 
 import java.io.IOException;
 import java.util.Map.Entry;
 import java.util.NavigableMap;
 
-import kr.co.vcnc.haeinsa.thrift.RowKey;
+import kr.co.vcnc.haeinsa.thrift.generated.TRowKey;
 
 import org.apache.hadoop.hbase.util.Bytes;
 
@@ -15,7 +15,7 @@ import com.google.common.collect.Maps;
 public class Transaction {
 	private final NavigableMap<byte[], TableTransactionState> tableStates = Maps.newTreeMap(Bytes.BYTES_COMPARATOR);
 	private final TransactionManager manager;
-	private RowKey primary;
+	private TRowKey primary;
 	private long commitTimestamp = Long.MIN_VALUE;
 	
 	public Transaction(TransactionManager manager){
@@ -38,11 +38,11 @@ public class Transaction {
 		this.commitTimestamp = commitTimestamp;
 	}
 	
-	public RowKey getPrimary() {
+	public TRowKey getPrimary() {
 		return primary;
 	}
 	
-	void setPrimary(RowKey primary) {
+	void setPrimary(TRowKey primary) {
 		this.primary = primary;
 	}
 	
@@ -61,13 +61,13 @@ public class Transaction {
 	
 	public void commit() throws IOException {
 		// determine commitTimestamp & determine primary row
-		RowKey primaryRowKey = null;
+		TRowKey primaryRowKey = null;
 		RowTransactionState primaryRowState = null;
 		long commitTimestamp = ROW_LOCK_MIN_TIMESTAMP;
 		for (Entry<byte[], TableTransactionState> tableStateEntry : tableStates.entrySet()){
 			for (Entry<byte[], RowTransactionState> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()){
 				if (primaryRowKey == null){
-					primaryRowKey = new RowKey();
+					primaryRowKey = new TRowKey();
 					primaryRowKey.setTableName(tableStateEntry.getKey());
 					primaryRowKey.setRow(rowStateEntry.getKey());
 					primaryRowState = rowStateEntry.getValue();
@@ -81,7 +81,7 @@ public class Transaction {
 		TablePool tablePool = getManager().getTablePool();
 		// prewrite primary row
 		{
-			Table.PrivateIface table = (Table.PrivateIface) tablePool.getTable(primaryRowKey.getTableName());
+			HaeinsaTable.PrivateIface table = (HaeinsaTable.PrivateIface) tablePool.getTable(primaryRowKey.getTableName());
 			table.prewrite(primaryRowState, primaryRowKey.getRow(), true);
 		}
 		
@@ -91,14 +91,14 @@ public class Transaction {
 				if ((Bytes.equals(tableStateEntry.getKey(), primaryRowKey.getTableName()) && Bytes.equals(rowStateEntry.getKey(), primaryRowKey.getRow()))){
 					continue;
 				}
-				Table.PrivateIface table = (Table.PrivateIface) tablePool.getTable(tableStateEntry.getKey());
+				HaeinsaTable.PrivateIface table = (HaeinsaTable.PrivateIface) tablePool.getTable(tableStateEntry.getKey());
 				table.prewrite(rowStateEntry.getValue(), rowStateEntry.getKey(), false);
 			}
 		}
 		
 		// commit primary
 		{
-			Table.PrivateIface table = (Table.PrivateIface) tablePool.getTable(primaryRowKey.getTableName());
+			HaeinsaTable.PrivateIface table = (HaeinsaTable.PrivateIface) tablePool.getTable(primaryRowKey.getTableName());
 			table.commitPrimary(primaryRowState, primaryRowKey.getRow());
 		}
 		
@@ -106,7 +106,7 @@ public class Transaction {
 		for (Entry<byte[], TableTransactionState> tableStateEntry : tableStates.entrySet()){
 			for (Entry<byte[], RowTransactionState> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()){
 				// apply deletes  
-				Table.PrivateIface table = (Table.PrivateIface) tablePool.getTable(tableStateEntry.getKey());
+				HaeinsaTable.PrivateIface table = (HaeinsaTable.PrivateIface) tablePool.getTable(tableStateEntry.getKey());
 				table.applyDeletes(rowStateEntry.getValue(), rowStateEntry.getKey());
 				
 				if ((Bytes.equals(tableStateEntry.getKey(), primaryRowKey.getTableName()) && Bytes.equals(rowStateEntry.getKey(), primaryRowKey.getRow()))){
@@ -118,7 +118,7 @@ public class Transaction {
 		}
 		
 		{
-			Table.PrivateIface table = (Table.PrivateIface) tablePool.getTable(primaryRowKey.getTableName());
+			HaeinsaTable.PrivateIface table = (HaeinsaTable.PrivateIface) tablePool.getTable(primaryRowKey.getTableName());
 			table.makeStable(primaryRowState, primaryRowKey.getRow());
 		}
 	}

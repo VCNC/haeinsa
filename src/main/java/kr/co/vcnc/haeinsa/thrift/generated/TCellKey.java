@@ -3,7 +3,7 @@
  *
  * DO NOT EDIT UNLESS YOU ARE SURE THAT YOU KNOW WHAT YOU ARE DOING
  */
-package kr.co.vcnc.haeinsa.thrift;
+package kr.co.vcnc.haeinsa.thrift.generated;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -20,19 +20,19 @@ import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class RowKey implements org.apache.thrift.TBase<RowKey, RowKey._Fields>, java.io.Serializable, Cloneable {
-  private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("RowKey");
+public class TCellKey implements org.apache.thrift.TBase<TCellKey, TCellKey._Fields>, java.io.Serializable, Cloneable {
+  private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("TCellKey");
 
-  private static final org.apache.thrift.protocol.TField TABLE_NAME_FIELD_DESC = new org.apache.thrift.protocol.TField("tableName", org.apache.thrift.protocol.TType.STRING, (short)1);
-  private static final org.apache.thrift.protocol.TField ROW_FIELD_DESC = new org.apache.thrift.protocol.TField("row", org.apache.thrift.protocol.TType.STRING, (short)2);
+  private static final org.apache.thrift.protocol.TField FAMILY_FIELD_DESC = new org.apache.thrift.protocol.TField("family", org.apache.thrift.protocol.TType.STRING, (short)1);
+  private static final org.apache.thrift.protocol.TField QUALIFIER_FIELD_DESC = new org.apache.thrift.protocol.TField("qualifier", org.apache.thrift.protocol.TType.STRING, (short)2);
 
-  public ByteBuffer tableName;
-  public ByteBuffer row;
+  public ByteBuffer family;
+  public ByteBuffer qualifier;
 
   /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
-    TABLE_NAME((short)1, "tableName"),
-    ROW((short)2, "row");
+    FAMILY((short)1, "family"),
+    QUALIFIER((short)2, "qualifier");
 
     private static final Map<String, _Fields> byName = new HashMap<String, _Fields>();
 
@@ -47,10 +47,10 @@ public class RowKey implements org.apache.thrift.TBase<RowKey, RowKey._Fields>, 
      */
     public static _Fields findByThriftId(int fieldId) {
       switch(fieldId) {
-        case 1: // TABLE_NAME
-          return TABLE_NAME;
-        case 2: // ROW
-          return ROW;
+        case 1: // FAMILY
+          return FAMILY;
+        case 2: // QUALIFIER
+          return QUALIFIER;
         default:
           return null;
       }
@@ -95,133 +95,133 @@ public class RowKey implements org.apache.thrift.TBase<RowKey, RowKey._Fields>, 
   public static final Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
   static {
     Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-    tmpMap.put(_Fields.TABLE_NAME, new org.apache.thrift.meta_data.FieldMetaData("tableName", org.apache.thrift.TFieldRequirementType.REQUIRED, 
+    tmpMap.put(_Fields.FAMILY, new org.apache.thrift.meta_data.FieldMetaData("family", org.apache.thrift.TFieldRequirementType.REQUIRED, 
         new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING        , true)));
-    tmpMap.put(_Fields.ROW, new org.apache.thrift.meta_data.FieldMetaData("row", org.apache.thrift.TFieldRequirementType.REQUIRED, 
+    tmpMap.put(_Fields.QUALIFIER, new org.apache.thrift.meta_data.FieldMetaData("qualifier", org.apache.thrift.TFieldRequirementType.REQUIRED, 
         new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING        , true)));
     metaDataMap = Collections.unmodifiableMap(tmpMap);
-    org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(RowKey.class, metaDataMap);
+    org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(TCellKey.class, metaDataMap);
   }
 
-  public RowKey() {
+  public TCellKey() {
   }
 
-  public RowKey(
-    ByteBuffer tableName,
-    ByteBuffer row)
+  public TCellKey(
+    ByteBuffer family,
+    ByteBuffer qualifier)
   {
     this();
-    this.tableName = tableName;
-    this.row = row;
+    this.family = family;
+    this.qualifier = qualifier;
   }
 
   /**
    * Performs a deep copy on <i>other</i>.
    */
-  public RowKey(RowKey other) {
-    if (other.isSetTableName()) {
-      this.tableName = org.apache.thrift.TBaseHelper.copyBinary(other.tableName);
+  public TCellKey(TCellKey other) {
+    if (other.isSetFamily()) {
+      this.family = org.apache.thrift.TBaseHelper.copyBinary(other.family);
 ;
     }
-    if (other.isSetRow()) {
-      this.row = org.apache.thrift.TBaseHelper.copyBinary(other.row);
+    if (other.isSetQualifier()) {
+      this.qualifier = org.apache.thrift.TBaseHelper.copyBinary(other.qualifier);
 ;
     }
   }
 
-  public RowKey deepCopy() {
-    return new RowKey(this);
+  public TCellKey deepCopy() {
+    return new TCellKey(this);
   }
 
   @Override
   public void clear() {
-    this.tableName = null;
-    this.row = null;
+    this.family = null;
+    this.qualifier = null;
   }
 
-  public byte[] getTableName() {
-    setTableName(org.apache.thrift.TBaseHelper.rightSize(tableName));
-    return tableName == null ? null : tableName.array();
+  public byte[] getFamily() {
+    setFamily(org.apache.thrift.TBaseHelper.rightSize(family));
+    return family == null ? null : family.array();
   }
 
-  public ByteBuffer bufferForTableName() {
-    return tableName;
+  public ByteBuffer bufferForFamily() {
+    return family;
   }
 
-  public RowKey setTableName(byte[] tableName) {
-    setTableName(tableName == null ? (ByteBuffer)null : ByteBuffer.wrap(tableName));
+  public TCellKey setFamily(byte[] family) {
+    setFamily(family == null ? (ByteBuffer)null : ByteBuffer.wrap(family));
     return this;
   }
 
-  public RowKey setTableName(ByteBuffer tableName) {
-    this.tableName = tableName;
+  public TCellKey setFamily(ByteBuffer family) {
+    this.family = family;
     return this;
   }
 
-  public void unsetTableName() {
-    this.tableName = null;
+  public void unsetFamily() {
+    this.family = null;
   }
 
-  /** Returns true if field tableName is set (has been assigned a value) and false otherwise */
-  public boolean isSetTableName() {
-    return this.tableName != null;
+  /** Returns true if field family is set (has been assigned a value) and false otherwise */
+  public boolean isSetFamily() {
+    return this.family != null;
   }
 
-  public void setTableNameIsSet(boolean value) {
+  public void setFamilyIsSet(boolean value) {
     if (!value) {
-      this.tableName = null;
+      this.family = null;
     }
   }
 
-  public byte[] getRow() {
-    setRow(org.apache.thrift.TBaseHelper.rightSize(row));
-    return row == null ? null : row.array();
+  public byte[] getQualifier() {
+    setQualifier(org.apache.thrift.TBaseHelper.rightSize(qualifier));
+    return qualifier == null ? null : qualifier.array();
   }
 
-  public ByteBuffer bufferForRow() {
-    return row;
+  public ByteBuffer bufferForQualifier() {
+    return qualifier;
   }
 
-  public RowKey setRow(byte[] row) {
-    setRow(row == null ? (ByteBuffer)null : ByteBuffer.wrap(row));
+  public TCellKey setQualifier(byte[] qualifier) {
+    setQualifier(qualifier == null ? (ByteBuffer)null : ByteBuffer.wrap(qualifier));
     return this;
   }
 
-  public RowKey setRow(ByteBuffer row) {
-    this.row = row;
+  public TCellKey setQualifier(ByteBuffer qualifier) {
+    this.qualifier = qualifier;
     return this;
   }
 
-  public void unsetRow() {
-    this.row = null;
+  public void unsetQualifier() {
+    this.qualifier = null;
   }
 
-  /** Returns true if field row is set (has been assigned a value) and false otherwise */
-  public boolean isSetRow() {
-    return this.row != null;
+  /** Returns true if field qualifier is set (has been assigned a value) and false otherwise */
+  public boolean isSetQualifier() {
+    return this.qualifier != null;
   }
 
-  public void setRowIsSet(boolean value) {
+  public void setQualifierIsSet(boolean value) {
     if (!value) {
-      this.row = null;
+      this.qualifier = null;
     }
   }
 
   public void setFieldValue(_Fields field, Object value) {
     switch (field) {
-    case TABLE_NAME:
+    case FAMILY:
       if (value == null) {
-        unsetTableName();
+        unsetFamily();
       } else {
-        setTableName((ByteBuffer)value);
+        setFamily((ByteBuffer)value);
       }
       break;
 
-    case ROW:
+    case QUALIFIER:
       if (value == null) {
-        unsetRow();
+        unsetQualifier();
       } else {
-        setRow((ByteBuffer)value);
+        setQualifier((ByteBuffer)value);
       }
       break;
 
@@ -230,11 +230,11 @@ public class RowKey implements org.apache.thrift.TBase<RowKey, RowKey._Fields>, 
 
   public Object getFieldValue(_Fields field) {
     switch (field) {
-    case TABLE_NAME:
-      return getTableName();
+    case FAMILY:
+      return getFamily();
 
-    case ROW:
-      return getRow();
+    case QUALIFIER:
+      return getQualifier();
 
     }
     throw new IllegalStateException();
@@ -247,10 +247,10 @@ public class RowKey implements org.apache.thrift.TBase<RowKey, RowKey._Fields>, 
     }
 
     switch (field) {
-    case TABLE_NAME:
-      return isSetTableName();
-    case ROW:
-      return isSetRow();
+    case FAMILY:
+      return isSetFamily();
+    case QUALIFIER:
+      return isSetQualifier();
     }
     throw new IllegalStateException();
   }
@@ -259,30 +259,30 @@ public class RowKey implements org.apache.thrift.TBase<RowKey, RowKey._Fields>, 
   public boolean equals(Object that) {
     if (that == null)
       return false;
-    if (that instanceof RowKey)
-      return this.equals((RowKey)that);
+    if (that instanceof TCellKey)
+      return this.equals((TCellKey)that);
     return false;
   }
 
-  public boolean equals(RowKey that) {
+  public boolean equals(TCellKey that) {
     if (that == null)
       return false;
 
-    boolean this_present_tableName = true && this.isSetTableName();
-    boolean that_present_tableName = true && that.isSetTableName();
-    if (this_present_tableName || that_present_tableName) {
-      if (!(this_present_tableName && that_present_tableName))
+    boolean this_present_family = true && this.isSetFamily();
+    boolean that_present_family = true && that.isSetFamily();
+    if (this_present_family || that_present_family) {
+      if (!(this_present_family && that_present_family))
         return false;
-      if (!this.tableName.equals(that.tableName))
+      if (!this.family.equals(that.family))
         return false;
     }
 
-    boolean this_present_row = true && this.isSetRow();
-    boolean that_present_row = true && that.isSetRow();
-    if (this_present_row || that_present_row) {
-      if (!(this_present_row && that_present_row))
+    boolean this_present_qualifier = true && this.isSetQualifier();
+    boolean that_present_qualifier = true && that.isSetQualifier();
+    if (this_present_qualifier || that_present_qualifier) {
+      if (!(this_present_qualifier && that_present_qualifier))
         return false;
-      if (!this.row.equals(that.row))
+      if (!this.qualifier.equals(that.qualifier))
         return false;
     }
 
@@ -294,30 +294,30 @@ public class RowKey implements org.apache.thrift.TBase<RowKey, RowKey._Fields>, 
     return 0;
   }
 
-  public int compareTo(RowKey other) {
+  public int compareTo(TCellKey other) {
     if (!getClass().equals(other.getClass())) {
       return getClass().getName().compareTo(other.getClass().getName());
     }
 
     int lastComparison = 0;
-    RowKey typedOther = (RowKey)other;
+    TCellKey typedOther = (TCellKey)other;
 
-    lastComparison = Boolean.valueOf(isSetTableName()).compareTo(typedOther.isSetTableName());
+    lastComparison = Boolean.valueOf(isSetFamily()).compareTo(typedOther.isSetFamily());
     if (lastComparison != 0) {
       return lastComparison;
     }
-    if (isSetTableName()) {
-      lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.tableName, typedOther.tableName);
+    if (isSetFamily()) {
+      lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.family, typedOther.family);
       if (lastComparison != 0) {
         return lastComparison;
       }
     }
-    lastComparison = Boolean.valueOf(isSetRow()).compareTo(typedOther.isSetRow());
+    lastComparison = Boolean.valueOf(isSetQualifier()).compareTo(typedOther.isSetQualifier());
     if (lastComparison != 0) {
       return lastComparison;
     }
-    if (isSetRow()) {
-      lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.row, typedOther.row);
+    if (isSetQualifier()) {
+      lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.qualifier, typedOther.qualifier);
       if (lastComparison != 0) {
         return lastComparison;
       }
@@ -339,16 +339,16 @@ public class RowKey implements org.apache.thrift.TBase<RowKey, RowKey._Fields>, 
         break;
       }
       switch (field.id) {
-        case 1: // TABLE_NAME
+        case 1: // FAMILY
           if (field.type == org.apache.thrift.protocol.TType.STRING) {
-            this.tableName = iprot.readBinary();
+            this.family = iprot.readBinary();
           } else { 
             org.apache.thrift.protocol.TProtocolUtil.skip(iprot, field.type);
           }
           break;
-        case 2: // ROW
+        case 2: // QUALIFIER
           if (field.type == org.apache.thrift.protocol.TType.STRING) {
-            this.row = iprot.readBinary();
+            this.qualifier = iprot.readBinary();
           } else { 
             org.apache.thrift.protocol.TProtocolUtil.skip(iprot, field.type);
           }
@@ -368,14 +368,14 @@ public class RowKey implements org.apache.thrift.TBase<RowKey, RowKey._Fields>, 
     validate();
 
     oprot.writeStructBegin(STRUCT_DESC);
-    if (this.tableName != null) {
-      oprot.writeFieldBegin(TABLE_NAME_FIELD_DESC);
-      oprot.writeBinary(this.tableName);
+    if (this.family != null) {
+      oprot.writeFieldBegin(FAMILY_FIELD_DESC);
+      oprot.writeBinary(this.family);
       oprot.writeFieldEnd();
     }
-    if (this.row != null) {
-      oprot.writeFieldBegin(ROW_FIELD_DESC);
-      oprot.writeBinary(this.row);
+    if (this.qualifier != null) {
+      oprot.writeFieldBegin(QUALIFIER_FIELD_DESC);
+      oprot.writeBinary(this.qualifier);
       oprot.writeFieldEnd();
     }
     oprot.writeFieldStop();
@@ -384,22 +384,22 @@ public class RowKey implements org.apache.thrift.TBase<RowKey, RowKey._Fields>, 
 
   @Override
   public String toString() {
-    StringBuilder sb = new StringBuilder("RowKey(");
+    StringBuilder sb = new StringBuilder("TCellKey(");
     boolean first = true;
 
-    sb.append("tableName:");
-    if (this.tableName == null) {
+    sb.append("family:");
+    if (this.family == null) {
       sb.append("null");
     } else {
-      org.apache.thrift.TBaseHelper.toString(this.tableName, sb);
+      org.apache.thrift.TBaseHelper.toString(this.family, sb);
     }
     first = false;
     if (!first) sb.append(", ");
-    sb.append("row:");
-    if (this.row == null) {
+    sb.append("qualifier:");
+    if (this.qualifier == null) {
       sb.append("null");
     } else {
-      org.apache.thrift.TBaseHelper.toString(this.row, sb);
+      org.apache.thrift.TBaseHelper.toString(this.qualifier, sb);
     }
     first = false;
     sb.append(")");
@@ -408,11 +408,11 @@ public class RowKey implements org.apache.thrift.TBase<RowKey, RowKey._Fields>, 
 
   public void validate() throws org.apache.thrift.TException {
     // check for required fields
-    if (tableName == null) {
-      throw new org.apache.thrift.protocol.TProtocolException("Required field 'tableName' was not present! Struct: " + toString());
+    if (family == null) {
+      throw new org.apache.thrift.protocol.TProtocolException("Required field 'family' was not present! Struct: " + toString());
     }
-    if (row == null) {
-      throw new org.apache.thrift.protocol.TProtocolException("Required field 'row' was not present! Struct: " + toString());
+    if (qualifier == null) {
+      throw new org.apache.thrift.protocol.TProtocolException("Required field 'qualifier' was not present! Struct: " + toString());
     }
   }
 

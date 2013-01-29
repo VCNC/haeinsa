@@ -1,8 +1,11 @@
 package kr.co.vcnc.haeinsa.thrift;
 
-import static kr.co.vcnc.haeinsa.Constants.ROW_LOCK_VERSION;
+import static kr.co.vcnc.haeinsa.HaeinsaConstants.ROW_LOCK_VERSION;
 
 import java.io.IOException;
+
+import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
+import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
 
 import org.apache.thrift.TDeserializer;
 import org.apache.thrift.TException;
@@ -21,11 +24,11 @@ public final class HaeinsaThriftUtils {
 		return new TDeserializer(PROTOCOL_FACTORY);
 	}
 	
-	public static RowLock deserialize(byte[] rowLockBytes) throws IOException {
+	public static TRowLock deserialize(byte[] rowLockBytes) throws IOException {
 		if (rowLockBytes == null){
-			return new RowLock(ROW_LOCK_VERSION, RowState.STABLE, Long.MIN_VALUE);
+			return new TRowLock(ROW_LOCK_VERSION, TRowLockState.STABLE, Long.MIN_VALUE);
 		}
-		RowLock rowLock = new RowLock();
+		TRowLock rowLock = new TRowLock();
 		TDeserializer deserializer = createDeserializer();
 		try{
 			deserializer.deserialize(rowLock, rowLockBytes);
@@ -35,7 +38,7 @@ public final class HaeinsaThriftUtils {
 		}
 	}
 	
-	public static byte[] serialize(RowLock rowLock) throws IOException {
+	public static byte[] serialize(TRowLock rowLock) throws IOException {
 		if (rowLock.getCommitTimestamp() == Long.MIN_VALUE){
 			return null;
 		}

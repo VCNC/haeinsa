@@ -3,9 +3,9 @@ package kr.co.vcnc.haeinsa;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import kr.co.vcnc.haeinsa.thrift.RowKey;
-import kr.co.vcnc.haeinsa.thrift.RowLock;
-import kr.co.vcnc.haeinsa.thrift.RowState;
+import kr.co.vcnc.haeinsa.thrift.generated.TRowKey;
+import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
+import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
 
 public class TransactionManager {
 	private final TablePool tablePool;
@@ -19,17 +19,17 @@ public class TransactionManager {
 	}
 	
 	public Transaction getTransaction(byte[] tableName, byte[] row) throws IOException {
-		RowLock startRowLock = getUnstableRowLock(tableName, row);
+		TRowLock startRowLock = getUnstableRowLock(tableName, row);
 		
 		if (startRowLock == null){
 			return null;
 		}
 		
-		RowLock primaryRowLock = null;
-		RowKey primaryRowKey = null;
+		TRowLock primaryRowLock = null;
+		TRowKey primaryRowKey = null;
 		if (startRowLock.getSecondariesSize() > 0){
 			// 이 Row가 Primary Row
-			primaryRowKey = new RowKey(ByteBuffer.wrap(tableName), ByteBuffer.wrap(row));
+			primaryRowKey = new TRowKey(ByteBuffer.wrap(tableName), ByteBuffer.wrap(row));
 			primaryRowLock = startRowLock;
 		}else {
 			primaryRowKey = startRowLock.getPrimary();
@@ -41,17 +41,17 @@ public class TransactionManager {
 		return getTransactionFromPrimary(primaryRowKey, primaryRowLock);
 	}
 	
-	private RowLock getUnstableRowLock(byte[] tableName, byte[] row) throws IOException {
-		Table.PrivateIface table = (Table.PrivateIface) tablePool.getTable(tableName);
-		RowLock rowLock = table.getRowLock(row);
-		if (rowLock.getState() == RowState.STABLE){
+	private TRowLock getUnstableRowLock(byte[] tableName, byte[] row) throws IOException {
+		HaeinsaTable.PrivateIface table = (HaeinsaTable.PrivateIface) tablePool.getTable(tableName);
+		TRowLock rowLock = table.getRowLock(row);
+		if (rowLock.getState() == TRowLockState.STABLE){
 			return null;
 		}else{
 			return rowLock;
 		}
 	}
 	
-	private Transaction getTransactionFromPrimary(RowKey rowKey, RowLock primaryRowLock) throws IOException {
+	private Transaction getTransactionFromPrimary(TRowKey rowKey, TRowLock primaryRowLock) throws IOException {
 		Transaction transaction = new Transaction(this);
 		transaction.setPrimary(rowKey);
 		transaction.setCommitTimestamp(primaryRowLock.getCommitTimestamp());
@@ -60,7 +60,7 @@ public class TransactionManager {
 		primaryRowTxState.setOriginalRowLock(primaryRowLock);
 		primaryRowTxState.setCurrentRowLock(primaryRowLock);
 		if (primaryRowLock.getSecondariesSize() > 0){
-			for (RowKey secondaryRow : primaryRowLock.getSecondaries()){
+			for (TRowKey secondaryRow : primaryRowLock.getSecondaries()){
 				addSecondaryRowLock(transaction, secondaryRow);
 			}
 		}
@@ -68,8 +68,8 @@ public class TransactionManager {
 		return transaction;
 	}
 	
-	private void addSecondaryRowLock(Transaction transaction, RowKey rowKey) throws IOException {
-		RowLock rowLock = getUnstableRowLock(rowKey.getTableName(),	rowKey.getRow());
+	private void addSecondaryRowLock(Transaction transaction, TRowKey rowKey) throws IOException {
+		TRowLock rowLock = getUnstableRowLock(rowKey.getTableName(),	rowKey.getRow());
 		if (rowLock == null){
 			return;
 		}

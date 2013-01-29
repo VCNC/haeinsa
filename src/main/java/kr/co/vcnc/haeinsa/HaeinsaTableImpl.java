@@ -1,20 +1,20 @@
 package kr.co.vcnc.haeinsa;
 
-import static kr.co.vcnc.haeinsa.Constants.LOCK_FAMILY;
-import static kr.co.vcnc.haeinsa.Constants.LOCK_QUALIFIER;
-import static kr.co.vcnc.haeinsa.Constants.ROW_LOCK_TIMEOUT;
-import static kr.co.vcnc.haeinsa.Constants.ROW_LOCK_VERSION;
+import static kr.co.vcnc.haeinsa.HaeinsaConstants.LOCK_FAMILY;
+import static kr.co.vcnc.haeinsa.HaeinsaConstants.LOCK_QUALIFIER;
+import static kr.co.vcnc.haeinsa.HaeinsaConstants.ROW_LOCK_TIMEOUT;
+import static kr.co.vcnc.haeinsa.HaeinsaConstants.ROW_LOCK_VERSION;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import kr.co.vcnc.haeinsa.thrift.CellKey;
 import kr.co.vcnc.haeinsa.thrift.HaeinsaThriftUtils;
-import kr.co.vcnc.haeinsa.thrift.RowKey;
-import kr.co.vcnc.haeinsa.thrift.RowLock;
-import kr.co.vcnc.haeinsa.thrift.RowState;
+import kr.co.vcnc.haeinsa.thrift.generated.TCellKey;
+import kr.co.vcnc.haeinsa.thrift.generated.TRowKey;
+import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
+import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
 
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.hadoop.conf.Configuration;
@@ -23,7 +23,6 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTableInterface;
-import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
@@ -35,11 +34,11 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.sun.jersey.api.ConflictException;
 
-class TableImpl implements Table.PrivateIface {
+class HaeinsaTableImpl implements HaeinsaTable.PrivateIface {
 	
 	private final HTableInterface table;
 	
-	public TableImpl(HTableInterface table){
+	public HaeinsaTableImpl(HTableInterface table){
 		this.table = table;
 	}
 
@@ -59,23 +58,25 @@ class TableImpl implements Table.PrivateIface {
 	}
 
 	@Override
-	public Result get(Transaction tx, Get get) throws IOException {
+	public Result get(Transaction tx, HaeinsaGet get) throws IOException {
 		byte[] row = get.getRow();
 		TableTransactionState tableState = tx.createOrGetTableState(this.table.getTableName());
 		RowTransactionState rowState = tableState.getRowStates().get(row);
 		
+		Get hGet = new Get(get.getRow());
+		hGet.getFamilyMap().putAll(get.getFamilyMap());
 		if (rowState == null){ 
 			get.addColumn(LOCK_FAMILY, LOCK_QUALIFIER);
 		}
 		
-		Result result = table.get(get);
+		Result result = table.get(hGet);
 		
 		if (rowState == null){
 			rowState = tableState.createOrGetRowState(row);
 			byte[] currentRowLockBytes = result.getValue(LOCK_FAMILY, LOCK_QUALIFIER);
-			RowLock currentRowLock = HaeinsaThriftUtils.deserialize(currentRowLockBytes);
+			TRowLock currentRowLock = HaeinsaThriftUtils.deserialize(currentRowLockBytes);
 			
-			if (currentRowLock.getState() != RowState.STABLE){
+			if (currentRowLock.getState() != TRowLockState.STABLE){
 				throw new ConflictException("this row is unstable.");
 			}
 			// TODO 현재 lock의 상태가 STABLE이 아니고 timeout이 지났으면, recover 해야 한다.
@@ -97,7 +98,7 @@ class TableImpl implements Table.PrivateIface {
 	}
 
 	@Override
-	public Result[] get(Transaction tx, List<Get> gets) throws IOException {
+	public Result[] get(Transaction tx, List<HaeinsaGet> gets) throws IOException {
 		throw new NotImplementedException();
 	}
 
@@ -120,14 +121,14 @@ class TableImpl implements Table.PrivateIface {
 	}
 
 	@Override
-	public void put(Transaction tx, Put put) throws IOException {
+	public void put(Transaction tx, HaeinsaPut put) throws IOException {
 		byte[] row = put.getRow();
 		TableTransactionState tableState = tx.createOrGetTableState(this.table.getTableName());
 		RowTransactionState rowState = tableState.getRowStates().get(row);
 		if (rowState == null){
 			// TODO commit 시점에 lock을 가져오도록 바꾸는 것도 고민해봐야 함.
-			RowLock rowLock = getRowLock(row);
-			if (rowLock.getState() != RowState.STABLE){
+			TRowLock rowLock = getRowLock(row);
+			if (rowLock.getState() != TRowLockState.STABLE){
 				throw new ConflictException("this row is unstable.");
 			}
 			// TODO 현재 lock의 상태가 STABLE이 아니고 timeout이 지났으면, recover 해야 한다.
@@ -135,18 +136,18 @@ class TableImpl implements Table.PrivateIface {
 			rowState.setCurrentRowLock(rowLock);
 			rowState.setOriginalRowLock(rowLock);
 		}
-		rowState.getMutations().add(put);
+		rowState.addMutation(put);
 	}
 
 	@Override
-	public void put(Transaction tx, List<Put> puts) throws IOException {
-		for (Put put : puts){
+	public void put(Transaction tx, List<HaeinsaPut> puts) throws IOException {
+		for (HaeinsaPut put : puts){
 			put(tx, put);
 		}
 	}
 
 	@Override
-	public void delete(Transaction tx, Delete delete) throws IOException {
+	public void delete(Transaction tx, HaeinsaDelete delete) throws IOException {
 		// 삭제는 특정 Cell만 삭제 가능하다. 
 		// TODO Family도 삭제 가능하게 만들어야 함. 
 		byte[] row = delete.getRow();
@@ -161,8 +162,8 @@ class TableImpl implements Table.PrivateIface {
 		RowTransactionState rowState = tableState.getRowStates().get(row);
 		if (rowState == null){
 			// TODO commit 시점에 lock을 가져오도록 바꾸는 것도 고민해봐야 함.
-			RowLock rowLock = getRowLock(row);
-			if (rowLock.getState() != RowState.STABLE){
+			TRowLock rowLock = getRowLock(row);
+			if (rowLock.getState() != TRowLockState.STABLE){
 				throw new ConflictException("this row is unstable.");
 			}
 			// TODO 현재 lock의 상태가 STABLE이 아니고 timeout이 지났으면, recover 해야 한다.
@@ -170,12 +171,12 @@ class TableImpl implements Table.PrivateIface {
 			rowState.setCurrentRowLock(rowLock);
 			rowState.setOriginalRowLock(rowLock);
 		}
-		rowState.getMutations().add(delete);
+		rowState.addMutation(delete);
 	}
 
 	@Override
-	public void delete(Transaction tx, List<Delete> deletes) throws IOException {
-		for (Delete delete : deletes){
+	public void delete(Transaction tx, List<HaeinsaDelete> deletes) throws IOException {
+		for (HaeinsaDelete delete : deletes){
 			delete(tx, delete);
 		}
 	}
@@ -188,25 +189,25 @@ class TableImpl implements Table.PrivateIface {
 	@Override
 	public void prewrite(RowTransactionState rowState, byte[] row, boolean isPrimary) throws IOException {
 		Put put = new Put(row);
-		Set<CellKey> puts = Sets.newTreeSet();
-		Set<CellKey> deletes = Sets.newTreeSet();
+		Set<TCellKey> puts = Sets.newTreeSet();
+		Set<TCellKey> deletes = Sets.newTreeSet();
 		Transaction tx = rowState.getTableTxState().getTransaction();
-		for (Mutation mutation : rowState.getMutations()){
-			if (mutation instanceof Put){
+		for (HaeinsaMutation mutation : rowState.getMutations()){
+			if (mutation instanceof HaeinsaPut){
 				for (Entry<byte[], List<KeyValue>> familyEntry : mutation.getFamilyMap().entrySet()){
 					for (KeyValue kv : familyEntry.getValue()){
 						put.add(familyEntry.getKey(), kv.getQualifier(), tx.getCommitTimestamp(), kv.getValue());
-						CellKey cellKey = new CellKey();
+						TCellKey cellKey = new TCellKey();
 						cellKey.setFamily(familyEntry.getKey());
 						cellKey.setQualifier(kv.getQualifier());
 						deletes.remove(cellKey);
 						puts.add(cellKey);
 					}
 				}
-			} else if (mutation instanceof Delete) {
+			} else if (mutation instanceof HaeinsaDelete) {
 				for (Entry<byte[], List<KeyValue>> familyEntry : mutation.getFamilyMap().entrySet()){
 					for (KeyValue kv : familyEntry.getValue()){
-						CellKey cellKey = new CellKey();
+						TCellKey cellKey = new TCellKey();
 						cellKey.setFamily(familyEntry.getKey());
 						cellKey.setQualifier(kv.getQualifier());
 						deletes.add(cellKey);
@@ -214,22 +215,23 @@ class TableImpl implements Table.PrivateIface {
 				}
 			}
 		}
-		RowLock newRowLock = new RowLock(ROW_LOCK_VERSION, RowState.PREWRITTEN, tx.getCommitTimestamp());
+		TRowLock newRowLock = new TRowLock(ROW_LOCK_VERSION, TRowLockState.PREWRITTEN, tx.getCommitTimestamp());
 		if (isPrimary){
 			for (Entry<byte[], TableTransactionState> tableStateEntry : tx.getTableStates().entrySet()){
 				for (Entry<byte[], RowTransactionState> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()){
 					if ((Bytes.equals(tableStateEntry.getKey(), getTableName()) && Bytes.equals(rowStateEntry.getKey(), row))){
 						continue;
 					}
-					newRowLock.addToSecondaries(new RowKey().setTableName(tableStateEntry.getKey()).setRow(rowStateEntry.getKey()));
+					newRowLock.addToSecondaries(new TRowKey().setTableName(tableStateEntry.getKey()).setRow(rowStateEntry.getKey()));
 				}
 			}
 		}else{
 			newRowLock.setPrimary(tx.getPrimary());
 		}
 		
-		newRowLock.setPuts(Lists.newArrayList(puts));
-		newRowLock.setDeletes(Lists.newArrayList(deletes));
+		newRowLock.setPrewritten(Lists.newArrayList(puts));
+		
+//		newRowLock.setDeletes(Lists.newArrayList(deletes));
 		newRowLock.setTimeout(System.currentTimeMillis() + ROW_LOCK_TIMEOUT);
 		put.add(LOCK_FAMILY, LOCK_QUALIFIER, tx.getCommitTimestamp(), HaeinsaThriftUtils.serialize(newRowLock));
 		
@@ -247,16 +249,16 @@ class TableImpl implements Table.PrivateIface {
 	@Override
 	public void applyDeletes(RowTransactionState rowTxState, byte[] row)
 			throws IOException {
-		if (rowTxState.getCurrentRowLock().getDeletesSize() == 0){
+		if (rowTxState.getCurrentRowLock().getMutationsSize() == 0){
 			return;
 		}
 		byte[] currentRowLockBytes = HaeinsaThriftUtils.serialize(rowTxState.getCurrentRowLock());
 		Transaction transaction = rowTxState.getTableTxState().getTransaction();
 		long commitTimestamp = transaction.getCommitTimestamp();
 		Delete delete = new Delete(row);
-		for (CellKey cellKey : rowTxState.getCurrentRowLock().getDeletes()){
-			delete.deleteColumns(cellKey.getFamily(), cellKey.getQualifier(), commitTimestamp);
-		}
+//		for (TCellKey cellKey : rowTxState.getCurrentRowLock().getDeletes()){
+//			delete.deleteColumns(cellKey.getFamily(), cellKey.getQualifier(), commitTimestamp);
+//		}
 		if (!table.checkAndDelete(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, delete)){
 			// 실패하는 경우는 다른 쪽에서 primary row의 lock을 획득했으므로 충돌이 났다고 처리한다.
 			throw new ConflictException("can't acquire primary row's lock");
@@ -269,7 +271,7 @@ class TableImpl implements Table.PrivateIface {
 		byte[] currentRowLockBytes = HaeinsaThriftUtils.serialize(rowTxState.getCurrentRowLock());
 		Transaction transaction = rowTxState.getTableTxState().getTransaction();
 		long commitTimestamp = transaction.getCommitTimestamp();
-		RowLock newRowLock = new RowLock(ROW_LOCK_VERSION, RowState.STABLE, commitTimestamp);
+		TRowLock newRowLock = new TRowLock(ROW_LOCK_VERSION, TRowLockState.STABLE, commitTimestamp);
 		byte[] newRowLockBytes = HaeinsaThriftUtils.serialize(newRowLock);
 		Put put = new Put(row);
 		put.add(LOCK_FAMILY, LOCK_QUALIFIER, commitTimestamp, newRowLockBytes);
@@ -287,10 +289,10 @@ class TableImpl implements Table.PrivateIface {
 		byte[] currentRowLockBytes = HaeinsaThriftUtils.serialize(rowTxState.getCurrentRowLock());
 		Transaction transaction = rowTxState.getTableTxState().getTransaction();
 		long commitTimestamp = transaction.getCommitTimestamp();
-		RowLock newRowLock = new RowLock(rowTxState.getCurrentRowLock());
+		TRowLock newRowLock = new TRowLock(rowTxState.getCurrentRowLock());
 		newRowLock.setCommitTimestamp(commitTimestamp);
-		newRowLock.setState(RowState.COMMITTED);
-		newRowLock.setPutsIsSet(false);
+		newRowLock.setState(TRowLockState.COMMITTED);
+		newRowLock.setPrewrittenIsSet(false);
 		newRowLock.setTimeout(System.currentTimeMillis() + ROW_LOCK_TIMEOUT);
 		
 		byte[] newRowLockBytes = HaeinsaThriftUtils.serialize(newRowLock);
@@ -306,8 +308,8 @@ class TableImpl implements Table.PrivateIface {
 	}
 
 	@Override
-	public RowLock getRowLock(byte[] row) throws IOException {
-		org.apache.hadoop.hbase.client.Get get = new org.apache.hadoop.hbase.client.Get(row);
+	public TRowLock getRowLock(byte[] row) throws IOException {
+		Get get = new Get(row);
 		get.addColumn(LOCK_FAMILY, LOCK_QUALIFIER);
 		Result result = table.get(get);
 		if (result.isEmpty()){
@@ -324,10 +326,10 @@ class TableImpl implements Table.PrivateIface {
 		byte[] currentRowLockBytes = HaeinsaThriftUtils.serialize(rowTxState.getCurrentRowLock());
 		Transaction transaction = rowTxState.getTableTxState().getTransaction();
 		long commitTimestamp = transaction.getCommitTimestamp();
-		RowLock newRowLock = new RowLock(rowTxState.getCurrentRowLock());
+		TRowLock newRowLock = new TRowLock(rowTxState.getCurrentRowLock());
 		newRowLock.setCommitTimestamp(commitTimestamp);
-		newRowLock.setState(RowState.ABORTED);
-		newRowLock.setDeletesIsSet(false);
+		newRowLock.setState(TRowLockState.ABORTED);
+//		newRowLock.setDeletesIsSet(false);
 		newRowLock.setTimeout(System.currentTimeMillis() + ROW_LOCK_TIMEOUT);
 		
 		byte[] newRowLockBytes = HaeinsaThriftUtils.serialize(newRowLock);
@@ -345,14 +347,14 @@ class TableImpl implements Table.PrivateIface {
 	@Override
 	public void deletePuts(RowTransactionState rowTxState, byte[] row)
 			throws IOException {
-		if (rowTxState.getCurrentRowLock().getPutsSize() == 0){
+		if (rowTxState.getCurrentRowLock().getPrewrittenSize() == 0){
 			return;
 		}
 		byte[] currentRowLockBytes = HaeinsaThriftUtils.serialize(rowTxState.getCurrentRowLock());
 		Transaction transaction = rowTxState.getTableTxState().getTransaction();
 		long commitTimestamp = transaction.getCommitTimestamp();
 		Delete delete = new Delete(row);
-		for (CellKey cellKey : rowTxState.getCurrentRowLock().getPuts()){
+		for (TCellKey cellKey : rowTxState.getCurrentRowLock().getPrewritten()){
 			delete.deleteColumn(cellKey.getFamily(), cellKey.getQualifier(), commitTimestamp);
 		}
 		if (!table.checkAndDelete(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, delete)){

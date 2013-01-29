@@ -3,14 +3,14 @@
  *
  * DO NOT EDIT UNLESS YOU ARE SURE THAT YOU KNOW WHAT YOU ARE DOING
  */
-package kr.co.vcnc.haeinsa.thrift;
+package kr.co.vcnc.haeinsa.thrift.generated;
 
 
 import java.util.Map;
 import java.util.HashMap;
 import org.apache.thrift.TEnum;
 
-public enum RowState implements org.apache.thrift.TEnum {
+public enum TRowLockState implements org.apache.thrift.TEnum {
   STABLE(1),
   PREWRITTEN(2),
   ABORTED(3),
@@ -18,7 +18,7 @@ public enum RowState implements org.apache.thrift.TEnum {
 
   private final int value;
 
-  private RowState(int value) {
+  private TRowLockState(int value) {
     this.value = value;
   }
 
@@ -33,7 +33,7 @@ public enum RowState implements org.apache.thrift.TEnum {
    * Find a the enum type by its integer value, as defined in the Thrift IDL.
    * @return null if the value is not found.
    */
-  public static RowState findByValue(int value) { 
+  public static TRowLockState findByValue(int value) { 
     switch (value) {
       case 1:
         return STABLE;
