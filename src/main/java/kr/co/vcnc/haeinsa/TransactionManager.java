@@ -8,9 +8,9 @@ import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
 
 public class TransactionManager {
-	private final TablePool tablePool;
+	private final HaeinsaTablePool tablePool;
 	
-	public TransactionManager(TablePool tablePool){
+	public TransactionManager(HaeinsaTablePool tablePool){
 		this.tablePool = tablePool;
 	}
 	
@@ -42,7 +42,7 @@ public class TransactionManager {
 	}
 	
 	private TRowLock getUnstableRowLock(byte[] tableName, byte[] row) throws IOException {
-		HaeinsaTable.PrivateIface table = (HaeinsaTable.PrivateIface) tablePool.getTable(tableName);
+		HaeinsaTableInterface.Private table = (HaeinsaTableInterface.Private) tablePool.getTable(tableName);
 		TRowLock rowLock = table.getRowLock(row);
 		if (rowLock.getState() == TRowLockState.STABLE){
 			return null;
@@ -82,7 +82,7 @@ public class TransactionManager {
 		rowState.setOriginalRowLock(rowLock);
 	}
 		
-	public TablePool getTablePool() {
+	public HaeinsaTablePool getTablePool() {
 		return tablePool;
 	}
 }

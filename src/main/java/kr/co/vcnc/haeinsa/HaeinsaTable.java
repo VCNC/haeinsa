@@ -1,200 +1,396 @@
 package kr.co.vcnc.haeinsa;
 
+import static kr.co.vcnc.haeinsa.HaeinsaConstants.LOCK_FAMILY;
+import static kr.co.vcnc.haeinsa.HaeinsaConstants.LOCK_QUALIFIER;
+import static kr.co.vcnc.haeinsa.HaeinsaConstants.ROW_LOCK_TIMEOUT;
+import static kr.co.vcnc.haeinsa.HaeinsaConstants.ROW_LOCK_VERSION;
+
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Map.Entry;
+import java.util.Set;
 
+import kr.co.vcnc.haeinsa.thrift.HaeinsaThriftUtils;
+import kr.co.vcnc.haeinsa.thrift.generated.TCellKey;
+import kr.co.vcnc.haeinsa.thrift.generated.TKeyValue;
+import kr.co.vcnc.haeinsa.thrift.generated.TMutation;
+import kr.co.vcnc.haeinsa.thrift.generated.TRowKey;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
+import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
 
+import org.apache.commons.lang.NotImplementedException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Delete;
+import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.client.HTableInterface;
+import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.util.Bytes;
 
-public interface HaeinsaTable {
-	interface PrivateIface extends HaeinsaTable {
-		void prewrite(RowTransactionState rowTxState, byte[] row, boolean isPrimary) throws IOException;
-		
-		void applyDeletes(RowTransactionState rowTxState, byte[] row) throws IOException;
-		/**
-		 * make row from {@link RowState#PREWRITTEN} or {@link RowState#COMMITTED} or {@link RowState#ABORTED} to {@link RowState#STABLE}
-		 * @param tx
-		 * @param row
-		 * @throws IOException
-		 */
-		void makeStable(RowTransactionState rowTxState, byte[] row) throws IOException;
-		
-		/**
-		 * make primary row from {@link RowState#PREWRITTEN} to {@link RowState#COMMITTED}
-		 * @param tx
-		 * @param row
-		 * @throws IOException
-		 */
-		void commitPrimary(RowTransactionState rowTxState, byte[] row) throws IOException;
-			
-		/**
-		 * get {@link TRowLock}
-		 * @param row row
-		 * @return row lock
-		 * @throws IOException
-		 */
-		TRowLock getRowLock(byte[] row) throws IOException;
-		
-		/**
-		 * make primary row from {@link RowState#PREWRITTEN} to {@link RowState#ABORTED}  
-		 * @param tx
-		 * @param row
-		 * @throws IOException
-		 */
-		void abortPrimary(RowTransactionState rowTxState, byte[] row) throws IOException;
-		
-		/**
-		 * delete primary row's puts({@link TRowLock#puts}).
-		 * @param rowTxState
-		 * @param row
-		 * @throws IOException
-		 */
-		void deletePuts(RowTransactionState rowTxState, byte[] row) throws IOException;
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+import com.sun.jersey.api.ConflictException;
+
+public class HaeinsaTable implements HaeinsaTableInterface.Private {
+	
+	private final HTableInterface table;
+	
+	public HaeinsaTable(HTableInterface table){
+		this.table = table;
 	}
 
-	  /**
-	   * Gets the name of this table.
-	   *
-	   * @return the table name.
-	   */
-	  byte[] getTableName();
+	@Override
+	public byte[] getTableName() {
+		return table.getTableName();
+	}
 
-	  /**
-	   * Returns the {@link Configuration} object used by this instance.
-	   * <p>
-	   * The reference returned is not a copy, so any change made to it will
-	   * affect this instance.
-	   */
-	  Configuration getConfiguration();
+	@Override
+	public Configuration getConfiguration() {
+		return table.getConfiguration();
+	}
 
-	  /**
-	   * Gets the {@link HTableDescriptor table descriptor} for this table.
-	   * @throws IOException if a remote or network exception occurs.
-	   */
-	  HTableDescriptor getTableDescriptor() throws IOException;
-	  
-	  /**
-	   * Extracts certain cells from a given row.
-	   * @param get The object that specifies what data to fetch and from which row.
-	   * @return The data coming from the specified row, if it exists.  If the row
-	   * specified doesn't exist, the {@link Result} instance returned won't
-	   * contain any {@link KeyValue}, as indicated by {@link Result#isEmpty()}.
-	   * @throws IOException if a remote or network exception occurs.
-	   * @since 0.20.0
-	   */
-	  Result get(Transaction tx, HaeinsaGet get) throws IOException;
+	@Override
+	public HTableDescriptor getTableDescriptor() throws IOException {
+		return table.getTableDescriptor();
+	}
 
-	  /**
-	   * Extracts certain cells from the given rows, in batch.
-	   *
-	   * @param gets The objects that specify what data to fetch and from which rows.
-	   *
-	   * @return The data coming from the specified rows, if it exists.  If the row
-	   *         specified doesn't exist, the {@link Result} instance returned won't
-	   *         contain any {@link KeyValue}, as indicated by {@link Result#isEmpty()}.
-	   *         If there are any failures even after retries, there will be a null in
-	   *         the results array for those Gets, AND an exception will be thrown.
-	   * @throws IOException if a remote or network exception occurs.
-	   *
-	   * @since 0.90.0
-	   */
-	  Result[] get(Transaction tx, List<HaeinsaGet> gets) throws IOException;
+	@Override
+	public Result get(Transaction tx, HaeinsaGet get) throws IOException {
+		byte[] row = get.getRow();
+		TableTransactionState tableState = tx.createOrGetTableState(this.table.getTableName());
+		RowTransactionState rowState = tableState.getRowStates().get(row);
+		
+		Get hGet = new Get(get.getRow());
+		hGet.getFamilyMap().putAll(get.getFamilyMap());
+		if (rowState == null){ 
+			hGet.addColumn(LOCK_FAMILY, LOCK_QUALIFIER);
+		}
+		
+		Result result = table.get(hGet);
+		
+		if (rowState == null){
+			rowState = tableState.createOrGetRowState(row);
+			byte[] currentRowLockBytes = result.getValue(LOCK_FAMILY, LOCK_QUALIFIER);
+			TRowLock currentRowLock = HaeinsaThriftUtils.deserialize(currentRowLockBytes);
+			
+			if (currentRowLock.getState() != TRowLockState.STABLE){
+				if (currentRowLock.isSetTimeout() && currentRowLock.getTimeout() > System.currentTimeMillis()){
+					// TODO 현재 lock의 상태가 STABLE이 아니고 timeout이 지났으면, recover 해야 한다.					
+				}
+				throw new ConflictException("this row is unstable.");
+			}
+			rowState.setOriginalRowLock(currentRowLock);
+			rowState.setCurrentRowLock(currentRowLock);
+			if (!result.isEmpty()){
+				List<KeyValue> kvs = Lists.newArrayList();
+				for (KeyValue kv : result.list()){
+					if (!(Bytes.equals(kv.getFamily(), LOCK_FAMILY) 
+							&& Bytes.equals(kv.getQualifier(), LOCK_QUALIFIER))){
+						kvs.add(kv);
+					}
+				}
+				result = new Result(kvs);
+			}
+		}
 
-	  /**
-	   * Returns a scanner on the current table as specified by the {@link Scan}
-	   * object.
-	   *
-	   * @param scan A configured {@link Scan} object.
-	   * @return A scanner.
-	   * @throws IOException if a remote or network exception occurs.
-	   * @since 0.20.0
-	   */
-	  ResultScanner getScanner(Transaction tx, Scan scan) throws IOException;
+		return result;
+	}
 
-	  /**
-	   * Gets a scanner on the current table for the given family.
-	   *
-	   * @param family The column family to scan.
-	   * @return A scanner.
-	   * @throws IOException if a remote or network exception occurs.
-	   * @since 0.20.0
-	   */
-	  ResultScanner getScanner(Transaction tx, byte[] family) throws IOException;
+	@Override
+	public Result[] get(Transaction tx, List<HaeinsaGet> gets) throws IOException {
+		throw new NotImplementedException();
+	}
 
-	  /**
-	   * Gets a scanner on the current table for the given family and qualifier.
-	   *
-	   * @param family The column family to scan.
-	   * @param qualifier The column qualifier to scan.
-	   * @return A scanner.
-	   * @throws IOException if a remote or network exception occurs.
-	   * @since 0.20.0
-	   */
-	  ResultScanner getScanner(Transaction tx, byte[] family, byte[] qualifier) throws IOException;
+	@Override
+	public ResultScanner getScanner(Transaction tx, Scan scan)
+			throws IOException {
+		throw new NotImplementedException();
+	}
 
+	@Override
+	public ResultScanner getScanner(Transaction tx, byte[] family)
+			throws IOException {
+		throw new NotImplementedException();
+	}
 
-	  /**
-	   * Puts some data in the table.
-	   * <p>
-	   * If {@link #isAutoFlush isAutoFlush} is false, the update is buffered
-	   * until the internal buffer is full.
-	   * @param put The data to put.
-	   * @throws IOException if a remote or network exception occurs.
-	   * @since 0.20.0
-	   */
-	  void put(Transaction tx, HaeinsaPut put) throws IOException;
+	@Override
+	public ResultScanner getScanner(Transaction tx, byte[] family,
+			byte[] qualifier) throws IOException {
+		throw new NotImplementedException();
+	}
 
-	  /**
-	   * Puts some data in the table, in batch.
-	   * <p>
-	   * If {@link #isAutoFlush isAutoFlush} is false, the update is buffered
-	   * until the internal buffer is full.
-	   * <p>
-	   * This can be used for group commit, or for submitting user defined
-	   * batches.  The writeBuffer will be periodically inspected while the List
-	   * is processed, so depending on the List size the writeBuffer may flush
-	   * not at all, or more than once.
-	   * @param puts The list of mutations to apply. The batch put is done by
-	   * aggregating the iteration of the Puts over the write buffer
-	   * at the client-side for a single RPC call.
-	   * @throws IOException if a remote or network exception occurs.
-	   * @since 0.20.0
-	   */
-	  void put(Transaction tx, List<HaeinsaPut> puts) throws IOException;
+	@Override
+	public void put(Transaction tx, HaeinsaPut put) throws IOException {
+		byte[] row = put.getRow();
+		TableTransactionState tableState = tx.createOrGetTableState(this.table.getTableName());
+		RowTransactionState rowState = tableState.getRowStates().get(row);
+		if (rowState == null){
+			// TODO commit 시점에 lock을 가져오도록 바꾸는 것도 고민해봐야 함.
+			TRowLock rowLock = getRowLock(row);
+			if (rowLock.getState() != TRowLockState.STABLE){
+				throw new ConflictException("this row is unstable.");
+			}
+			// TODO 현재 lock의 상태가 STABLE이 아니고 timeout이 지났으면, recover 해야 한다.
+			rowState = tableState.createOrGetRowState(row);
+			rowState.setCurrentRowLock(rowLock);
+			rowState.setOriginalRowLock(rowLock);
+		}
+		rowState.addMutation(put);
+	}
 
-	  /**
-	   * Deletes the specified cells/row.
-	   *
-	   * @param delete The object that specifies what to delete.
-	   * @throws IOException if a remote or network exception occurs.
-	   * @since 0.20.0
-	   */
-	  void delete(Transaction tx, HaeinsaDelete delete) throws IOException;
+	@Override
+	public void put(Transaction tx, List<HaeinsaPut> puts) throws IOException {
+		for (HaeinsaPut put : puts){
+			put(tx, put);
+		}
+	}
 
-	  /**
-	   * Deletes the specified cells/rows in bulk.
-	   * @param deletes List of things to delete.  List gets modified by this
-	   * method (in particular it gets re-ordered, so the order in which the elements
-	   * are inserted in the list gives no guarantee as to the order in which the
-	   * {@link Delete}s are executed).
-	   * @throws IOException if a remote or network exception occurs. In that case
-	   * the {@code deletes} argument will contain the {@link Delete} instances
-	   * that have not be successfully applied.
-	   * @since 0.20.1
-	   */
-	  void delete(Transaction tx, List<HaeinsaDelete> deletes) throws IOException;
+	@Override
+	public void delete(Transaction tx, HaeinsaDelete delete) throws IOException {
+		// 삭제는 특정 Cell만 삭제 가능하다. 
+		// TODO Family도 삭제 가능하게 만들어야 함. 
+		byte[] row = delete.getRow();
+		Preconditions.checkArgument(delete.getFamilyMap().size() <= 0, "can't delete an entire row.");
+		TableTransactionState tableState = tx.createOrGetTableState(this.table.getTableName());
+		RowTransactionState rowState = tableState.getRowStates().get(row);
+		if (rowState == null){
+			// TODO commit 시점에 lock을 가져오도록 바꾸는 것도 고민해봐야 함.
+			TRowLock rowLock = getRowLock(row);
+			if (rowLock.getState() != TRowLockState.STABLE){
+				throw new ConflictException("this row is unstable.");
+			}
+			// TODO 현재 lock의 상태가 STABLE이 아니고 timeout이 지났으면, recover 해야 한다.
+			rowState = tableState.createOrGetRowState(row);
+			rowState.setCurrentRowLock(rowLock);
+			rowState.setOriginalRowLock(rowLock);
+		}
+		rowState.addMutation(delete);
+	}
 
-	  /**
-	   * Releases any resources help or pending changes in internal buffers.
-	   *
-	   * @throws IOException if a remote or network exception occurs.
-	   */
-	  void close() throws IOException;
+	@Override
+	public void delete(Transaction tx, List<HaeinsaDelete> deletes) throws IOException {
+		for (HaeinsaDelete delete : deletes){
+			delete(tx, delete);
+		}
+	}
+
+	@Override
+	public void close() throws IOException {
+		table.close();
+	}
+
+	@Override
+	public void prewrite(RowTransactionState rowState, byte[] row, boolean isPrimary) throws IOException {
+		Put put = new Put(row);
+		Set<TCellKey> prewritten = Sets.newTreeSet();
+		List<TMutation> remaining = Lists.newArrayList();
+		Transaction tx = rowState.getTableTxState().getTransaction();
+		if (rowState.getMutations().size() > 0){
+			if (rowState.getMutations().get(0) instanceof HaeinsaPut){
+				HaeinsaPut haeinsaPut = (HaeinsaPut) rowState.getMutations().remove(0);
+				for (KeyValue kv : Iterables.concat(haeinsaPut.getFamilyMap().values())){
+					put.add(kv.getFamily(), kv.getQualifier(), tx.getPrewriteTimestamp(), kv.getValue());
+					TCellKey cellKey = new TCellKey();
+					cellKey.setFamily(kv.getFamily());
+					cellKey.setQualifier(kv.getQualifier());
+					prewritten.add(cellKey);
+				}
+			}
+			for (HaeinsaMutation mutation : rowState.getMutations()){
+				remaining.add(mutation.toTMutation());
+			}
+		}
+		
+		TRowLock newRowLock = new TRowLock(ROW_LOCK_VERSION, TRowLockState.PREWRITTEN, tx.getCommitTimestamp()).setCurrentTimestmap(tx.getPrewriteTimestamp());
+		if (isPrimary){
+			for (Entry<byte[], TableTransactionState> tableStateEntry : tx.getTableStates().entrySet()){
+				for (Entry<byte[], RowTransactionState> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()){
+					if ((Bytes.equals(tableStateEntry.getKey(), getTableName()) && Bytes.equals(rowStateEntry.getKey(), row))){
+						continue;
+					}
+					newRowLock.addToSecondaries(new TRowKey().setTableName(tableStateEntry.getKey()).setRow(rowStateEntry.getKey()));
+				}
+			}
+		}else{
+			newRowLock.setPrimary(tx.getPrimary());
+		}
+		
+		newRowLock.setPrewritten(Lists.newArrayList(prewritten));
+		newRowLock.setMutations(remaining);
+		newRowLock.setTimeout(System.currentTimeMillis() + ROW_LOCK_TIMEOUT);
+		put.add(LOCK_FAMILY, LOCK_QUALIFIER, tx.getCommitTimestamp(), HaeinsaThriftUtils.serialize(newRowLock));
+		
+		byte[] currentRowLockBytes = HaeinsaThriftUtils.serialize(rowState.getCurrentRowLock());
+		
+		if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, put)){
+			// 실패하는 경우는 다른 쪽에서 primary row의 lock을 획득했으므로 충돌이 났다고 처리한다.
+			throw new ConflictException("can't acquire primary row's lock");
+		}else{
+			rowState.setCurrentRowLock(newRowLock);
+		}
+		
+	}
+
+	@Override
+	public void applyMutations(RowTransactionState rowTxState, byte[] row)
+			throws IOException {
+		if (rowTxState.getCurrentRowLock().getMutationsSize() == 0){
+			return;
+		}
+		
+		List<TMutation> remaining = Lists.newArrayList(rowTxState.getCurrentRowLock().getMutations());
+		long currentTimestamp = rowTxState.getCurrentRowLock().getCurrentTimestmap();
+		for (int i=0;i<remaining.size();i++){
+			byte[] currentRowLockBytes = HaeinsaThriftUtils.serialize(rowTxState.getCurrentRowLock());
+			
+			TMutation mutation = remaining.get(i);
+			switch (mutation.getType()) {
+			case PUT:{
+				TRowLock newRowLock = rowTxState.getCurrentRowLock();
+				newRowLock.setCurrentTimestmap(currentTimestamp + i + 1);
+				newRowLock.setMutations(remaining.subList(i + 1, remaining.size()));
+				newRowLock.setTimeout(System.currentTimeMillis() + ROW_LOCK_TIMEOUT);
+				Put put = new Put(row);
+				put.add(LOCK_FAMILY, LOCK_QUALIFIER, newRowLock.getCurrentTimestmap(), HaeinsaThriftUtils.serialize(newRowLock));
+				for (TKeyValue kv : mutation.getPut().getValues()){
+					put.add(kv.getKey().getFamily(), kv.getKey().getQualifier(), newRowLock.getCurrentTimestmap(), kv.getValue());
+				}
+				if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, put)){
+					// 실패하는 경우는 다른 쪽에서 primary row의 lock을 획득했으므로 충돌이 났다고 처리한다.
+					throw new ConflictException("can't acquire primary row's lock");	
+				}else{
+					rowTxState.setCurrentRowLock(newRowLock);
+				}
+				break;
+			}
+			
+			case REMOVE:{
+				Delete delete = new Delete(row);
+				for (ByteBuffer removeFamily : mutation.getRemove().getRemoveFamilies()){
+					delete.deleteFamily(removeFamily.array(), currentTimestamp + i + 1);
+				}
+				for (TCellKey removeCell : mutation.getRemove().getRemoveCells()){
+					delete.deleteColumns(removeCell.getFamily(), removeCell.getQualifier(), currentTimestamp + i + 1);
+				}
+				if (!table.checkAndDelete(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, delete)){
+					// 실패하는 경우는 다른 쪽에서 primary row의 lock을 획득했으므로 충돌이 났다고 처리한다.
+					throw new ConflictException("can't acquire primary row's lock");	
+				}
+				break;
+			}
+
+			default:
+				break;
+			}
+		}
+	}
+
+	@Override
+	public void makeStable(RowTransactionState rowTxState, byte[] row)
+			throws IOException {
+		byte[] currentRowLockBytes = HaeinsaThriftUtils.serialize(rowTxState.getCurrentRowLock());
+		Transaction transaction = rowTxState.getTableTxState().getTransaction();
+		long commitTimestamp = transaction.getCommitTimestamp();
+		TRowLock newRowLock = new TRowLock(ROW_LOCK_VERSION, TRowLockState.STABLE, commitTimestamp);
+		byte[] newRowLockBytes = HaeinsaThriftUtils.serialize(newRowLock);
+		Put put = new Put(row);
+		put.add(LOCK_FAMILY, LOCK_QUALIFIER, commitTimestamp, newRowLockBytes);
+
+		if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, put)){
+			// 실패하는 경우는 다른 쪽에서 먼저 commit을 한 경우이므로 오류 없이 넘어가면 된다.
+		}else{
+			rowTxState.setCurrentRowLock(newRowLock);
+		}
+	}
+
+	@Override
+	public void commitPrimary(RowTransactionState rowTxState, byte[] row)
+			throws IOException {
+		byte[] currentRowLockBytes = HaeinsaThriftUtils.serialize(rowTxState.getCurrentRowLock());
+		Transaction transaction = rowTxState.getTableTxState().getTransaction();
+		long commitTimestamp = transaction.getCommitTimestamp();
+		TRowLock newRowLock = new TRowLock(rowTxState.getCurrentRowLock());
+		newRowLock.setCommitTimestamp(commitTimestamp);
+		newRowLock.setState(TRowLockState.COMMITTED);
+		newRowLock.setPrewrittenIsSet(false);
+		newRowLock.setTimeout(System.currentTimeMillis() + ROW_LOCK_TIMEOUT);
+		
+		byte[] newRowLockBytes = HaeinsaThriftUtils.serialize(newRowLock);
+		Put put = new Put(row);
+		put.add(LOCK_FAMILY, LOCK_QUALIFIER, commitTimestamp, newRowLockBytes);
+
+		if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, put)){
+			// 실패하는 경우는 다른 쪽에서 primary row의 lock을 획득했으므로 충돌이 났다고 처리한다.
+			throw new ConflictException("can't acquire primary row's lock");
+		}else{
+			rowTxState.setCurrentRowLock(newRowLock);
+		}
+	}
+
+	@Override
+	public TRowLock getRowLock(byte[] row) throws IOException {
+		Get get = new Get(row);
+		get.addColumn(LOCK_FAMILY, LOCK_QUALIFIER);
+		Result result = table.get(get);
+		if (result.isEmpty()){
+			return HaeinsaThriftUtils.deserialize(null);
+		}else{
+			byte[] rowLockBytes = result.getValue(LOCK_FAMILY, LOCK_QUALIFIER);
+			return HaeinsaThriftUtils.deserialize(rowLockBytes);
+		}
+	}
+
+	@Override
+	public void abortPrimary(RowTransactionState rowTxState, byte[] row)
+			throws IOException {
+		byte[] currentRowLockBytes = HaeinsaThriftUtils.serialize(rowTxState.getCurrentRowLock());
+		Transaction transaction = rowTxState.getTableTxState().getTransaction();
+		long commitTimestamp = transaction.getCommitTimestamp();
+		TRowLock newRowLock = new TRowLock(rowTxState.getCurrentRowLock());
+		newRowLock.setCommitTimestamp(commitTimestamp);
+		newRowLock.setState(TRowLockState.ABORTED);
+		newRowLock.setMutationsIsSet(false);
+		newRowLock.setTimeout(System.currentTimeMillis() + ROW_LOCK_TIMEOUT);
+		
+		byte[] newRowLockBytes = HaeinsaThriftUtils.serialize(newRowLock);
+		Put put = new Put(row);
+		put.add(LOCK_FAMILY, LOCK_QUALIFIER, commitTimestamp, newRowLockBytes);
+
+		if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, put)){
+			// 실패하는 경우는 다른 쪽에서 primary row의 lock을 획득했으므로 충돌이 났다고 처리한다.
+			throw new ConflictException("can't acquire primary row's lock");
+		}else{
+			rowTxState.setCurrentRowLock(newRowLock);
+		}
+	}
+	
+	@Override
+	public void deletePrewritten(RowTransactionState rowTxState, byte[] row)
+			throws IOException {
+		if (rowTxState.getCurrentRowLock().getPrewrittenSize() == 0){
+			return;
+		}
+		byte[] currentRowLockBytes = HaeinsaThriftUtils.serialize(rowTxState.getCurrentRowLock());
+		long prewriteTimestamp = rowTxState.getCurrentRowLock().getCurrentTimestmap();
+		Delete delete = new Delete(row);
+		for (TCellKey cellKey : rowTxState.getCurrentRowLock().getPrewritten()){
+			delete.deleteColumn(cellKey.getFamily(), cellKey.getQualifier(), prewriteTimestamp);
+		}
+		if (!table.checkAndDelete(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, delete)){
+			// 실패하는 경우는 다른 쪽에서 primary row의 lock을 획득했으므로 충돌이 났다고 처리한다.
+			throw new ConflictException("can't acquire primary row's lock");
+		}		
+	}
+	
+	@Override
+	public HTableInterface getHTable() {
+		return table;
+	}
 }

@@ -5,9 +5,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+import kr.co.vcnc.haeinsa.thrift.generated.TCellKey;
+import kr.co.vcnc.haeinsa.thrift.generated.TKeyValue;
+import kr.co.vcnc.haeinsa.thrift.generated.TMutation;
+import kr.co.vcnc.haeinsa.thrift.generated.TMutationType;
+import kr.co.vcnc.haeinsa.thrift.generated.TPut;
+
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.util.Bytes;
+
+import com.google.common.collect.Iterables;
 
 public class HaeinsaPut extends HaeinsaMutation {
 	public HaeinsaPut(byte[] row) {
@@ -95,5 +103,20 @@ public class HaeinsaPut extends HaeinsaMutation {
 	public HaeinsaKeyValueScanner getScanner(byte[] family) {
 		// TODO Auto-generated method stub
 		return null;
+	}
+	
+	@Override
+	public TMutation toTMutation() {
+		TMutation newMutation = new TMutation();
+		newMutation.setType(TMutationType.PUT);
+		TPut put = new TPut();
+		for (KeyValue kv : Iterables.concat(familyMap.values())){
+			TKeyValue newKV = new TKeyValue();
+			newKV.setKey(new TCellKey().setFamily(kv.getFamily()).setQualifier(kv.getQualifier()));
+			newKV.setValue(kv.getValue());
+			put.addToValues(newKV);
+		}
+		newMutation.setPut(put);
+		return newMutation;
 	}
 }

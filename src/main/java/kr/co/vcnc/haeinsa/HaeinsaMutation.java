@@ -7,6 +7,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
+import kr.co.vcnc.haeinsa.thrift.generated.TMutation;
+
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Row;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -124,6 +126,8 @@ public abstract class HaeinsaMutation {
 	public int compareTo(final Row d) {
 		return Bytes.compareTo(this.getRow(), d.getRow());
 	}
+	
+	public abstract TMutation toTMutation();
 	
 	public abstract HaeinsaKeyValueScanner getScanner(byte[] family);
 }

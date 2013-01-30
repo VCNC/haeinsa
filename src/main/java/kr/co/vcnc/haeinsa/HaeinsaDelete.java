@@ -1,10 +1,18 @@
 package kr.co.vcnc.haeinsa;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
+import kr.co.vcnc.haeinsa.thrift.generated.TCellKey;
+import kr.co.vcnc.haeinsa.thrift.generated.TMutation;
+import kr.co.vcnc.haeinsa.thrift.generated.TMutationType;
+import kr.co.vcnc.haeinsa.thrift.generated.TRemove;
+
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
+
+import com.google.common.collect.Iterables;
 
 public class HaeinsaDelete extends HaeinsaMutation {
 	
@@ -103,5 +111,29 @@ public class HaeinsaDelete extends HaeinsaMutation {
 	@Override
 	public HaeinsaKeyValueScanner getScanner(byte[] family) {
 		return null;
+	}
+	
+	@Override
+	public TMutation toTMutation() {
+		TMutation newMutation = new TMutation(TMutationType.REMOVE);
+		TRemove remove = new TRemove();
+		for (KeyValue kv : Iterables.concat(familyMap.values())){
+			switch (KeyValue.Type.codeToType(kv.getType())) {
+			case DeleteColumn:{
+				remove.addToRemoveCells(new TCellKey().setFamily(kv.getFamily()).setQualifier(kv.getQualifier()));
+				break;
+			}
+			
+			case DeleteFamily:{
+				remove.addToRemoveFamilies(ByteBuffer.wrap(kv.getFamily()));
+				break;
+			}
+
+			default:
+				break;
+			}
+		}
+		newMutation.setRemove(remove);
+		return newMutation;
 	}
 }

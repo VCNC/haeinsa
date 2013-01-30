@@ -17,6 +17,7 @@ public class Transaction {
 	private final TransactionManager manager;
 	private TRowKey primary;
 	private long commitTimestamp = Long.MIN_VALUE;
+	private long prewriteTimestamp = Long.MIN_VALUE;
 	
 	public Transaction(TransactionManager manager){
 		this.manager = manager;
@@ -28,6 +29,14 @@ public class Transaction {
 	
 	public TransactionManager getManager() {
 		return manager;
+	}
+	
+	public long getPrewriteTimestamp() {
+		return prewriteTimestamp;
+	}
+	
+	void setPrewriteTimestamp(long startTimestamp) {
+		this.prewriteTimestamp = startTimestamp;
 	}
 	
 	public long getCommitTimestamp() {
@@ -64,6 +73,7 @@ public class Transaction {
 		TRowKey primaryRowKey = null;
 		RowTransactionState primaryRowState = null;
 		long commitTimestamp = ROW_LOCK_MIN_TIMESTAMP;
+		long prewriteTimestamp = ROW_LOCK_MIN_TIMESTAMP;
 		for (Entry<byte[], TableTransactionState> tableStateEntry : tableStates.entrySet()){
 			for (Entry<byte[], RowTransactionState> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()){
 				if (primaryRowKey == null){
@@ -72,16 +82,20 @@ public class Transaction {
 					primaryRowKey.setRow(rowStateEntry.getKey());
 					primaryRowState = rowStateEntry.getValue();
 				}
-				commitTimestamp = Math.max(commitTimestamp, rowStateEntry.getValue().getCurrentRowLock().getCommitTimestamp() + 1);
+				RowTransactionState rowState = rowStateEntry.getValue();
+				commitTimestamp = Math.max(commitTimestamp, rowState.getCurrentRowLock().getCommitTimestamp() + rowState.getMutations().size());
+				prewriteTimestamp = Math.max(prewriteTimestamp, rowState.getCurrentRowLock().getCommitTimestamp() + 1);
 			}
 		}
+		commitTimestamp = Math.max(commitTimestamp, prewriteTimestamp);
 		setPrimary(primaryRowKey);
 		setCommitTimestamp(commitTimestamp);
+		setPrewriteTimestamp(prewriteTimestamp);
 		
-		TablePool tablePool = getManager().getTablePool();
+		HaeinsaTablePool tablePool = getManager().getTablePool();
 		// prewrite primary row
 		{
-			HaeinsaTable.PrivateIface table = (HaeinsaTable.PrivateIface) tablePool.getTable(primaryRowKey.getTableName());
+			HaeinsaTableInterface.Private table = (HaeinsaTableInterface.Private) tablePool.getTable(primaryRowKey.getTableName());
 			table.prewrite(primaryRowState, primaryRowKey.getRow(), true);
 		}
 		
@@ -91,23 +105,23 @@ public class Transaction {
 				if ((Bytes.equals(tableStateEntry.getKey(), primaryRowKey.getTableName()) && Bytes.equals(rowStateEntry.getKey(), primaryRowKey.getRow()))){
 					continue;
 				}
-				HaeinsaTable.PrivateIface table = (HaeinsaTable.PrivateIface) tablePool.getTable(tableStateEntry.getKey());
+				HaeinsaTableInterface.Private table = (HaeinsaTableInterface.Private) tablePool.getTable(tableStateEntry.getKey());
 				table.prewrite(rowStateEntry.getValue(), rowStateEntry.getKey(), false);
 			}
 		}
 		
 		// commit primary
 		{
-			HaeinsaTable.PrivateIface table = (HaeinsaTable.PrivateIface) tablePool.getTable(primaryRowKey.getTableName());
+			HaeinsaTableInterface.Private table = (HaeinsaTableInterface.Private) tablePool.getTable(primaryRowKey.getTableName());
 			table.commitPrimary(primaryRowState, primaryRowKey.getRow());
 		}
 		
 		
 		for (Entry<byte[], TableTransactionState> tableStateEntry : tableStates.entrySet()){
 			for (Entry<byte[], RowTransactionState> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()){
-				// apply deletes  
-				HaeinsaTable.PrivateIface table = (HaeinsaTable.PrivateIface) tablePool.getTable(tableStateEntry.getKey());
-				table.applyDeletes(rowStateEntry.getValue(), rowStateEntry.getKey());
+				// apply mutations  
+				HaeinsaTableInterface.Private table = (HaeinsaTableInterface.Private) tablePool.getTable(tableStateEntry.getKey());
+				table.applyMutations(rowStateEntry.getValue(), rowStateEntry.getKey());
 				
 				if ((Bytes.equals(tableStateEntry.getKey(), primaryRowKey.getTableName()) && Bytes.equals(rowStateEntry.getKey(), primaryRowKey.getRow()))){
 					continue;
@@ -118,7 +132,7 @@ public class Transaction {
 		}
 		
 		{
-			HaeinsaTable.PrivateIface table = (HaeinsaTable.PrivateIface) tablePool.getTable(primaryRowKey.getTableName());
+			HaeinsaTableInterface.Private table = (HaeinsaTableInterface.Private) tablePool.getTable(primaryRowKey.getTableName());
 			table.makeStable(primaryRowState, primaryRowKey.getRow());
 		}
 	}
