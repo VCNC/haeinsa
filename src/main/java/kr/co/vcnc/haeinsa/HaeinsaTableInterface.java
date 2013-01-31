@@ -17,16 +17,16 @@ import org.apache.hadoop.hbase.client.Scan;
 
 public interface HaeinsaTableInterface {
 	interface Private extends HaeinsaTableInterface {
-		void prewrite(RowTransactionState rowTxState, byte[] row, boolean isPrimary) throws IOException;
+		void prewrite(RowTransaction rowTxState, byte[] row, boolean isPrimary) throws IOException;
 		
-		void applyMutations(RowTransactionState rowTxState, byte[] row) throws IOException;
+		void applyMutations(RowTransaction rowTxState, byte[] row) throws IOException;
 		/**
 		 * make row from {@link TRowLockState#PREWRITTEN} or {@link TRowLockState#COMMITTED} or {@link TRowLockState#ABORTED} to {@link TRowLockState#STABLE}
 		 * @param tx
 		 * @param row
 		 * @throws IOException
 		 */
-		void makeStable(RowTransactionState rowTxState, byte[] row) throws IOException;
+		void makeStable(RowTransaction rowTxState, byte[] row) throws IOException;
 		
 		/**
 		 * make primary row from {@link TRowLockState#PREWRITTEN} to {@link TRowLockState#COMMITTED}
@@ -34,7 +34,7 @@ public interface HaeinsaTableInterface {
 		 * @param row
 		 * @throws IOException
 		 */
-		void commitPrimary(RowTransactionState rowTxState, byte[] row) throws IOException;
+		void commitPrimary(RowTransaction rowTxState, byte[] row) throws IOException;
 			
 		/**
 		 * get {@link TRowLock}
@@ -50,7 +50,7 @@ public interface HaeinsaTableInterface {
 		 * @param row
 		 * @throws IOException
 		 */
-		void abortPrimary(RowTransactionState rowTxState, byte[] row) throws IOException;
+		void abortPrimary(RowTransaction rowTxState, byte[] row) throws IOException;
 		
 		/**
 		 * delete primary row's puts({@link TRowLock#puts}).
@@ -58,7 +58,7 @@ public interface HaeinsaTableInterface {
 		 * @param row
 		 * @throws IOException
 		 */
-		void deletePrewritten(RowTransactionState rowTxState, byte[] row) throws IOException;
+		void deletePrewritten(RowTransaction rowTxState, byte[] row) throws IOException;
 		
 		HTableInterface getHTable();
 	}

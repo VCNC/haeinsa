@@ -127,6 +127,8 @@ public abstract class HaeinsaMutation {
 		return Bytes.compareTo(this.getRow(), d.getRow());
 	}
 	
+	public abstract void add(HaeinsaMutation newMutation);
+	
 	public abstract TMutation toTMutation();
 	
 	public abstract HaeinsaKeyValueScanner getScanner(byte[] family);

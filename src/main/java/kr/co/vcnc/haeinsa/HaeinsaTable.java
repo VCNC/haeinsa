@@ -64,10 +64,11 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 	@Override
 	public Result get(Transaction tx, HaeinsaGet get) throws IOException {
 		byte[] row = get.getRow();
-		TableTransactionState tableState = tx.createOrGetTableState(this.table.getTableName());
-		RowTransactionState rowState = tableState.getRowStates().get(row);
+		TableTransaction tableState = tx.createOrGetTableState(this.table.getTableName());
+		RowTransaction rowState = tableState.getRowStates().get(row);
 		
 		Get hGet = new Get(get.getRow());
+		
 		hGet.getFamilyMap().putAll(get.getFamilyMap());
 		if (rowState == null && hGet.hasFamilies()){ 
 			hGet.addColumn(LOCK_FAMILY, LOCK_QUALIFIER);
@@ -83,8 +84,7 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 			if (checkAndIsShouldRecover(currentRowLock)){
 				recover(tx, row, currentRowLock);
 			}
-			rowState.setOriginalRowLock(currentRowLock);
-			rowState.setCurrentRowLock(currentRowLock);
+			rowState.setCurrent(currentRowLock);
 			if (!result.isEmpty()){
 				List<KeyValue> kvs = Lists.newArrayList();
 				for (KeyValue kv : result.list()){
@@ -141,8 +141,8 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 	@Override
 	public void put(Transaction tx, HaeinsaPut put) throws IOException {
 		byte[] row = put.getRow();
-		TableTransactionState tableState = tx.createOrGetTableState(this.table.getTableName());
-		RowTransactionState rowState = tableState.getRowStates().get(row);
+		TableTransaction tableState = tx.createOrGetTableState(this.table.getTableName());
+		RowTransaction rowState = tableState.getRowStates().get(row);
 		if (rowState == null){
 			// TODO commit 시점에 lock을 가져오도록 바꾸는 것도 고민해봐야 함.
 			TRowLock rowLock = getRowLock(row);
@@ -150,8 +150,7 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 				recover(tx, row, rowLock);
 			}
 			rowState = tableState.createOrGetRowState(row);
-			rowState.setCurrentRowLock(rowLock);
-			rowState.setOriginalRowLock(rowLock);
+			rowState.setCurrent(rowLock);
 		}
 		rowState.addMutation(put);
 	}
@@ -168,8 +167,8 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 		byte[] row = delete.getRow();
 		// 전체 Row의 삭제는 불가능하다.
 		Preconditions.checkArgument(delete.getFamilyMap().size() <= 0, "can't delete an entire row.");
-		TableTransactionState tableState = tx.createOrGetTableState(this.table.getTableName());
-		RowTransactionState rowState = tableState.getRowStates().get(row);
+		TableTransaction tableState = tx.createOrGetTableState(this.table.getTableName());
+		RowTransaction rowState = tableState.getRowStates().get(row);
 		if (rowState == null){
 			// TODO commit 시점에 lock을 가져오도록 바꾸는 것도 고민해봐야 함.
 			TRowLock rowLock = getRowLock(row);
@@ -177,8 +176,7 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 				recover(tx, row, rowLock);
 			}
 			rowState = tableState.createOrGetRowState(row);
-			rowState.setCurrentRowLock(rowLock);
-			rowState.setOriginalRowLock(rowLock);
+			rowState.setCurrent(rowLock);
 		}
 		rowState.addMutation(delete);
 	}
@@ -196,11 +194,11 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 	}
 
 	@Override
-	public void prewrite(RowTransactionState rowState, byte[] row, boolean isPrimary) throws IOException {
+	public void prewrite(RowTransaction rowState, byte[] row, boolean isPrimary) throws IOException {
 		Put put = new Put(row);
 		Set<TCellKey> prewritten = Sets.newTreeSet();
 		List<TMutation> remaining = Lists.newArrayList();
-		Transaction tx = rowState.getTableTxState().getTransaction();
+		Transaction tx = rowState.getTableTransaction().getTransaction();
 		if (rowState.getMutations().size() > 0){
 			if (rowState.getMutations().get(0) instanceof HaeinsaPut){
 				HaeinsaPut haeinsaPut = (HaeinsaPut) rowState.getMutations().remove(0);
@@ -219,8 +217,8 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 		
 		TRowLock newRowLock = new TRowLock(ROW_LOCK_VERSION, TRowLockState.PREWRITTEN, tx.getCommitTimestamp()).setCurrentTimestmap(tx.getPrewriteTimestamp());
 		if (isPrimary){
-			for (Entry<byte[], TableTransactionState> tableStateEntry : tx.getTableStates().entrySet()){
-				for (Entry<byte[], RowTransactionState> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()){
+			for (Entry<byte[], TableTransaction> tableStateEntry : tx.getTableStates().entrySet()){
+				for (Entry<byte[], RowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()){
 					if ((Bytes.equals(tableStateEntry.getKey(), getTableName()) && Bytes.equals(rowStateEntry.getKey(), row))){
 						continue;
 					}
@@ -236,34 +234,34 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 		newRowLock.setTimeout(System.currentTimeMillis() + ROW_LOCK_TIMEOUT);
 		put.add(LOCK_FAMILY, LOCK_QUALIFIER, tx.getCommitTimestamp(), HaeinsaThriftUtils.serialize(newRowLock));
 		
-		byte[] currentRowLockBytes = HaeinsaThriftUtils.serialize(rowState.getCurrentRowLock());
+		byte[] currentRowLockBytes = HaeinsaThriftUtils.serialize(rowState.getCurrent());
 		
 		if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, put)){
 			// 실패하는 경우는 다른 쪽에서 primary row의 lock을 획득했으므로 충돌이 났다고 처리한다.
 			tx.abort();
 			throw new ConflictException("can't acquire row's lock");
 		}else{
-			rowState.setCurrentRowLock(newRowLock);
+			rowState.setCurrent(newRowLock);
 		}
 		
 	}
 
 	@Override
-	public void applyMutations(RowTransactionState rowTxState, byte[] row)
+	public void applyMutations(RowTransaction rowTxState, byte[] row)
 			throws IOException {
-		if (rowTxState.getCurrentRowLock().getMutationsSize() == 0){
+		if (rowTxState.getCurrent().getMutationsSize() == 0){
 			return;
 		}
 		
-		List<TMutation> remaining = Lists.newArrayList(rowTxState.getCurrentRowLock().getMutations());
-		long currentTimestamp = rowTxState.getCurrentRowLock().getCurrentTimestmap();
+		List<TMutation> remaining = Lists.newArrayList(rowTxState.getCurrent().getMutations());
+		long currentTimestamp = rowTxState.getCurrent().getCurrentTimestmap();
 		for (int i=0;i<remaining.size();i++){
-			byte[] currentRowLockBytes = HaeinsaThriftUtils.serialize(rowTxState.getCurrentRowLock());
+			byte[] currentRowLockBytes = HaeinsaThriftUtils.serialize(rowTxState.getCurrent());
 			
 			TMutation mutation = remaining.get(i);
 			switch (mutation.getType()) {
 			case PUT:{
-				TRowLock newRowLock = rowTxState.getCurrentRowLock();
+				TRowLock newRowLock = rowTxState.getCurrent();
 				newRowLock.setCurrentTimestmap(currentTimestamp + i + 1);
 				newRowLock.setMutations(remaining.subList(i + 1, remaining.size()));
 				newRowLock.setTimeout(System.currentTimeMillis() + ROW_LOCK_TIMEOUT);
@@ -276,7 +274,7 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 					// 실패하는 경우는 다른 쪽에서 row의 lock을 획득했으므로 충돌이 났다고 처리한다.
 					throw new ConflictException("can't acquire row's lock");	
 				}else{
-					rowTxState.setCurrentRowLock(newRowLock);
+					rowTxState.setCurrent(newRowLock);
 				}
 				break;
 			}
@@ -303,10 +301,10 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 	}
 
 	@Override
-	public void makeStable(RowTransactionState rowTxState, byte[] row)
+	public void makeStable(RowTransaction rowTxState, byte[] row)
 			throws IOException {
-		byte[] currentRowLockBytes = HaeinsaThriftUtils.serialize(rowTxState.getCurrentRowLock());
-		Transaction transaction = rowTxState.getTableTxState().getTransaction();
+		byte[] currentRowLockBytes = HaeinsaThriftUtils.serialize(rowTxState.getCurrent());
+		Transaction transaction = rowTxState.getTableTransaction().getTransaction();
 		long commitTimestamp = transaction.getCommitTimestamp();
 		TRowLock newRowLock = new TRowLock(ROW_LOCK_VERSION, TRowLockState.STABLE, commitTimestamp);
 		byte[] newRowLockBytes = HaeinsaThriftUtils.serialize(newRowLock);
@@ -316,17 +314,17 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 		if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, put)){
 			// 실패하는 경우는 다른 쪽에서 먼저 commit을 한 경우이므로 오류 없이 넘어가면 된다.
 		}else{
-			rowTxState.setCurrentRowLock(newRowLock);
+			rowTxState.setCurrent(newRowLock);
 		}
 	}
 
 	@Override
-	public void commitPrimary(RowTransactionState rowTxState, byte[] row)
+	public void commitPrimary(RowTransaction rowTxState, byte[] row)
 			throws IOException {
-		byte[] currentRowLockBytes = HaeinsaThriftUtils.serialize(rowTxState.getCurrentRowLock());
-		Transaction transaction = rowTxState.getTableTxState().getTransaction();
+		byte[] currentRowLockBytes = HaeinsaThriftUtils.serialize(rowTxState.getCurrent());
+		Transaction transaction = rowTxState.getTableTransaction().getTransaction();
 		long commitTimestamp = transaction.getCommitTimestamp();
-		TRowLock newRowLock = new TRowLock(rowTxState.getCurrentRowLock());
+		TRowLock newRowLock = rowTxState.getCurrent().deepCopy();
 		newRowLock.setCommitTimestamp(commitTimestamp);
 		newRowLock.setState(TRowLockState.COMMITTED);
 		newRowLock.setPrewrittenIsSet(false);
@@ -341,7 +339,7 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 			// 실패하는 경우는 다른 쪽에서 row의 lock을 획득했으므로 충돌이 났다고 처리한다.
 			throw new ConflictException("can't acquire primary row's lock");
 		}else{
-			rowTxState.setCurrentRowLock(newRowLock);
+			rowTxState.setCurrent(newRowLock);
 		}
 	}
 
@@ -359,12 +357,12 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 	}
 
 	@Override
-	public void abortPrimary(RowTransactionState rowTxState, byte[] row)
+	public void abortPrimary(RowTransaction rowTxState, byte[] row)
 			throws IOException {
-		byte[] currentRowLockBytes = HaeinsaThriftUtils.serialize(rowTxState.getCurrentRowLock());
-		Transaction transaction = rowTxState.getTableTxState().getTransaction();
+		byte[] currentRowLockBytes = HaeinsaThriftUtils.serialize(rowTxState.getCurrent());
+		Transaction transaction = rowTxState.getTableTransaction().getTransaction();
 		long commitTimestamp = transaction.getCommitTimestamp();
-		TRowLock newRowLock = new TRowLock(rowTxState.getCurrentRowLock());
+		TRowLock newRowLock = rowTxState.getCurrent().deepCopy();
 		newRowLock.setCommitTimestamp(commitTimestamp);
 		newRowLock.setState(TRowLockState.ABORTED);
 		newRowLock.setMutationsIsSet(false);
@@ -378,20 +376,20 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 			// 실패하는 경우는 다른 쪽에서 primary row의 lock을 획득했으므로 충돌이 났다고 처리한다.
 			throw new ConflictException("can't acquire primary row's lock");
 		}else{
-			rowTxState.setCurrentRowLock(newRowLock);
+			rowTxState.setCurrent(newRowLock);
 		}
 	}
 	
 	@Override
-	public void deletePrewritten(RowTransactionState rowTxState, byte[] row)
+	public void deletePrewritten(RowTransaction rowTxState, byte[] row)
 			throws IOException {
-		if (rowTxState.getCurrentRowLock().getPrewrittenSize() == 0){
+		if (rowTxState.getCurrent().getPrewrittenSize() == 0){
 			return;
 		}
-		byte[] currentRowLockBytes = HaeinsaThriftUtils.serialize(rowTxState.getCurrentRowLock());
-		long prewriteTimestamp = rowTxState.getCurrentRowLock().getCurrentTimestmap();
+		byte[] currentRowLockBytes = HaeinsaThriftUtils.serialize(rowTxState.getCurrent());
+		long prewriteTimestamp = rowTxState.getCurrent().getCurrentTimestmap();
 		Delete delete = new Delete(row);
-		for (TCellKey cellKey : rowTxState.getCurrentRowLock().getPrewritten()){
+		for (TCellKey cellKey : rowTxState.getCurrent().getPrewritten()){
 			delete.deleteColumn(cellKey.getFamily(), cellKey.getQualifier(), prewriteTimestamp);
 		}
 		if (!table.checkAndDelete(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, delete)){

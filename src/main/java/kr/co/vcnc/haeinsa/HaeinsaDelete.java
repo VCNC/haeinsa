@@ -12,6 +12,7 @@ import kr.co.vcnc.haeinsa.thrift.generated.TRemove;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 
 public class HaeinsaDelete extends HaeinsaMutation {
@@ -106,6 +107,19 @@ public class HaeinsaDelete extends HaeinsaMutation {
 				KeyValue.Type.DeleteColumn));
 		familyMap.put(family, list);
 		return this;
+	}
+	
+	@Override
+	public void add(HaeinsaMutation newMutation) {
+		Preconditions.checkState(!(newMutation instanceof HaeinsaDelete));
+		for (KeyValue newKV : Iterables.concat(newMutation.getFamilyMap().values())){
+			if (newKV.getType() == KeyValue.Type.DeleteFamily.getCode()){
+				deleteFamily(newKV.getFamily());
+			}else{
+				deleteColumns(newKV.getFamily(), newKV.getQualifier());
+			}
+		}
+		
 	}
 	
 	@Override

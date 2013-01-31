@@ -55,10 +55,9 @@ public class TransactionManager {
 		Transaction transaction = new Transaction(this);
 		transaction.setPrimary(rowKey);
 		transaction.setCommitTimestamp(primaryRowLock.getCommitTimestamp());
-		TableTransactionState primaryTableTxState = transaction.createOrGetTableState(rowKey.getTableName());
-		RowTransactionState primaryRowTxState = primaryTableTxState.createOrGetRowState(rowKey.getRow());
-		primaryRowTxState.setOriginalRowLock(primaryRowLock);
-		primaryRowTxState.setCurrentRowLock(primaryRowLock);
+		TableTransaction primaryTableTxState = transaction.createOrGetTableState(rowKey.getTableName());
+		RowTransaction primaryRowTxState = primaryTableTxState.createOrGetRowState(rowKey.getRow());
+		primaryRowTxState.setCurrent(primaryRowLock);
 		if (primaryRowLock.getSecondariesSize() > 0){
 			for (TRowKey secondaryRow : primaryRowLock.getSecondaries()){
 				addSecondaryRowLock(transaction, secondaryRow);
@@ -76,10 +75,9 @@ public class TransactionManager {
 		if (rowLock.getCommitTimestamp() != transaction.getCommitTimestamp()){
 			return;
 		}
-		TableTransactionState tableState = transaction.createOrGetTableState(rowKey.getTableName());
-		RowTransactionState rowState = tableState.createOrGetRowState(rowKey.getRow());
-		rowState.setCurrentRowLock(rowLock);
-		rowState.setOriginalRowLock(rowLock);
+		TableTransaction tableState = transaction.createOrGetTableState(rowKey.getTableName());
+		RowTransaction rowState = tableState.createOrGetRowState(rowKey.getRow());
+		rowState.setCurrent(rowLock);
 	}
 		
 	public HaeinsaTablePool getTablePool() {

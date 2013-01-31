@@ -378,25 +378,25 @@ public class HaeinsaTablePool {
 		}
 
 		@Override
-		public void prewrite(RowTransactionState rowTxState, byte[] row,
+		public void prewrite(RowTransaction rowTxState, byte[] row,
 				boolean isPrimary) throws IOException {
 			table.prewrite(rowTxState, row, isPrimary);
 		}
 
 		@Override
-		public void applyMutations(RowTransactionState rowTxState, byte[] row)
+		public void applyMutations(RowTransaction rowTxState, byte[] row)
 				throws IOException {
 			table.applyMutations(rowTxState, row);
 		}
 
 		@Override
-		public void makeStable(RowTransactionState rowTxState, byte[] row)
+		public void makeStable(RowTransaction rowTxState, byte[] row)
 				throws IOException {
 			table.makeStable(rowTxState, row);
 		}
 
 		@Override
-		public void commitPrimary(RowTransactionState rowTxState, byte[] row)
+		public void commitPrimary(RowTransaction rowTxState, byte[] row)
 				throws IOException {
 			table.commitPrimary(rowTxState, row);
 		}
@@ -407,13 +407,13 @@ public class HaeinsaTablePool {
 		}
 
 		@Override
-		public void abortPrimary(RowTransactionState rowTxState, byte[] row)
+		public void abortPrimary(RowTransaction rowTxState, byte[] row)
 				throws IOException {
 			table.abortPrimary(rowTxState, row);
 		}
 
 		@Override
-		public void deletePrewritten(RowTransactionState rowTxState, byte[] row)
+		public void deletePrewritten(RowTransaction rowTxState, byte[] row)
 				throws IOException {
 			table.deletePrewritten(rowTxState, row);
 		}

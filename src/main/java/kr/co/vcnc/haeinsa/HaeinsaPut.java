@@ -15,6 +15,7 @@ import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 
 public class HaeinsaPut extends HaeinsaMutation {
@@ -97,6 +98,14 @@ public class HaeinsaPut extends HaeinsaMutation {
 			list = new ArrayList<KeyValue>(0);
 		}
 		return list;
+	}
+	
+	@Override
+	public void add(HaeinsaMutation newMutation) {
+		Preconditions.checkState(!(newMutation instanceof HaeinsaPut));
+		for (KeyValue newKV : Iterables.concat(newMutation.getFamilyMap().values())){
+			add(newKV.getFamily(), newKV.getQualifier(), newKV.getValue());
+		}
 	}
 	
 	@Override
