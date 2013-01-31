@@ -6,7 +6,9 @@ import java.io.IOException;
 import java.util.Map.Entry;
 import java.util.NavigableMap;
 
+import kr.co.vcnc.haeinsa.exception.ConflictException;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowKey;
+import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
 
 import org.apache.hadoop.hbase.util.Bytes;
 
@@ -110,12 +112,17 @@ public class Transaction {
 			}
 		}
 		
-		// commit primary
+		makeStable();
+	}
+	
+	private void makeStable() throws IOException {
+		HaeinsaTablePool tablePool = getManager().getTablePool();
+		RowTransactionState primaryRowTx = createOrGetTableState(primary.getTableName()).createOrGetRowState(primary.getRow());
+		// commit primary or get more time to commit this.
 		{
-			HaeinsaTableInterface.Private table = (HaeinsaTableInterface.Private) tablePool.getTable(primaryRowKey.getTableName());
-			table.commitPrimary(primaryRowState, primaryRowKey.getRow());
+			HaeinsaTableInterface.Private table = (HaeinsaTableInterface.Private) tablePool.getTable(primary.getTableName());
+			table.commitPrimary(primaryRowTx, primary.getRow());
 		}
-		
 		
 		for (Entry<byte[], TableTransactionState> tableStateEntry : tableStates.entrySet()){
 			for (Entry<byte[], RowTransactionState> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()){
@@ -123,7 +130,7 @@ public class Transaction {
 				HaeinsaTableInterface.Private table = (HaeinsaTableInterface.Private) tablePool.getTable(tableStateEntry.getKey());
 				table.applyMutations(rowStateEntry.getValue(), rowStateEntry.getKey());
 				
-				if ((Bytes.equals(tableStateEntry.getKey(), primaryRowKey.getTableName()) && Bytes.equals(rowStateEntry.getKey(), primaryRowKey.getRow()))){
+				if ((Bytes.equals(tableStateEntry.getKey(), primary.getTableName()) && Bytes.equals(rowStateEntry.getKey(), primary.getRow()))){
 					continue;
 				}
 				// make secondary rows from prewritten to stable
@@ -132,12 +139,67 @@ public class Transaction {
 		}
 		
 		{
-			HaeinsaTableInterface.Private table = (HaeinsaTableInterface.Private) tablePool.getTable(primaryRowKey.getTableName());
-			table.makeStable(primaryRowState, primaryRowKey.getRow());
+			HaeinsaTableInterface.Private table = (HaeinsaTableInterface.Private) tablePool.getTable(primary.getTableName());
+			table.makeStable(primaryRowTx, primary.getRow());
 		}
 	}
 	
 	public void recover() throws IOException {
+		RowTransactionState primaryRowTx = createOrGetTableState(primary.getTableName()).createOrGetRowState(primary.getRow());
+		if (primaryRowTx.getCurrentRowLock().getState() == TRowLockState.PREWRITTEN){
+			// prewritten 상태에서는 timeout 보다 primary이 시간이 더 지났으면 abort 시켜야 함.
+			if (primaryRowTx.getCurrentRowLock().getTimeout() < System.currentTimeMillis()){
+				
+			}else{
+				// timeout이 지나지 않았다면, recover를 실패시켜야 함.
+				throw new ConflictException();
+			}
+		}
 		
+		switch (primaryRowTx.getCurrentRowLock().getState()) {
+		case ABORTED:
+		case PREWRITTEN:{
+			abort();
+			break;
+		}
+		
+		case COMMITTED:{
+			makeStable();
+			break;
+		}
+
+		default:
+			throw new ConflictException();
+		}
+	}
+
+	public void abort() throws IOException {
+		HaeinsaTablePool tablePool = getManager().getTablePool();
+		RowTransactionState primaryRowTx = createOrGetTableState(primary.getTableName()).createOrGetRowState(primary.getRow());
+		{
+			// abort primary row
+			HaeinsaTableInterface.Private table = (HaeinsaTableInterface.Private) tablePool.getTable(primary.getTableName());
+			table.abortPrimary(primaryRowTx, primary.getRow());
+		}
+		
+		for (Entry<byte[], TableTransactionState> tableStateEntry : tableStates.entrySet()){
+			for (Entry<byte[], RowTransactionState> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()){
+				// delete prewritten  
+				HaeinsaTableInterface.Private table = (HaeinsaTableInterface.Private) tablePool.getTable(tableStateEntry.getKey());
+				table.deletePrewritten(rowStateEntry.getValue(), rowStateEntry.getKey());
+				
+				if ((Bytes.equals(tableStateEntry.getKey(), primary.getTableName()) && Bytes.equals(rowStateEntry.getKey(), primary.getRow()))){
+					continue;
+				}
+				// make secondary rows from prewritten to stable
+				table.makeStable(rowStateEntry.getValue(), rowStateEntry.getKey());
+			}
+		}
+		
+		{
+			HaeinsaTableInterface.Private table = (HaeinsaTableInterface.Private) tablePool.getTable(primary.getTableName());
+			table.makeStable(primaryRowTx, primary.getRow());
+		}
+
 	}
 }

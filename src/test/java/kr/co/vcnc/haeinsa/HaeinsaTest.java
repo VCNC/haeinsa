@@ -1,12 +1,21 @@
 package kr.co.vcnc.haeinsa;
 
+import java.io.IOException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
+import org.apache.hadoop.hbase.ZooKeeperConnectionException;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
+import org.apache.hadoop.hbase.client.HConnectionManager;
+import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.HTableInterface;
+import org.apache.hadoop.hbase.client.HTableInterfaceFactory;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.AfterClass;
@@ -43,7 +52,30 @@ public class HaeinsaTest {
 	
 	@Test
 	public void testTransaction() throws Exception{
-		HaeinsaTablePool tablePool = new HaeinsaTablePool(CONF, 128);
+		final ExecutorService threadPool = Executors.newCachedThreadPool();
+		HaeinsaTablePool tablePool = new HaeinsaTablePool(CONF, 128, new HTableInterfaceFactory() {
+			
+			@Override
+			public void releaseHTableInterface(HTableInterface table)
+					throws IOException {
+				table.close();
+			}
+			
+			@Override
+			public HTableInterface createHTableInterface(Configuration config,
+					byte[] tableName) {
+				try {
+					return new HTable(tableName, HConnectionManager.getConnection(config), threadPool);
+				} catch (ZooKeeperConnectionException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				return null;
+			}
+		});
 		
 		TransactionManager tm = new TransactionManager(tablePool);
 		HaeinsaTableInterface testTable = tablePool.getTable("test");
@@ -63,6 +95,26 @@ public class HaeinsaTest {
 		HaeinsaGet get2 = new HaeinsaGet(Bytes.toBytes("kjwoo"));
 		Result result2 = testTable.get(tx, get2);
 		tx.rollback();
+		
+		tx = tm.begin();
+		put = new HaeinsaPut(Bytes.toBytes("ymkim"));
+		put.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-9876-5432"));
+		testTable.put(tx, put);
+		testPut = new HaeinsaPut(Bytes.toBytes("kjwoo"));
+		testPut.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-1234-5678"));
+		testTable.put(tx, testPut);
+		tx.commit();
+		
+		tx = tm.begin();
+		get = new HaeinsaGet(Bytes.toBytes("ymkim"));
+		result = testTable.get(tx, get);
+		result3 = testTable.get(tx, get);
+		get2 = new HaeinsaGet(Bytes.toBytes("kjwoo"));
+		result2 = testTable.get(tx, get2);
+		tx.rollback();
+		
+		testTable.close();
+		tablePool.close();
 		
 	}
 }

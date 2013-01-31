@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import kr.co.vcnc.haeinsa.exception.ConflictException;
 import kr.co.vcnc.haeinsa.thrift.HaeinsaThriftUtils;
 import kr.co.vcnc.haeinsa.thrift.generated.TCellKey;
 import kr.co.vcnc.haeinsa.thrift.generated.TKeyValue;
@@ -36,7 +37,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import com.sun.jersey.api.ConflictException;
 
 public class HaeinsaTable implements HaeinsaTableInterface.Private {
 	
@@ -69,7 +69,7 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 		
 		Get hGet = new Get(get.getRow());
 		hGet.getFamilyMap().putAll(get.getFamilyMap());
-		if (rowState == null){ 
+		if (rowState == null && hGet.hasFamilies()){ 
 			hGet.addColumn(LOCK_FAMILY, LOCK_QUALIFIER);
 		}
 		
@@ -80,11 +80,8 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 			byte[] currentRowLockBytes = result.getValue(LOCK_FAMILY, LOCK_QUALIFIER);
 			TRowLock currentRowLock = HaeinsaThriftUtils.deserialize(currentRowLockBytes);
 			
-			if (currentRowLock.getState() != TRowLockState.STABLE){
-				if (currentRowLock.isSetTimeout() && currentRowLock.getTimeout() > System.currentTimeMillis()){
-					// TODO 현재 lock의 상태가 STABLE이 아니고 timeout이 지났으면, recover 해야 한다.					
-				}
-				throw new ConflictException("this row is unstable.");
+			if (checkAndIsShouldRecover(currentRowLock)){
+				recover(tx, row, currentRowLock);
 			}
 			rowState.setOriginalRowLock(currentRowLock);
 			rowState.setCurrentRowLock(currentRowLock);
@@ -125,6 +122,21 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 			byte[] qualifier) throws IOException {
 		throw new NotImplementedException();
 	}
+	
+	private boolean checkAndIsShouldRecover(TRowLock rowLock) throws IOException{
+		if (rowLock.getState() != TRowLockState.STABLE){
+			if (rowLock.isSetTimeout() && rowLock.getTimeout() > System.currentTimeMillis()){
+				return true;
+			}
+			throw new ConflictException("this row is unstable.");
+		}
+		return false;
+	}
+	
+	private void recover(Transaction tx, byte[] row, TRowLock rowLock) throws IOException {
+		Transaction previousTx = tx.getManager().getTransaction(getTableName(), row);
+		previousTx.recover();
+	}
 
 	@Override
 	public void put(Transaction tx, HaeinsaPut put) throws IOException {
@@ -134,10 +146,9 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 		if (rowState == null){
 			// TODO commit 시점에 lock을 가져오도록 바꾸는 것도 고민해봐야 함.
 			TRowLock rowLock = getRowLock(row);
-			if (rowLock.getState() != TRowLockState.STABLE){
-				throw new ConflictException("this row is unstable.");
+			if (checkAndIsShouldRecover(rowLock)){
+				recover(tx, row, rowLock);
 			}
-			// TODO 현재 lock의 상태가 STABLE이 아니고 timeout이 지났으면, recover 해야 한다.
 			rowState = tableState.createOrGetRowState(row);
 			rowState.setCurrentRowLock(rowLock);
 			rowState.setOriginalRowLock(rowLock);
@@ -154,19 +165,17 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 
 	@Override
 	public void delete(Transaction tx, HaeinsaDelete delete) throws IOException {
-		// 삭제는 특정 Cell만 삭제 가능하다. 
-		// TODO Family도 삭제 가능하게 만들어야 함. 
 		byte[] row = delete.getRow();
+		// 전체 Row의 삭제는 불가능하다.
 		Preconditions.checkArgument(delete.getFamilyMap().size() <= 0, "can't delete an entire row.");
 		TableTransactionState tableState = tx.createOrGetTableState(this.table.getTableName());
 		RowTransactionState rowState = tableState.getRowStates().get(row);
 		if (rowState == null){
 			// TODO commit 시점에 lock을 가져오도록 바꾸는 것도 고민해봐야 함.
 			TRowLock rowLock = getRowLock(row);
-			if (rowLock.getState() != TRowLockState.STABLE){
-				throw new ConflictException("this row is unstable.");
+			if (checkAndIsShouldRecover(rowLock)){
+				recover(tx, row, rowLock);
 			}
-			// TODO 현재 lock의 상태가 STABLE이 아니고 timeout이 지났으면, recover 해야 한다.
 			rowState = tableState.createOrGetRowState(row);
 			rowState.setCurrentRowLock(rowLock);
 			rowState.setOriginalRowLock(rowLock);
@@ -231,7 +240,8 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 		
 		if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, put)){
 			// 실패하는 경우는 다른 쪽에서 primary row의 lock을 획득했으므로 충돌이 났다고 처리한다.
-			throw new ConflictException("can't acquire primary row's lock");
+			tx.abort();
+			throw new ConflictException("can't acquire row's lock");
 		}else{
 			rowState.setCurrentRowLock(newRowLock);
 		}
@@ -263,8 +273,8 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 					put.add(kv.getKey().getFamily(), kv.getKey().getQualifier(), newRowLock.getCurrentTimestmap(), kv.getValue());
 				}
 				if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, put)){
-					// 실패하는 경우는 다른 쪽에서 primary row의 lock을 획득했으므로 충돌이 났다고 처리한다.
-					throw new ConflictException("can't acquire primary row's lock");	
+					// 실패하는 경우는 다른 쪽에서 row의 lock을 획득했으므로 충돌이 났다고 처리한다.
+					throw new ConflictException("can't acquire row's lock");	
 				}else{
 					rowTxState.setCurrentRowLock(newRowLock);
 				}
@@ -280,8 +290,8 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 					delete.deleteColumns(removeCell.getFamily(), removeCell.getQualifier(), currentTimestamp + i + 1);
 				}
 				if (!table.checkAndDelete(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, delete)){
-					// 실패하는 경우는 다른 쪽에서 primary row의 lock을 획득했으므로 충돌이 났다고 처리한다.
-					throw new ConflictException("can't acquire primary row's lock");	
+					// 실패하는 경우는 다른 쪽에서 row의 lock을 획득했으므로 충돌이 났다고 처리한다.
+					throw new ConflictException("can't acquire row's lock");	
 				}
 				break;
 			}
@@ -327,7 +337,8 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 		put.add(LOCK_FAMILY, LOCK_QUALIFIER, commitTimestamp, newRowLockBytes);
 
 		if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, put)){
-			// 실패하는 경우는 다른 쪽에서 primary row의 lock을 획득했으므로 충돌이 났다고 처리한다.
+			transaction.abort();
+			// 실패하는 경우는 다른 쪽에서 row의 lock을 획득했으므로 충돌이 났다고 처리한다.
 			throw new ConflictException("can't acquire primary row's lock");
 		}else{
 			rowTxState.setCurrentRowLock(newRowLock);
