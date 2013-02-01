@@ -12,7 +12,6 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 
 public interface HaeinsaTableInterface {
@@ -120,7 +119,7 @@ public interface HaeinsaTableInterface {
 	   * @throws IOException if a remote or network exception occurs.
 	   * @since 0.20.0
 	   */
-	  ResultScanner getScanner(Transaction tx, Scan scan) throws IOException;
+	  HaeinsaResultScanner getScanner(Transaction tx, Scan scan) throws IOException;
 
 	  /**
 	   * Gets a scanner on the current table for the given family.
@@ -130,7 +129,7 @@ public interface HaeinsaTableInterface {
 	   * @throws IOException if a remote or network exception occurs.
 	   * @since 0.20.0
 	   */
-	  ResultScanner getScanner(Transaction tx, byte[] family) throws IOException;
+	  HaeinsaResultScanner getScanner(Transaction tx, byte[] family) throws IOException;
 
 	  /**
 	   * Gets a scanner on the current table for the given family and qualifier.
@@ -141,7 +140,7 @@ public interface HaeinsaTableInterface {
 	   * @throws IOException if a remote or network exception occurs.
 	   * @since 0.20.0
 	   */
-	  ResultScanner getScanner(Transaction tx, byte[] family, byte[] qualifier) throws IOException;
+	  HaeinsaResultScanner getScanner(Transaction tx, byte[] family, byte[] qualifier) throws IOException;
 
 
 	  /**

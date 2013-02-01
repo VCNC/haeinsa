@@ -2,18 +2,16 @@ package kr.co.vcnc.haeinsa;
 
 import java.io.IOException;
 
-import org.apache.hadoop.hbase.KeyValue;
-
 public class HaeinsaResultKeyValueScanner implements HaeinsaKeyValueScanner {
 
 	@Override
-	public KeyValue peek() {
+	public HaeinsaKeyValue peek() {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public KeyValue next() throws IOException {
+	public HaeinsaKeyValue next() throws IOException {
 		// TODO Auto-generated method stub
 		return null;
 	}

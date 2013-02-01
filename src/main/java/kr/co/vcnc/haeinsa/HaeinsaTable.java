@@ -8,8 +8,8 @@ import static kr.co.vcnc.haeinsa.HaeinsaConstants.ROW_LOCK_VERSION;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
-import java.util.NavigableSet;
 import java.util.Map.Entry;
+import java.util.NavigableSet;
 import java.util.Set;
 
 import kr.co.vcnc.haeinsa.exception.ConflictException;
@@ -30,7 +30,6 @@ import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 
@@ -148,19 +147,19 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 //	}
 
 	@Override
-	public ResultScanner getScanner(Transaction tx, Scan scan)
+	public HaeinsaResultScanner getScanner(Transaction tx, Scan scan)
 			throws IOException {
 		throw new NotImplementedException();
 	}
 
 	@Override
-	public ResultScanner getScanner(Transaction tx, byte[] family)
+	public HaeinsaResultScanner getScanner(Transaction tx, byte[] family)
 			throws IOException {
 		throw new NotImplementedException();
 	}
 
 	@Override
-	public ResultScanner getScanner(Transaction tx, byte[] family,
+	public HaeinsaResultScanner getScanner(Transaction tx, byte[] family,
 			byte[] qualifier) throws IOException {
 		throw new NotImplementedException();
 	}

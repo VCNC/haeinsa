@@ -2,8 +2,6 @@ package kr.co.vcnc.haeinsa;
 
 import java.io.IOException;
 
-import org.apache.hadoop.hbase.KeyValue;
-
 public interface HaeinsaKeyValueScanner {
 	
 	/**
@@ -11,14 +9,14 @@ public interface HaeinsaKeyValueScanner {
 	 * 
 	 * @return the next KeyValue
 	 */
-	public KeyValue peek();
+	public HaeinsaKeyValue peek();
 
 	/**
 	 * Return the next KeyValue in this scanner, iterating the scanner
 	 * 
 	 * @return the next KeyValue
 	 */
-	public KeyValue next() throws IOException;
+	public HaeinsaKeyValue next() throws IOException;
 
 	/**
 	 * Get the sequence id associated with this KeyValueScanner. This is
