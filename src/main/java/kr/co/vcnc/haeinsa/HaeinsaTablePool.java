@@ -181,32 +181,6 @@ public class HaeinsaTablePool {
 	}
 
 	/**
-	 * This method is not needed anymore, clients should call
-	 * HTableInterface.close() rather than returning the tables to the pool
-	 * 
-	 * @param table
-	 *            the proxy table user got from pool
-	 * @deprecated
-	 */
-	public void putTable(HaeinsaTableInterface table) throws IOException {
-		// we need to be sure nobody puts a proxy implementation in the pool
-		// but if the client code is not updated
-		// and it will continue to call putTable() instead of calling close()
-		// then we need to return the wrapped table to the pool instead of the
-		// proxy
-		// table
-		if (table instanceof PooledHaeinsaTable) {
-			returnTable(((PooledHaeinsaTable) table).getWrappedTable());
-		} else {
-			// normally this should not happen if clients pass back the same
-			// table
-			// object they got from the pool
-			// but if it happens then it's better to reject it
-			throw new IllegalArgumentException("not a pooled table: " + table);
-		}
-	}
-
-	/**
 	 * Puts the specified HTable back into the pool.
 	 * <p>
 	 * 
