@@ -8,6 +8,7 @@ import static kr.co.vcnc.haeinsa.HaeinsaConstants.ROW_LOCK_VERSION;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.NavigableSet;
 import java.util.Map.Entry;
 import java.util.Set;
 
@@ -69,7 +70,15 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 		
 		Get hGet = new Get(get.getRow());
 		
-		hGet.getFamilyMap().putAll(get.getFamilyMap());
+		for (Entry<byte[], NavigableSet<byte[]>> entry : get.getFamilyMap().entrySet()){
+			if (entry.getValue() == null){
+				hGet.addFamily(entry.getKey());
+			}else{
+				for (byte[] qualifier : entry.getValue()){
+					hGet.addColumn(entry.getKey(), qualifier);
+				}
+			}
+		}
 		if (rowState == null && hGet.hasFamilies()){ 
 			hGet.addColumn(LOCK_FAMILY, LOCK_QUALIFIER);
 		}
