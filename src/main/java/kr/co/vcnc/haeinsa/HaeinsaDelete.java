@@ -1,8 +1,7 @@
 package kr.co.vcnc.haeinsa;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.NavigableSet;
 
 import kr.co.vcnc.haeinsa.thrift.generated.TCellKey;
 import kr.co.vcnc.haeinsa.thrift.generated.TMutation;
@@ -14,6 +13,7 @@ import org.apache.hadoop.hbase.KeyValue;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Sets;
 
 public class HaeinsaDelete extends HaeinsaMutation {
 	
@@ -59,15 +59,15 @@ public class HaeinsaDelete extends HaeinsaMutation {
 	 * @return this for invocation chaining
 	 */
 	private HaeinsaDelete deleteFamily(byte[] family, long timestamp) {
-		List<KeyValue> list = familyMap.get(family);
-		if (list == null) {
-			list = new ArrayList<KeyValue>();
-		} else if (!list.isEmpty()) {
-			list.clear();
+		NavigableSet<HaeinsaKeyValue> set = familyMap.get(family);
+		if (set == null) {
+			set = Sets.newTreeSet(HaeinsaKeyValue.COMPARATOR);
+		} else if (!set.isEmpty()) {
+			set.clear();
 		}
-		list.add(new KeyValue(row, family, null, timestamp,
+		set.add(new HaeinsaKeyValue(row, family, null, null,
 				KeyValue.Type.DeleteFamily));
-		familyMap.put(family, list);
+		familyMap.put(family, set);
 		return this;
 	}
 
@@ -99,21 +99,21 @@ public class HaeinsaDelete extends HaeinsaMutation {
 	 */
 	private HaeinsaDelete deleteColumns(byte[] family, byte[] qualifier,
 			long timestamp) {
-		List<KeyValue> list = familyMap.get(family);
-		if (list == null) {
-			list = new ArrayList<KeyValue>();
+		NavigableSet<HaeinsaKeyValue> set = familyMap.get(family);
+		if (set == null) {
+			set = Sets.newTreeSet(HaeinsaKeyValue.COMPARATOR);
 		}
-		list.add(new KeyValue(this.row, family, qualifier, timestamp,
+		set.add(new HaeinsaKeyValue(this.row, family, qualifier, null,
 				KeyValue.Type.DeleteColumn));
-		familyMap.put(family, list);
+		familyMap.put(family, set);
 		return this;
 	}
 	
 	@Override
 	public void add(HaeinsaMutation newMutation) {
 		Preconditions.checkState(!(newMutation instanceof HaeinsaDelete));
-		for (KeyValue newKV : Iterables.concat(newMutation.getFamilyMap().values())){
-			if (newKV.getType() == KeyValue.Type.DeleteFamily.getCode()){
+		for (HaeinsaKeyValue newKV : Iterables.concat(newMutation.getFamilyMap().values())){
+			if (newKV.getType() == KeyValue.Type.DeleteFamily){
 				deleteFamily(newKV.getFamily());
 			}else{
 				deleteColumns(newKV.getFamily(), newKV.getQualifier());
@@ -131,8 +131,8 @@ public class HaeinsaDelete extends HaeinsaMutation {
 	public TMutation toTMutation() {
 		TMutation newMutation = new TMutation(TMutationType.REMOVE);
 		TRemove remove = new TRemove();
-		for (KeyValue kv : Iterables.concat(familyMap.values())){
-			switch (KeyValue.Type.codeToType(kv.getType())) {
+		for (HaeinsaKeyValue kv : Iterables.concat(familyMap.values())){
+			switch (kv.getType()) {
 			case DeleteColumn:{
 				remove.addToRemoveCells(new TCellKey().setFamily(kv.getFamily()).setQualifier(kv.getQualifier()));
 				break;

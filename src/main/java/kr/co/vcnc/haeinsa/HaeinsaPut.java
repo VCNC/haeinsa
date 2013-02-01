@@ -1,8 +1,7 @@
 package kr.co.vcnc.haeinsa;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
+import java.util.NavigableSet;
 import java.util.TreeMap;
 
 import kr.co.vcnc.haeinsa.thrift.generated.TCellKey;
@@ -17,6 +16,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Sets;
 
 public class HaeinsaPut extends HaeinsaMutation {
 	public HaeinsaPut(byte[] row) {
@@ -31,9 +31,9 @@ public class HaeinsaPut extends HaeinsaMutation {
 	 */
 	public HaeinsaPut(HaeinsaPut putToCopy) {
 		this(putToCopy.getRow());
-		this.familyMap = new TreeMap<byte[], List<KeyValue>>(
+		this.familyMap = new TreeMap<byte[], NavigableSet<HaeinsaKeyValue>>(
 				Bytes.BYTES_COMPARATOR);
-		for (Map.Entry<byte[], List<KeyValue>> entry : putToCopy.getFamilyMap()
+		for (Map.Entry<byte[], NavigableSet<HaeinsaKeyValue>> entry : putToCopy.getFamilyMap()
 				.entrySet()) {
 			this.familyMap.put(entry.getKey(), entry.getValue());
 		}
@@ -65,10 +65,13 @@ public class HaeinsaPut extends HaeinsaMutation {
 	 * @return this
 	 */
 	private HaeinsaPut add(byte[] family, byte[] qualifier, long ts, byte[] value) {
-		List<KeyValue> list = getKeyValueList(family);
-		KeyValue kv = createPutKeyValue(family, qualifier, ts, value);
-		list.add(kv);
-		familyMap.put(kv.getFamily(), list);
+		NavigableSet<HaeinsaKeyValue> set = getKeyValueSet(family);
+		HaeinsaKeyValue kv = createPutKeyValue(family, qualifier, value);
+		if (set.contains(kv)){
+			set.remove(kv);
+		}
+		set.add(kv);
+		familyMap.put(kv.getFamily(), set);
 		return this;
 	}
 
@@ -77,10 +80,9 @@ public class HaeinsaPut extends HaeinsaMutation {
 	 * 
 	 * @return a KeyValue with this objects row key and the Put identifier.
 	 */
-	private KeyValue createPutKeyValue(byte[] family, byte[] qualifier,
-			long ts, byte[] value) {
-		return new KeyValue(this.row, family, qualifier, ts, KeyValue.Type.Put,
-				value);
+	private HaeinsaKeyValue createPutKeyValue(byte[] family, byte[] qualifier,
+			byte[] value) {
+		return new HaeinsaKeyValue(this.row, family, qualifier, value, KeyValue.Type.Put);
 	}
 
 	/**
@@ -92,10 +94,10 @@ public class HaeinsaPut extends HaeinsaMutation {
 	 * @return a list of KeyValue objects, returns an empty list if one doesnt
 	 *         exist.
 	 */
-	private List<KeyValue> getKeyValueList(byte[] family) {
-		List<KeyValue> list = familyMap.get(family);
+	private NavigableSet<HaeinsaKeyValue> getKeyValueSet(byte[] family) {
+		NavigableSet<HaeinsaKeyValue> list = familyMap.get(family);
 		if (list == null) {
-			list = new ArrayList<KeyValue>(0);
+			list = Sets.newTreeSet(HaeinsaKeyValue.COMPARATOR);
 		}
 		return list;
 	}
@@ -103,7 +105,7 @@ public class HaeinsaPut extends HaeinsaMutation {
 	@Override
 	public void add(HaeinsaMutation newMutation) {
 		Preconditions.checkState(!(newMutation instanceof HaeinsaPut));
-		for (KeyValue newKV : Iterables.concat(newMutation.getFamilyMap().values())){
+		for (HaeinsaKeyValue newKV : Iterables.concat(newMutation.getFamilyMap().values())){
 			add(newKV.getFamily(), newKV.getQualifier(), newKV.getValue());
 		}
 	}
@@ -119,7 +121,7 @@ public class HaeinsaPut extends HaeinsaMutation {
 		TMutation newMutation = new TMutation();
 		newMutation.setType(TMutationType.PUT);
 		TPut put = new TPut();
-		for (KeyValue kv : Iterables.concat(familyMap.values())){
+		for (HaeinsaKeyValue kv : Iterables.concat(familyMap.values())){
 			TKeyValue newKV = new TKeyValue();
 			newKV.setKey(new TCellKey().setFamily(kv.getFamily()).setQualifier(kv.getQualifier()));
 			newKV.setValue(kv.getValue());

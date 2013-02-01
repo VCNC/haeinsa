@@ -93,7 +93,7 @@ public interface HaeinsaTableInterface {
 	   * @throws IOException if a remote or network exception occurs.
 	   * @since 0.20.0
 	   */
-	  Result get(Transaction tx, HaeinsaGet get) throws IOException;
+	  HaeinsaResult get(Transaction tx, HaeinsaGet get) throws IOException;
 
 	  /**
 	   * Extracts certain cells from the given rows, in batch.
@@ -109,7 +109,7 @@ public interface HaeinsaTableInterface {
 	   *
 	   * @since 0.90.0
 	   */
-	  Result[] get(Transaction tx, List<HaeinsaGet> gets) throws IOException;
+//	  Result[] get(Transaction tx, List<HaeinsaGet> gets) throws IOException;
 
 	  /**
 	   * Returns a scanner on the current table as specified by the {@link Scan}

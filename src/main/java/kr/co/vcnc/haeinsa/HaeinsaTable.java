@@ -34,6 +34,7 @@ import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
@@ -63,7 +64,7 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 	}
 
 	@Override
-	public Result get(Transaction tx, HaeinsaGet get) throws IOException {
+	public HaeinsaResult get(Transaction tx, HaeinsaGet get) throws IOException {
 		byte[] row = get.getRow();
 		TableTransaction tableState = tx.createOrGetTableState(this.table.getTableName());
 		RowTransaction rowState = tableState.getRowStates().get(row);
@@ -105,14 +106,46 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 				result = new Result(kvs);
 			}
 		}
+		
+		final Result finalResult = result;
 
-		return result;
+		return new HaeinsaResult() {
+			
+			@Override
+			public List<HaeinsaKeyValue> list() {
+				return Lists.transform(finalResult.list(), new Function<KeyValue, HaeinsaKeyValue>(){
+					public HaeinsaKeyValue apply(KeyValue input){
+						return new HaeinsaKeyValue(input);
+					}
+				});
+			}
+			
+			@Override
+			public boolean isEmpty() {
+				return finalResult.isEmpty();
+			}
+			
+			@Override
+			public byte[] getValue(byte[] family, byte[] qualifier) {
+				return finalResult.getValue(family, qualifier);
+			}
+			
+			@Override
+			public byte[] getRow() {
+				return finalResult.getRow();
+			}
+			
+			@Override
+			public boolean containsColumn(byte[] family, byte[] qualifier) {
+				return finalResult.containsColumn(family, qualifier);
+			}
+		};
 	}
 
-	@Override
-	public Result[] get(Transaction tx, List<HaeinsaGet> gets) throws IOException {
-		throw new NotImplementedException();
-	}
+//	@Override
+//	public Result[] get(Transaction tx, List<HaeinsaGet> gets) throws IOException {
+//		throw new NotImplementedException();
+//	}
 
 	@Override
 	public ResultScanner getScanner(Transaction tx, Scan scan)
@@ -211,7 +244,7 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 		if (rowState.getMutations().size() > 0){
 			if (rowState.getMutations().get(0) instanceof HaeinsaPut){
 				HaeinsaPut haeinsaPut = (HaeinsaPut) rowState.getMutations().remove(0);
-				for (KeyValue kv : Iterables.concat(haeinsaPut.getFamilyMap().values())){
+				for (HaeinsaKeyValue kv : Iterables.concat(haeinsaPut.getFamilyMap().values())){
 					put.add(kv.getFamily(), kv.getQualifier(), tx.getPrewriteTimestamp(), kv.getValue());
 					TCellKey cellKey = new TCellKey();
 					cellKey.setFamily(kv.getFamily());

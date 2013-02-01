@@ -1,5 +1,7 @@
 package kr.co.vcnc.haeinsa;
 
+import static org.junit.Assert.assertArrayEquals;
+
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -90,11 +92,12 @@ public class HaeinsaTest {
 		
 		tx = tm.begin();
 		HaeinsaGet get = new HaeinsaGet(Bytes.toBytes("ymkim"));
-		Result result = testTable.get(tx, get);
-		Result result3 = testTable.get(tx, get);
+		HaeinsaResult result = testTable.get(tx, get);
 		HaeinsaGet get2 = new HaeinsaGet(Bytes.toBytes("kjwoo"));
-		Result result2 = testTable.get(tx, get2);
+		HaeinsaResult result2 = testTable.get(tx, get2);
 		tx.rollback();
+		assertArrayEquals(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber")), Bytes.toBytes("010-1234-5678"));
+		assertArrayEquals(result2.getValue(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber")), Bytes.toBytes("010-9876-5432"));
 		
 		tx = tm.begin();
 		put = new HaeinsaPut(Bytes.toBytes("ymkim"));
@@ -108,10 +111,12 @@ public class HaeinsaTest {
 		tx = tm.begin();
 		get = new HaeinsaGet(Bytes.toBytes("ymkim"));
 		result = testTable.get(tx, get);
-		result3 = testTable.get(tx, get);
 		get2 = new HaeinsaGet(Bytes.toBytes("kjwoo"));
 		result2 = testTable.get(tx, get2);
 		tx.rollback();
+		
+		assertArrayEquals(result2.getValue(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber")), Bytes.toBytes("010-1234-5678"));
+		assertArrayEquals(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber")), Bytes.toBytes("010-9876-5432"));
 		
 		testTable.close();
 		tablePool.close();

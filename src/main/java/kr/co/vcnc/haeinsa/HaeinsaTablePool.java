@@ -12,7 +12,6 @@ import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.client.HTableFactory;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.HTableInterfaceFactory;
-import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -288,15 +287,15 @@ public class HaeinsaTablePool {
 		}
 
 		@Override
-		public Result get(Transaction tx, HaeinsaGet get) throws IOException {
+		public HaeinsaResult get(Transaction tx, HaeinsaGet get) throws IOException {
 			return table.get(tx, get);
 		}
 
-		@Override
-		public Result[] get(Transaction tx, List<HaeinsaGet> gets)
-				throws IOException {
-			return table.get(tx, gets);
-		}
+//		@Override
+//		public Result[] get(Transaction tx, List<HaeinsaGet> gets)
+//				throws IOException {
+//			return table.get(tx, gets);
+//		}
 
 		@Override
 		public ResultScanner getScanner(Transaction tx, Scan scan)
