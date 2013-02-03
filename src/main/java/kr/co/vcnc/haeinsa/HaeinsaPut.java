@@ -109,13 +109,7 @@ public class HaeinsaPut extends HaeinsaMutation {
 			add(newKV.getFamily(), newKV.getQualifier(), newKV.getValue());
 		}
 	}
-	
-	@Override
-	public HaeinsaKeyValueScanner getScanner(byte[] family) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-	
+		
 	@Override
 	public TMutation toTMutation() {
 		TMutation newMutation = new TMutation();

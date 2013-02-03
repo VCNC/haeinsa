@@ -119,7 +119,7 @@ public interface HaeinsaTableInterface {
 	   * @throws IOException if a remote or network exception occurs.
 	   * @since 0.20.0
 	   */
-	  HaeinsaResultScanner getScanner(Transaction tx, Scan scan) throws IOException;
+	  HaeinsaResultScanner getScanner(Transaction tx, HaeinsaScan scan) throws IOException;
 
 	  /**
 	   * Gets a scanner on the current table for the given family.

@@ -18,6 +18,9 @@ public class HaeinsaScan {
 
 	private Map<byte[], NavigableSet<byte[]>> familyMap = new TreeMap<byte[], NavigableSet<byte[]>>(
 			Bytes.BYTES_COMPARATOR);
+	
+	public HaeinsaScan(){
+	}
 
 	/**
 	 * Create a Scan operation starting at the specified row.

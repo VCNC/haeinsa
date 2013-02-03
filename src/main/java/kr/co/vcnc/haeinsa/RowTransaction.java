@@ -54,4 +54,14 @@ public class RowTransaction {
 	public TableTransaction getTableTransaction() {
 		return tableTransaction;
 	}
+	
+	public List<HaeinsaKeyValueScanner> getScanners() {
+		List<HaeinsaKeyValueScanner> result = Lists.newArrayList();
+		for (int i=0;i<mutations.size();i++){
+			HaeinsaMutation mutation = mutations.get(i);
+			result.add(mutation.getScanner(mutations.size() - i));
+		}
+		
+		return result;
+	}
 }

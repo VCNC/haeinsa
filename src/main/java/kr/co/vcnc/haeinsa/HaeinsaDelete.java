@@ -121,12 +121,7 @@ public class HaeinsaDelete extends HaeinsaMutation {
 		}
 		
 	}
-	
-	@Override
-	public HaeinsaKeyValueScanner getScanner(byte[] family) {
-		return null;
-	}
-	
+		
 	@Override
 	public TMutation toTMutation() {
 		TMutation newMutation = new TMutation(TMutationType.REMOVE);

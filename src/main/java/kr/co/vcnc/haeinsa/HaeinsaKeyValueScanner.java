@@ -1,8 +1,21 @@
 package kr.co.vcnc.haeinsa;
 
 import java.io.IOException;
+import java.util.Comparator;
+
+import com.google.common.collect.ComparisonChain;
 
 public interface HaeinsaKeyValueScanner {
+	public static final Comparator<HaeinsaKeyValueScanner> COMPARATOR = new Comparator<HaeinsaKeyValueScanner>() {
+		
+		@Override
+		public int compare(HaeinsaKeyValueScanner o1, HaeinsaKeyValueScanner o2) {
+			return ComparisonChain.start()
+					.compare(o1.peek(), o2.peek(), HaeinsaKeyValue.COMPARATOR)
+					.compare(o1.getSequenceID(), o2.getSequenceID())
+					.result();
+		}
+	}; 
 	
 	/**
 	 * Look at the next KeyValue in this scanner, but do not iterate scanner.

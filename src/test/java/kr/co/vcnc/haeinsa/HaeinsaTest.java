@@ -1,6 +1,7 @@
 package kr.co.vcnc.haeinsa;
 
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertNull;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
@@ -18,7 +19,6 @@ import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.HTableInterfaceFactory;
-import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -118,8 +118,21 @@ public class HaeinsaTest {
 		assertArrayEquals(result2.getValue(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber")), Bytes.toBytes("010-1234-5678"));
 		assertArrayEquals(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber")), Bytes.toBytes("010-9876-5432"));
 		
+		
+		tx = tm.begin();
+		HaeinsaScan scan = new HaeinsaScan();
+		HaeinsaResultScanner scanner = testTable.getScanner(tx, scan);
+		result = scanner.next();
+		result2 = scanner.next();
+		HaeinsaResult result3 = scanner.next();
+		
+		assertNull(result3);
+		assertArrayEquals(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber")), Bytes.toBytes("010-1234-5678"));
+		assertArrayEquals(result2.getValue(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber")), Bytes.toBytes("010-9876-5432"));
+		tx.rollback();
+		
+		
 		testTable.close();
 		tablePool.close();
-		
 	}
 }

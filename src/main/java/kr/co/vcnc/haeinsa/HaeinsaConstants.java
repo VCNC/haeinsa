@@ -19,6 +19,6 @@ public final class HaeinsaConstants {
 	public static final long ROW_LOCK_MIN_TIMESTAMP;
 	public static final long ROW_LOCK_TIMEOUT = TimeUnit.SECONDS.toMillis(5);
 	
-	public static final byte[] LOCK_FAMILY = Bytes.toBytes("__lock__");
+	public static final byte[] LOCK_FAMILY = Bytes.toBytes("!lock!");
 	public static final byte[] LOCK_QUALIFIER = Bytes.toBytes("lock");
 }

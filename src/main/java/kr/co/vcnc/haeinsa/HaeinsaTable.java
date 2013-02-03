@@ -7,8 +7,11 @@ import static kr.co.vcnc.haeinsa.HaeinsaConstants.ROW_LOCK_VERSION;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.NavigableMap;
 import java.util.NavigableSet;
 import java.util.Set;
 
@@ -21,8 +24,8 @@ import kr.co.vcnc.haeinsa.thrift.generated.TRowKey;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
 
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Delete;
@@ -30,8 +33,10 @@ import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hdfs.server.datanode.browseBlock_jsp;
 
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
@@ -147,21 +152,66 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 //	}
 
 	@Override
-	public HaeinsaResultScanner getScanner(Transaction tx, Scan scan)
+	public HaeinsaResultScanner getScanner(Transaction tx, HaeinsaScan scan)
 			throws IOException {
-		throw new NotImplementedException();
+		Scan hScan = new Scan(scan.getStartRow(), scan.getStopRow());
+		hScan.setCaching(scan.getCaching());
+		hScan.setCacheBlocks(scan.getCacheBlocks());
+		
+		for (Entry<byte[], NavigableSet<byte[]>> entry : scan.getFamilyMap().entrySet()){
+			if (entry.getValue() == null){
+				hScan.addFamily(entry.getKey());
+			}else{
+				for (byte[] qualifier : entry.getValue()){
+					hScan.addColumn(entry.getKey(), qualifier);
+				}
+			}
+		}
+		if (hScan.hasFamilies()){ 
+			hScan.addColumn(LOCK_FAMILY, LOCK_QUALIFIER);
+		}
+		
+		TableTransaction tableState = tx.createOrGetTableState(getTableName());
+		NavigableMap<byte[], RowTransaction> rows;
+		
+		if (Bytes.equals(scan.getStartRow(), HConstants.EMPTY_START_ROW)){
+			if (Bytes.equals(scan.getStopRow(), HConstants.EMPTY_END_ROW)){
+				rows = tableState.getRowStates();
+			}else {
+				rows = tableState.getRowStates().headMap(scan.getStopRow(), false);
+			}
+		}else{
+			if (Bytes.equals(scan.getStopRow(), HConstants.EMPTY_END_ROW)){
+				rows = tableState.getRowStates().tailMap(scan.getStartRow(), true);
+			}else {
+				rows = tableState.getRowStates().subMap(scan.getStartRow(), true, scan.getStopRow(), false);
+			}
+		}
+		
+		List<HaeinsaKeyValueScanner> scanners = Lists.newArrayList();
+		
+		for (RowTransaction rowTx : rows.values()){
+			scanners.addAll(rowTx.getScanners());
+		}
+		scanners.add(new HBaseResultScannerImpl(table.getScanner(hScan)));
+		
+		return new ClientScanner(tx, scanners);
 	}
 
 	@Override
 	public HaeinsaResultScanner getScanner(Transaction tx, byte[] family)
 			throws IOException {
-		throw new NotImplementedException();
+		HaeinsaScan scan = new HaeinsaScan();
+		scan.addFamily(family);
+		return getScanner(tx, scan);
 	}
 
 	@Override
 	public HaeinsaResultScanner getScanner(Transaction tx, byte[] family,
 			byte[] qualifier) throws IOException {
-		throw new NotImplementedException();
+		HaeinsaScan scan = new HaeinsaScan();
+		scan.addColumn(family, qualifier);
+		return getScanner(tx, scan);
 	}
 	
 	private boolean checkAndIsShouldRecover(TRowLock rowLock) throws IOException{
@@ -443,4 +493,233 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 	public HTableInterface getHTable() {
 		return table;
 	}
+	
+	private static class ClientScanner implements HaeinsaResultScanner {
+		private Transaction tx;
+		private boolean initialized = false;
+		private final NavigableSet<HaeinsaKeyValueScanner> scanners = Sets.newTreeSet(HaeinsaKeyValueScanner.COMPARATOR);
+		private final List<HaeinsaKeyValueScanner> scannerList = Lists.newArrayList();
+		
+		public ClientScanner(Transaction tx, Iterable<HaeinsaKeyValueScanner> scanners){
+			this.tx = tx;
+			for (HaeinsaKeyValueScanner kvScanner : scanners){
+				scannerList.add(kvScanner);
+			}
+		}
+		
+		private void initialize() throws IOException {
+			try{
+				scanners.addAll(scannerList);
+				initialized = true;
+			}catch(Exception e){
+				throw new IOException(e.getMessage(), e);
+			}
+		}
+
+		@Override
+		public Iterator<HaeinsaResult> iterator() {
+			return new Iterator<HaeinsaResult>() {
+				private HaeinsaResult current = null;
+				
+				@Override
+				public void remove() {
+					throw new UnsupportedOperationException();
+				}
+				
+				@Override
+				public HaeinsaResult next() {
+					if (current == null){
+						hasNext();
+					}
+					HaeinsaResult result = current;
+					current = null;
+					return result;
+				}
+				
+				@Override
+				public boolean hasNext() {
+					if (current != null){
+						return true;
+					}
+					try {
+						current = ClientScanner.this.next();
+						if (current != null){
+							return true;
+						}
+					} catch (IOException e) {
+						throw new IllegalStateException(e.getMessage(), e);
+					}
+					return false;
+				}
+			};
+		}
+
+		@Override
+		public HaeinsaResult next() throws IOException {
+			if (!initialized){
+				initialize();
+			}
+			HaeinsaKeyValue prevKV = null;
+			final List<HaeinsaKeyValue> kvs = Lists.newArrayList();
+			while(true){
+				if (scanners.isEmpty()){
+					break;
+				}
+				HaeinsaKeyValueScanner currentScanner = scanners.first();
+				HaeinsaKeyValue currentKV = currentScanner.peek();
+				if (prevKV == null){
+					prevKV = currentKV;
+				}
+				if (Bytes.equals(prevKV.getRow(), currentKV.getRow())){
+					if (prevKV == currentKV || 
+							!(Bytes.equals(prevKV.getRow(), currentKV.getRow())
+									&& Bytes.equals(prevKV.getFamily(), currentKV.getFamily()) 
+									&& Bytes.equals(prevKV.getQualifier(), currentKV.getQualifier()))){
+						kvs.add(currentKV);
+						scanners.remove(currentScanner);
+						currentScanner.next();
+						HaeinsaKeyValue currentScannerNext = currentScanner.peek();
+						if (currentScannerNext != null){
+							scanners.add(currentScanner);
+						}
+						prevKV = currentKV;
+					}
+				}else {
+					break;
+				}
+			}
+			if (kvs.size() > 0){
+				return new HaeinsaResultImpl(kvs);
+			}else{
+				return null;
+			}
+		}
+
+		@Override
+		public HaeinsaResult[] next(int nbRows) throws IOException {
+			List<HaeinsaResult> result = Lists.newArrayList();
+			for (int i=0;i<nbRows;i++){
+				HaeinsaResult current = this.next();
+				if (current != null){
+					result.add(current);
+				}else{
+					break;
+				}
+			}
+			HaeinsaResult[] array = new HaeinsaResult[result.size()];
+			return result.toArray(array);
+		}
+
+		@Override
+		public void close() {
+			for (HaeinsaKeyValueScanner scanner : scannerList){
+				scanner.close();
+			}
+		}
+		
+	}
+	private static class HaeinsaResultImpl implements HaeinsaResult {
+		private final List<HaeinsaKeyValue> kvs;
+		private byte[] row = null;
+		
+		public HaeinsaResultImpl(List<HaeinsaKeyValue> kvs){
+			this.kvs = kvs;
+			if (kvs.size() > 0){
+				row = kvs.get(0).getRow();
+			}
+		}
+
+		@Override
+		public byte[] getRow() {
+			return row;
+		}
+
+		@Override
+		public List<HaeinsaKeyValue> list() {
+			return kvs;
+		}
+
+		@Override
+		public byte[] getValue(byte[] family, byte[] qualifier) {
+			int index = Collections.binarySearch(kvs, new HaeinsaKeyValue(row, family, qualifier, null, KeyValue.Type.Put), HaeinsaKeyValue.COMPARATOR);
+			if (index >= 0){
+				return kvs.get(index).getValue();
+			}
+			return null;
+		}
+
+		@Override
+		public boolean containsColumn(byte[] family, byte[] qualifier) {
+			return getValue(family, qualifier) != null;
+		}
+
+		@Override
+		public boolean isEmpty() {
+			return kvs.size() == 0;
+		}
+	}
+	
+	private static class HBaseResultScannerImpl implements HaeinsaKeyValueScanner {
+		private final ResultScanner resultScanner;
+		private HaeinsaKeyValue current;
+		private Result currentResult; 
+		private int resultIndex;
+		
+		public HBaseResultScannerImpl(ResultScanner resultScanner){
+			this.resultScanner = resultScanner;
+		}
+
+		@Override
+		public HaeinsaKeyValue peek() {
+			try{
+				if (current == null){
+					hasNext();
+				}
+				return current;
+			}catch(IOException e){
+				throw new IllegalStateException(e.getMessage(), e);
+			}
+		}
+
+		public boolean hasNext() throws IOException {
+			if (current != null){
+				return true;
+			}
+			if (currentResult == null || (currentResult != null && resultIndex >= currentResult.size())){
+				currentResult = resultScanner.next();
+				if (currentResult != null && currentResult.isEmpty()){
+					currentResult = null;
+				}
+				resultIndex = 0;
+			}
+			if (currentResult == null){
+				return false;
+			}
+			current = new HaeinsaKeyValue(currentResult.list().get(resultIndex));
+			resultIndex ++;
+			return true;
+		}
+		
+		@Override
+		public HaeinsaKeyValue next() throws IOException {
+			if (current == null){
+				hasNext();
+			}
+			HaeinsaKeyValue result = current;
+			current = null;
+			return result;
+		}
+
+		@Override
+		public long getSequenceID() {
+			return Long.MAX_VALUE;
+		}
+
+		@Override
+		public void close() {
+			resultScanner.close();
+		}
+		
+	}
+	
 }

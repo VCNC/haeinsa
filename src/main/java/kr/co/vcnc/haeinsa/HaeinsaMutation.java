@@ -1,5 +1,7 @@
 package kr.co.vcnc.haeinsa;
 
+import java.io.IOException;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.NavigableSet;
 import java.util.Set;
@@ -9,6 +11,8 @@ import kr.co.vcnc.haeinsa.thrift.generated.TMutation;
 
 import org.apache.hadoop.hbase.client.Row;
 import org.apache.hadoop.hbase.util.Bytes;
+
+import com.google.common.collect.Iterables;
 
 public abstract class HaeinsaMutation {
 	protected byte[] row = null;
@@ -62,5 +66,49 @@ public abstract class HaeinsaMutation {
 	
 	public abstract TMutation toTMutation();
 	
-	public abstract HaeinsaKeyValueScanner getScanner(byte[] family);
+	public HaeinsaKeyValueScanner getScanner(final long sequenceID){
+		return new MutationScanner(sequenceID);
+	}
+	
+	private class MutationScanner implements HaeinsaKeyValueScanner {
+		private final long sequenceID;
+		private final Iterator<HaeinsaKeyValue> iterator;
+		private HaeinsaKeyValue current;
+		
+		public MutationScanner(long sequenceID){
+			this.sequenceID = sequenceID;
+			this.iterator = Iterables.concat(getFamilyMap().values()).iterator();
+		}
+
+		@Override
+		public HaeinsaKeyValue peek() {
+			if (current != null){
+				return current;
+			}
+			if (iterator.hasNext()){
+				current = iterator.next();
+			}
+			return current;
+		}
+
+		@Override
+		public HaeinsaKeyValue next() throws IOException {
+			if (current != null){
+				return current;
+			}
+			HaeinsaKeyValue result = peek();
+			current = null;
+			return result;
+		}
+
+		@Override
+		public long getSequenceID() {
+			return sequenceID;
+		}
+
+		@Override
+		public void close() {
+			
+		}
+	}
 }
