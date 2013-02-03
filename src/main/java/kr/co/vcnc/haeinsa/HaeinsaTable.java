@@ -220,7 +220,7 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 	public void delete(Transaction tx, HaeinsaDelete delete) throws IOException {
 		byte[] row = delete.getRow();
 		// 전체 Row의 삭제는 불가능하다.
-		Preconditions.checkArgument(delete.getFamilyMap().size() <= 0,
+		Preconditions.checkArgument(delete.getFamilyMap().size() > 0,
 				"can't delete an entire row.");
 		TableTransaction tableState = tx.createOrGetTableState(this.table
 				.getTableName());
@@ -361,15 +361,19 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 
 			case REMOVE: {
 				Delete delete = new Delete(row);
-				for (ByteBuffer removeFamily : mutation.getRemove()
-						.getRemoveFamilies()) {
-					delete.deleteFamily(removeFamily.array(), currentTimestamp
-							+ i + 1);
+				if (mutation.getRemove().getRemoveFamiliesSize() > 0){
+					for (ByteBuffer removeFamily : mutation.getRemove()
+							.getRemoveFamilies()) {
+						delete.deleteFamily(removeFamily.array(), currentTimestamp
+								+ i + 1);
+					}
 				}
-				for (TCellKey removeCell : mutation.getRemove()
-						.getRemoveCells()) {
-					delete.deleteColumns(removeCell.getFamily(),
-							removeCell.getQualifier(), currentTimestamp + i + 1);
+				if (mutation.getRemove().getRemoveCellsSize() > 0){
+					for (TCellKey removeCell : mutation.getRemove()
+							.getRemoveCells()) {
+						delete.deleteColumns(removeCell.getFamily(),
+								removeCell.getQualifier(), currentTimestamp + i + 1);
+					}
 				}
 				if (!table.checkAndDelete(row, LOCK_FAMILY, LOCK_QUALIFIER,
 						currentRowLockBytes, delete)) {
