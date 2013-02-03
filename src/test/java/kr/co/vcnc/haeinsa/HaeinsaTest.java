@@ -129,6 +129,7 @@ public class HaeinsaTest {
 		assertNull(result3);
 		assertArrayEquals(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber")), Bytes.toBytes("010-1234-5678"));
 		assertArrayEquals(result2.getValue(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber")), Bytes.toBytes("010-9876-5432"));
+		scanner.close();
 		tx.rollback();
 		
 		
@@ -148,6 +149,26 @@ public class HaeinsaTest {
 		assertNull(result3);
 		assertArrayEquals(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber")), Bytes.toBytes("010-9876-5432"));
 		assertArrayEquals(result2.getValue(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber")), Bytes.toBytes("010-1234-5678"));
+		scanner.close();
+		tx.rollback();
+		
+		
+		tx = tm.begin();
+		put = new HaeinsaPut(Bytes.toBytes("ymkim"));
+		put.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-1234-5678"));
+		testTable.put(tx, put);
+		testPut = new HaeinsaPut(Bytes.toBytes("kjwoo"));
+		testPut.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-9876-5432"));
+		testTable.put(tx, testPut);
+		scan = new HaeinsaScan();
+		scan.setStartRow(Bytes.toBytes("kjwoo"));
+		scan.setStopRow(Bytes.toBytes("ymkim"));
+		scanner = testTable.getScanner(tx, scan);
+		result = scanner.next();
+		result2 = scanner.next();
+		assertArrayEquals(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber")), Bytes.toBytes("010-9876-5432"));
+		assertNull(result2);
+		scanner.close();
 		tx.rollback();
 		
 		
