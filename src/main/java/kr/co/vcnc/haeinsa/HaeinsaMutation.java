@@ -93,9 +93,6 @@ public abstract class HaeinsaMutation {
 
 		@Override
 		public HaeinsaKeyValue next() throws IOException {
-			if (current != null){
-				return current;
-			}
 			HaeinsaKeyValue result = peek();
 			current = null;
 			return result;

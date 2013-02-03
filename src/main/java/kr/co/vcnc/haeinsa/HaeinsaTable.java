@@ -36,7 +36,6 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.hdfs.server.datanode.browseBlock_jsp;
 
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
@@ -575,14 +574,14 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 							!(Bytes.equals(prevKV.getRow(), currentKV.getRow())
 									&& Bytes.equals(prevKV.getFamily(), currentKV.getFamily()) 
 									&& Bytes.equals(prevKV.getQualifier(), currentKV.getQualifier()))){
-						kvs.add(currentKV);
-						scanners.remove(currentScanner);
-						currentScanner.next();
-						HaeinsaKeyValue currentScannerNext = currentScanner.peek();
-						if (currentScannerNext != null){
-							scanners.add(currentScanner);
-						}
+						kvs.add(currentKV);	
 						prevKV = currentKV;
+					}
+					scanners.remove(currentScanner);
+					currentScanner.next();
+					HaeinsaKeyValue currentScannerNext = currentScanner.peek();
+					if (currentScannerNext != null){
+						scanners.add(currentScanner);
 					}
 				}else {
 					break;
@@ -672,40 +671,31 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 		@Override
 		public HaeinsaKeyValue peek() {
 			try{
-				if (current == null){
-					hasNext();
+				if (current != null){
+					return current;
 				}
+				if (currentResult == null || (currentResult != null && resultIndex >= currentResult.size())){
+					currentResult = resultScanner.next();
+					if (currentResult != null && currentResult.isEmpty()){
+						currentResult = null;
+					}
+					resultIndex = 0;
+				}
+				if (currentResult == null){
+					return null;
+				}
+				current = new HaeinsaKeyValue(currentResult.list().get(resultIndex));
+				resultIndex ++;
+				
 				return current;
 			}catch(IOException e){
 				throw new IllegalStateException(e.getMessage(), e);
 			}
 		}
-
-		public boolean hasNext() throws IOException {
-			if (current != null){
-				return true;
-			}
-			if (currentResult == null || (currentResult != null && resultIndex >= currentResult.size())){
-				currentResult = resultScanner.next();
-				if (currentResult != null && currentResult.isEmpty()){
-					currentResult = null;
-				}
-				resultIndex = 0;
-			}
-			if (currentResult == null){
-				return false;
-			}
-			current = new HaeinsaKeyValue(currentResult.list().get(resultIndex));
-			resultIndex ++;
-			return true;
-		}
 		
 		@Override
 		public HaeinsaKeyValue next() throws IOException {
-			if (current == null){
-				hasNext();
-			}
-			HaeinsaKeyValue result = current;
+			HaeinsaKeyValue result = peek();
 			current = null;
 			return result;
 		}

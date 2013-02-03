@@ -132,6 +132,25 @@ public class HaeinsaTest {
 		tx.rollback();
 		
 		
+		tx = tm.begin();
+		put = new HaeinsaPut(Bytes.toBytes("ymkim"));
+		put.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-1234-5678"));
+		testTable.put(tx, put);
+		testPut = new HaeinsaPut(Bytes.toBytes("kjwoo"));
+		testPut.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-9876-5432"));
+		testTable.put(tx, testPut);
+		scan = new HaeinsaScan();
+		scanner = testTable.getScanner(tx, scan);
+		result = scanner.next();
+		result2 = scanner.next();
+		result3 = scanner.next();
+		
+		assertNull(result3);
+		assertArrayEquals(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber")), Bytes.toBytes("010-9876-5432"));
+		assertArrayEquals(result2.getValue(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber")), Bytes.toBytes("010-1234-5678"));
+		tx.rollback();
+		
+		
 		testTable.close();
 		tablePool.close();
 	}
