@@ -10,6 +10,7 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.NavigableSet;
@@ -96,7 +97,7 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 		}
 		scanners.add(new HBaseGetScanner(result));
 		
-		ClientScanner scanner = new ClientScanner(tx, scanners);
+		ClientScanner scanner = new ClientScanner(tx, scanners, get.getFamilyMap());
 		HaeinsaResult hResult = scanner.next();
 		scanner.close();
 		if (hResult == null){
@@ -154,7 +155,7 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 		}
 		scanners.add(new HBaseScanScanner(table.getScanner(hScan)));
 
-		return new ClientScanner(tx, scanners);
+		return new ClientScanner(tx, scanners, scan.getFamilyMap());
 	}
 
 	@Override
@@ -515,14 +516,17 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 		private final List<HaeinsaKeyValueScanner> scannerList = Lists
 				.newArrayList();
 		private final HaeinsaDeleteTracker deleteTracker = new HaeinsaDeleteTrackerImpl();
+		private final HaeinsaColumnTracker columnTracker;
 
 		public ClientScanner(Transaction tx,
-				Iterable<HaeinsaKeyValueScanner> scanners) {
+				Iterable<HaeinsaKeyValueScanner> scanners,
+				Map<byte[], NavigableSet<byte[]>> familyMap) {
 			this.tx = tx;
 			this.tableState = tx.createOrGetTableState(getTableName());
 			for (HaeinsaKeyValueScanner kvScanner : scanners) {
 				scannerList.add(kvScanner);
 			}
+			this.columnTracker = new HaeinsaColumnTracker(familyMap);
 		}
 
 		private void initialize() throws IOException {
@@ -613,7 +617,7 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 											currentKV.getFamily()) && Bytes
 										.equals(prevKV.getQualifier(),
 												currentKV.getQualifier()))) {
-						if (!deleteTracker.isDeleted(currentKV, currentScanner.getSequenceID())){
+						if (!deleteTracker.isDeleted(currentKV, currentScanner.getSequenceID()) && columnTracker.isMatched(currentKV)){
 							kvs.add(currentKV);
 							prevKV = currentKV;
 						}
