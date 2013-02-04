@@ -120,6 +120,17 @@ public interface HaeinsaTableInterface {
 	   * @since 0.20.0
 	   */
 	  HaeinsaResultScanner getScanner(Transaction tx, HaeinsaScan scan) throws IOException;
+	  
+	  /**
+	   * Returns a scanner on the current table as specified by the {@link Scan}
+	   * object.
+	   *
+	   * @param scan A configured {@link Scan} object.
+	   * @return A scanner.
+	   * @throws IOException if a remote or network exception occurs.
+	   * @since 0.20.0
+	   */
+	  HaeinsaResultScanner getScanner(Transaction tx, HaeinsaIntraScan intraScan) throws IOException;
 
 	  /**
 	   * Gets a scanner on the current table for the given family.

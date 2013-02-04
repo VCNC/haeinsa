@@ -37,6 +37,7 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.filter.ColumnRangeFilter;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.google.common.base.Preconditions;
@@ -156,6 +157,37 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 		scanners.add(new HBaseScanScanner(table.getScanner(hScan)));
 
 		return new ClientScanner(tx, scanners, scan.getFamilyMap());
+	}
+	
+	@Override
+	public HaeinsaResultScanner getScanner(Transaction tx,
+			HaeinsaIntraScan intraScan) throws IOException {
+		Scan hScan = new Scan(intraScan.getRow(), Bytes.add(intraScan.getRow(), new byte[]{ 0x00 }));
+		hScan.setBatch(intraScan.getBatch());
+		
+		for (byte[] family : intraScan.getFamilies()) {
+			hScan.addFamily(family);
+		}
+		
+//		if (hScan.hasFamilies()) {
+//			hScan.addColumn(LOCK_FAMILY, LOCK_QUALIFIER);
+//		}
+		
+		ColumnRangeFilter rangeFilter = new ColumnRangeFilter(intraScan.getMinColumn(), intraScan.isMinColumnInclusive(), intraScan.getMaxColumn(), intraScan.isMaxColumnInclusive());
+		hScan.setFilter(rangeFilter);
+
+		TableTransaction tableState = tx.createOrGetTableState(getTableName());
+		
+		RowTransaction rowState = tableState.getRowStates().get(intraScan.getRow());
+		
+		List<HaeinsaKeyValueScanner> scanners = Lists.newArrayList();
+
+		if (rowState != null){
+			scanners.addAll(rowState.getScanners());
+		}
+		scanners.add(new HBaseScanScanner(table.getScanner(hScan)));
+
+		return new ClientScanner(tx, scanners, hScan.getFamilyMap(), intraScan.getBatch());
 	}
 
 	@Override
@@ -508,8 +540,8 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 	}
 
 	private class ClientScanner implements HaeinsaResultScanner { 
-		private Transaction tx;
-		private TableTransaction tableState;
+		private final Transaction tx;
+		private final TableTransaction tableState;
 		private boolean initialized = false;
 		private final NavigableSet<HaeinsaKeyValueScanner> scanners = Sets
 				.newTreeSet(HaeinsaKeyValueScanner.COMPARATOR);
@@ -517,16 +549,26 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 				.newArrayList();
 		private final HaeinsaDeleteTracker deleteTracker = new HaeinsaDeleteTrackerImpl();
 		private final HaeinsaColumnTracker columnTracker;
-
+		private final int batch;
+		private HaeinsaKeyValue prevKV = null;
+		
 		public ClientScanner(Transaction tx,
 				Iterable<HaeinsaKeyValueScanner> scanners,
 				Map<byte[], NavigableSet<byte[]>> familyMap) {
+			this(tx, scanners, familyMap, -1);
+		}
+		
+		
+		public ClientScanner(Transaction tx,
+				Iterable<HaeinsaKeyValueScanner> scanners,
+				Map<byte[], NavigableSet<byte[]>> familyMap, int batch) {
 			this.tx = tx;
 			this.tableState = tx.createOrGetTableState(getTableName());
 			for (HaeinsaKeyValueScanner kvScanner : scanners) {
 				scannerList.add(kvScanner);
 			}
 			this.columnTracker = new HaeinsaColumnTracker(familyMap);
+			this.batch = batch;
 		}
 
 		private void initialize() throws IOException {
@@ -581,7 +623,7 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 			if (!initialized) {
 				initialize();
 			}
-			HaeinsaKeyValue prevKV = null;
+			
 			final List<HaeinsaKeyValue> kvs = Lists.newArrayList();
 			while (true) {
 				if (scanners.isEmpty()) {
@@ -626,6 +668,10 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 					nextScanner(currentScanner);
 				} else {
 					deleteTracker.reset();
+					prevKV = null;
+					break;
+				}
+				if (batch > 0 && kvs.size() >= batch){
 					break;
 				}
 			}

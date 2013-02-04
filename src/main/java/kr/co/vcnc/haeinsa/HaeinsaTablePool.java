@@ -300,6 +300,12 @@ public class HaeinsaTablePool {
 				throws IOException {
 			return table.getScanner(tx, scan);
 		}
+		
+		@Override
+		public HaeinsaResultScanner getScanner(Transaction tx,
+				HaeinsaIntraScan intraScan) throws IOException {
+			return table.getScanner(tx, intraScan);
+		}
 
 		@Override
 		public HaeinsaResultScanner getScanner(Transaction tx, byte[] family)
