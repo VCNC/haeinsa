@@ -28,6 +28,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.KeyValue.Type;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTableInterface;
@@ -505,7 +506,7 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 		return table;
 	}
 
-	private class ClientScanner implements HaeinsaResultScanner {
+	private class ClientScanner implements HaeinsaResultScanner { 
 		private Transaction tx;
 		private TableTransaction tableState;
 		private boolean initialized = false;
@@ -513,6 +514,7 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 				.newTreeSet(HaeinsaKeyValueScanner.COMPARATOR);
 		private final List<HaeinsaKeyValueScanner> scannerList = Lists
 				.newArrayList();
+		private final HaeinsaDeleteTracker deleteTracker = new HaeinsaDeleteTrackerImpl();
 
 		public ClientScanner(Transaction tx,
 				Iterable<HaeinsaKeyValueScanner> scanners) {
@@ -602,19 +604,24 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 				}
 				
 				if (Bytes.equals(prevKV.getRow(), currentKV.getRow())) {
-					if (prevKV == currentKV
+					if (currentKV.getType() == Type.DeleteColumn || currentKV.getType() == Type.DeleteFamily){
+						deleteTracker.add(currentKV, currentScanner.getSequenceID());
+					}else if (prevKV == currentKV
 							|| !(Bytes.equals(prevKV.getRow(),
 									currentKV.getRow())
 									&& Bytes.equals(prevKV.getFamily(),
 											currentKV.getFamily()) && Bytes
 										.equals(prevKV.getQualifier(),
 												currentKV.getQualifier()))) {
-						kvs.add(currentKV);
-						prevKV = currentKV;
+						if (!deleteTracker.isDeleted(currentKV, currentScanner.getSequenceID())){
+							kvs.add(currentKV);
+							prevKV = currentKV;
+						}
 					}
 					
 					nextScanner(currentScanner);
 				} else {
+					deleteTracker.reset();
 					break;
 				}
 			}

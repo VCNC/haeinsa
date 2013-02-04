@@ -13,12 +13,9 @@ public class HaeinsaKeyValue {
 		@Override
 		public int compare(HaeinsaKeyValue o1, HaeinsaKeyValue o2) {
 			return ComparisonChain.start()
-					.compareFalseFirst(o1.getRow() != null, o2.getRow() != null)
-					.compare(o1.getRow(), o2.getRow(), Bytes.BYTES_COMPARATOR)
-					.compareFalseFirst(o1.getFamily() != null , o2.getFamily() != null)
-					.compare(o1.getFamily(), o2.getFamily(), Bytes.BYTES_COMPARATOR)
-					.compareFalseFirst(o1.getQualifier() != null, o2.getQualifier() != null)
-					.compare(o1.getQualifier(), o2.getQualifier(), Bytes.BYTES_COMPARATOR)
+					.compare(o1.getRow(), o2.getRow(), new NullableComparator<byte[]>(Bytes.BYTES_COMPARATOR))
+					.compare(o1.getFamily(), o2.getFamily(), new NullableComparator<byte[]>(Bytes.BYTES_COMPARATOR))
+					.compare(o1.getQualifier(), o2.getQualifier(), new NullableComparator<byte[]>(Bytes.BYTES_COMPARATOR))
 					.compare(o1.getType(), o2.getType())
 					.result();
 		}
