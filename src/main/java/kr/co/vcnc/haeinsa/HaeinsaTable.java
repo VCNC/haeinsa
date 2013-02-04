@@ -74,7 +74,7 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 		TableTransaction tableState = tx.createOrGetTableState(this.table
 				.getTableName());
 		RowTransaction rowState = tableState.getRowStates().get(row);
-
+		boolean lockInclusive = false;
 		Get hGet = new Get(get.getRow());
 
 		for (Entry<byte[], NavigableSet<byte[]>> entry : get.getFamilyMap()
@@ -89,6 +89,7 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 		}
 		if (rowState == null && hGet.hasFamilies()) {
 			hGet.addColumn(LOCK_FAMILY, LOCK_QUALIFIER);
+			lockInclusive = true;
 		}
 
 		Result result = table.get(hGet);
@@ -98,7 +99,7 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 		}
 		scanners.add(new HBaseGetScanner(result));
 		
-		ClientScanner scanner = new ClientScanner(tx, scanners, get.getFamilyMap());
+		ClientScanner scanner = new ClientScanner(tx, scanners, get.getFamilyMap(), lockInclusive);
 		HaeinsaResult hResult = scanner.next();
 		scanner.close();
 		if (hResult == null){
@@ -156,7 +157,7 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 		}
 		scanners.add(new HBaseScanScanner(table.getScanner(hScan)));
 
-		return new ClientScanner(tx, scanners, scan.getFamilyMap());
+		return new ClientScanner(tx, scanners, scan.getFamilyMap(), true);
 	}
 	
 	@Override
@@ -169,16 +170,17 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 			hScan.addFamily(family);
 		}
 		
-//		if (hScan.hasFamilies()) {
-//			hScan.addColumn(LOCK_FAMILY, LOCK_QUALIFIER);
-//		}
-		
 		ColumnRangeFilter rangeFilter = new ColumnRangeFilter(intraScan.getMinColumn(), intraScan.isMinColumnInclusive(), intraScan.getMaxColumn(), intraScan.isMaxColumnInclusive());
 		hScan.setFilter(rangeFilter);
 
 		TableTransaction tableState = tx.createOrGetTableState(getTableName());
 		
 		RowTransaction rowState = tableState.getRowStates().get(intraScan.getRow());
+		
+		if (rowState == null){
+			rowState = tableState.createOrGetRowState(intraScan.getRow());
+			rowState.setCurrent(getRowLock(intraScan.getRow()));
+		}
 		
 		List<HaeinsaKeyValueScanner> scanners = Lists.newArrayList();
 
@@ -187,7 +189,7 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 		}
 		scanners.add(new HBaseScanScanner(table.getScanner(hScan)));
 
-		return new ClientScanner(tx, scanners, hScan.getFamilyMap(), intraScan.getBatch());
+		return new ClientScanner(tx, scanners, hScan.getFamilyMap(), intraScan.getBatch(), false);
 	}
 
 	@Override
@@ -549,19 +551,20 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 				.newArrayList();
 		private final HaeinsaDeleteTracker deleteTracker = new HaeinsaDeleteTrackerImpl();
 		private final HaeinsaColumnTracker columnTracker;
+		private final boolean lockInclusive;
 		private final int batch;
 		private HaeinsaKeyValue prevKV = null;
 		
 		public ClientScanner(Transaction tx,
 				Iterable<HaeinsaKeyValueScanner> scanners,
-				Map<byte[], NavigableSet<byte[]>> familyMap) {
-			this(tx, scanners, familyMap, -1);
+				Map<byte[], NavigableSet<byte[]>> familyMap, boolean lockInclusive) {
+			this(tx, scanners, familyMap, -1, lockInclusive);
 		}
 		
 		
 		public ClientScanner(Transaction tx,
 				Iterable<HaeinsaKeyValueScanner> scanners,
-				Map<byte[], NavigableSet<byte[]>> familyMap, int batch) {
+				Map<byte[], NavigableSet<byte[]>> familyMap, int batch, boolean lockInclusive) {
 			this.tx = tx;
 			this.tableState = tx.createOrGetTableState(getTableName());
 			for (HaeinsaKeyValueScanner kvScanner : scanners) {
@@ -569,6 +572,7 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 			}
 			this.columnTracker = new HaeinsaColumnTracker(familyMap);
 			this.batch = batch;
+			this.lockInclusive = lockInclusive;
 		}
 
 		private void initialize() throws IOException {
@@ -623,62 +627,75 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 			if (!initialized) {
 				initialize();
 			}
-			
+			List<RowTransaction> rowStates = Lists.newArrayList();
 			final List<HaeinsaKeyValue> kvs = Lists.newArrayList();
-			while (true) {
-				if (scanners.isEmpty()) {
-					break;
-				}
-				HaeinsaKeyValueScanner currentScanner = scanners.first();
-				HaeinsaKeyValue currentKV = currentScanner.peek();
-				if (Bytes.equals(currentKV.getFamily(), LOCK_FAMILY) && Bytes.equals(currentKV.getQualifier(), LOCK_QUALIFIER)){
-					byte[] currentRowLockBytes = currentKV.getValue();
-					TRowLock currentRowLock = HaeinsaThriftUtils
-							.deserialize(currentRowLockBytes);
-		
-					if (checkAndIsShouldRecover(currentRowLock)) {
-						recover(tx, currentKV.getRow(), currentRowLock);
+				try{
+				while (true) {
+					if (scanners.isEmpty()) {
+						break;
 					}
-					RowTransaction rowState = tableState.createOrGetRowState(currentKV.getRow());
-					rowState.setCurrent(currentRowLock);
-					
-					nextScanner(currentScanner);
-					continue;
-				}
-				if (prevKV == null) {
-					prevKV = currentKV;
-				}
-				
-				if (Bytes.equals(prevKV.getRow(), currentKV.getRow())) {
-					if (currentKV.getType() == Type.DeleteColumn || currentKV.getType() == Type.DeleteFamily){
-						deleteTracker.add(currentKV, currentScanner.getSequenceID());
-					}else if (prevKV == currentKV
-							|| !(Bytes.equals(prevKV.getRow(),
-									currentKV.getRow())
-									&& Bytes.equals(prevKV.getFamily(),
-											currentKV.getFamily()) && Bytes
-										.equals(prevKV.getQualifier(),
-												currentKV.getQualifier()))) {
-						if (!deleteTracker.isDeleted(currentKV, currentScanner.getSequenceID()) && columnTracker.isMatched(currentKV)){
-							kvs.add(currentKV);
-							prevKV = currentKV;
+					HaeinsaKeyValueScanner currentScanner = scanners.first();
+					HaeinsaKeyValue currentKV = currentScanner.peek();
+					if (prevKV == null) {
+						// start new row
+						prevKV = currentKV;
+						if (lockInclusive){
+							// Lock이 설정되지 않은 상태일 수도 있으므로 Lock를 만들어놓는 것이 중요하다.
+							rowStates.add(tableState.createOrGetRowState(currentKV.getRow()));
 						}
 					}
 					
-					nextScanner(currentScanner);
+					if (Bytes.equals(prevKV.getRow(), currentKV.getRow())) {
+						if (Bytes.equals(currentKV.getFamily(), LOCK_FAMILY) && Bytes.equals(currentKV.getQualifier(), LOCK_QUALIFIER)){
+							byte[] currentRowLockBytes = currentKV.getValue();
+							TRowLock currentRowLock = HaeinsaThriftUtils
+									.deserialize(currentRowLockBytes);
+				
+							if (checkAndIsShouldRecover(currentRowLock)) {
+								recover(tx, currentKV.getRow(), currentRowLock);
+							}
+							RowTransaction rowState = tableState.createOrGetRowState(currentKV.getRow());
+							if (rowState.getCurrent() == null){
+								rowState.setCurrent(currentRowLock);
+							}
+						} else if (currentKV.getType() == Type.DeleteColumn || currentKV.getType() == Type.DeleteFamily){
+							deleteTracker.add(currentKV, currentScanner.getSequenceID());
+						} else if (prevKV == currentKV
+								|| !(Bytes.equals(prevKV.getRow(),
+										currentKV.getRow())
+										&& Bytes.equals(prevKV.getFamily(),
+												currentKV.getFamily()) && Bytes
+											.equals(prevKV.getQualifier(),
+													currentKV.getQualifier()))) {
+							if (!deleteTracker.isDeleted(currentKV, currentScanner.getSequenceID()) && columnTracker.isMatched(currentKV)){
+								kvs.add(currentKV);
+								prevKV = currentKV;
+							}
+						}
+						
+						nextScanner(currentScanner);
+					} else {
+						deleteTracker.reset();
+						prevKV = null;
+						if (kvs.size() > 0){
+							break;
+						}
+					}
+					if (batch > 0 && kvs.size() >= batch){
+						break;
+					}
+				}
+				if (kvs.size() > 0) {
+					return new HaeinsaResultImpl(kvs);
 				} else {
-					deleteTracker.reset();
-					prevKV = null;
-					break;
+					return null;
 				}
-				if (batch > 0 && kvs.size() >= batch){
-					break;
+			}finally {
+				for (RowTransaction rowTx : rowStates){
+					if (rowTx.getCurrent() == null){
+						rowTx.setCurrent(HaeinsaThriftUtils.deserialize(null));
+					}
 				}
-			}
-			if (kvs.size() > 0) {
-				return new HaeinsaResultImpl(kvs);
-			} else {
-				return null;
 			}
 		}
 
