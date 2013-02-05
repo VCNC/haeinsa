@@ -10,7 +10,6 @@ import kr.co.vcnc.haeinsa.thrift.generated.TMutation;
 import kr.co.vcnc.haeinsa.thrift.generated.TMutationType;
 import kr.co.vcnc.haeinsa.thrift.generated.TPut;
 
-import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.util.Bytes;
 
@@ -46,28 +45,10 @@ public class HaeinsaPut extends HaeinsaMutation {
 	   * @param value column value
 	   * @return this
 	   */
-	  public HaeinsaPut add(byte [] family, byte [] qualifier, byte [] value) {
-	    return add(family, qualifier, HConstants.LATEST_TIMESTAMP, value);
-	  }
-
-	/**
-	 * Add the specified column and value, with the specified timestamp as its
-	 * version to this Put operation.
-	 * 
-	 * @param family
-	 *            family name
-	 * @param qualifier
-	 *            column qualifier
-	 * @param ts
-	 *            version timestamp
-	 * @param value
-	 *            column value
-	 * @return this
-	 */
-	private HaeinsaPut add(byte[] family, byte[] qualifier, long ts, byte[] value) {
+	public HaeinsaPut add(byte[] family, byte[] qualifier, byte[] value) {
 		NavigableSet<HaeinsaKeyValue> set = getKeyValueSet(family);
 		HaeinsaKeyValue kv = createPutKeyValue(family, qualifier, value);
-		if (set.contains(kv)){
+		if (set.contains(kv)) {
 			set.remove(kv);
 		}
 		set.add(kv);

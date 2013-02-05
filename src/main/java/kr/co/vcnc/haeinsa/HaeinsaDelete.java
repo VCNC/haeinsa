@@ -8,7 +8,6 @@ import kr.co.vcnc.haeinsa.thrift.generated.TMutation;
 import kr.co.vcnc.haeinsa.thrift.generated.TMutationType;
 import kr.co.vcnc.haeinsa.thrift.generated.TRemove;
 
-import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
 
 import com.google.common.base.Preconditions;
@@ -41,24 +40,6 @@ public class HaeinsaDelete extends HaeinsaMutation {
 	 * @return this for invocation chaining
 	 */
 	public HaeinsaDelete deleteFamily(byte[] family) {
-		this.deleteFamily(family, HConstants.LATEST_TIMESTAMP);
-		return this;
-	}
-
-	/**
-	 * Delete all columns of the specified family with a timestamp less than or
-	 * equal to the specified timestamp.
-	 * <p>
-	 * Overrides previous calls to deleteColumn and deleteColumns for the
-	 * specified family.
-	 * 
-	 * @param family
-	 *            family name
-	 * @param timestamp
-	 *            maximum version timestamp
-	 * @return this for invocation chaining
-	 */
-	private HaeinsaDelete deleteFamily(byte[] family, long timestamp) {
 		NavigableSet<HaeinsaKeyValue> set = familyMap.get(family);
 		if (set == null) {
 			set = Sets.newTreeSet(HaeinsaKeyValue.COMPARATOR);
@@ -81,24 +62,6 @@ public class HaeinsaDelete extends HaeinsaMutation {
 	 * @return this for invocation chaining
 	 */
 	public HaeinsaDelete deleteColumns(byte[] family, byte[] qualifier) {
-		this.deleteColumns(family, qualifier, HConstants.LATEST_TIMESTAMP);
-		return this;
-	}
-
-	/**
-	 * Delete all versions of the specified column with a timestamp less than or
-	 * equal to the specified timestamp.
-	 * 
-	 * @param family
-	 *            family name
-	 * @param qualifier
-	 *            column qualifier
-	 * @param timestamp
-	 *            maximum version timestamp
-	 * @return this for invocation chaining
-	 */
-	private HaeinsaDelete deleteColumns(byte[] family, byte[] qualifier,
-			long timestamp) {
 		NavigableSet<HaeinsaKeyValue> set = familyMap.get(family);
 		if (set == null) {
 			set = Sets.newTreeSet(HaeinsaKeyValue.COMPARATOR);
@@ -108,7 +71,7 @@ public class HaeinsaDelete extends HaeinsaMutation {
 		familyMap.put(family, set);
 		return this;
 	}
-	
+
 	@Override
 	public void add(HaeinsaMutation newMutation) {
 		Preconditions.checkState(!(newMutation instanceof HaeinsaDelete));
