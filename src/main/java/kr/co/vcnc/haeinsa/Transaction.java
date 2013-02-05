@@ -144,7 +144,7 @@ public class Transaction {
 		}
 	}
 	
-	public void recover() throws IOException {
+	protected void recover() throws IOException {
 		RowTransaction primaryRowTx = createOrGetTableState(primary.getTableName()).createOrGetRowState(primary.getRow());
 		if (primaryRowTx.getCurrent().getState() == TRowLockState.PREWRITTEN){
 			// prewritten 상태에서는 timeout 보다 primary이 시간이 더 지났으면 abort 시켜야 함.
@@ -173,7 +173,7 @@ public class Transaction {
 		}
 	}
 
-	public void abort() throws IOException {
+	protected void abort() throws IOException {
 		HaeinsaTablePool tablePool = getManager().getTablePool();
 		RowTransaction primaryRowTx = createOrGetTableState(primary.getTableName()).createOrGetRowState(primary.getRow());
 		{

@@ -534,7 +534,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	}
 
 	/**
-	 * delete primary row's puts({@link TRowLock#puts}).
+	 * delete row's puts({@link TRowLock#puts}).
 	 * @param rowTxState
 	 * @param row
 	 * @throws IOException
