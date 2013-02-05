@@ -9,6 +9,8 @@ import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import kr.co.vcnc.haeinsa.exception.ConflictException;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
@@ -230,7 +232,121 @@ public class HaeinsaTest {
 		assertArrayEquals(result2.getValue(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber")), Bytes.toBytes("010-1234-5678"));
 		assertArrayEquals(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber")), Bytes.toBytes("010-9876-5432"));
 		
+		tx = tm.begin();
+		delete1 = new HaeinsaDelete(Bytes.toBytes("ymkim"));
+		delete1.deleteFamily(Bytes.toBytes("data"));
+		
+		delete2 = new HaeinsaDelete(Bytes.toBytes("kjwoo"));
+		delete2.deleteColumns(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"));
+		
+		testTable.delete(tx, delete1);
+		testTable.delete(tx, delete2);
+		
+		tx.commit();
+
 		testTable.close();
 		tablePool.close();
+	}
+	@Test
+	public void testConflictAndAbort() throws Exception {
+		final ExecutorService threadPool = Executors.newCachedThreadPool();
+		HaeinsaTablePool tablePool = new HaeinsaTablePool(CONF, 128, new HTableInterfaceFactory() {
+			
+			@Override
+			public void releaseHTableInterface(HTableInterface table)
+					throws IOException {
+				table.close();
+			}
+			
+			@Override
+			public HTableInterface createHTableInterface(Configuration config,
+					byte[] tableName) {
+				try {
+					return new HTable(tableName, HConnectionManager.getConnection(config), threadPool);
+				} catch (ZooKeeperConnectionException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				return null;
+			}
+		});
+		
+		TransactionManager tm = new TransactionManager(tablePool);
+		HaeinsaTableInterface testTable = tablePool.getTable("test");
+		Transaction tx = tm.begin();
+		Transaction tx2 = tm.begin();
+		
+		HaeinsaPut put = new HaeinsaPut(Bytes.toBytes("ymkim"));
+		put.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-9876-5432")); 
+		HaeinsaPut put2 = new HaeinsaPut(Bytes.toBytes("kjwoo"));
+		put2.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-1234-5678"));
+		testTable.put(tx, put);
+		testTable.put(tx, put2);
+		
+		testTable.put(tx2, put);
+		tx2.commit();
+		try{
+			tx.commit();
+			assertTrue(false);
+		}catch(Exception e){
+			assertTrue(e instanceof ConflictException);
+		}
+		
+		tx = tm.begin();
+		HaeinsaScan scan = new HaeinsaScan();
+		HaeinsaResultScanner scanner = testTable.getScanner(tx, scan);
+		HaeinsaResult result = scanner.next();
+		HaeinsaResult result2 = scanner.next();
+
+		
+		assertNull(result2);
+		assertArrayEquals(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber")), Bytes.toBytes("010-9876-5432"));
+		assertArrayEquals(result.getRow(), Bytes.toBytes("ymkim"));
+		scanner.close();
+		tx.rollback();
+		
+		tx = tm.begin();
+		put = new HaeinsaPut(Bytes.toBytes("ymkim"));
+		put.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-1234-5678")); 
+		put2 = new HaeinsaPut(Bytes.toBytes("kjwoo"));
+		put2.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-9876-5432"));
+		testTable.put(tx, put);
+		testTable.put(tx, put2);
+		
+		tx.commit();
+		
+		tx = tm.begin();
+		scan = new HaeinsaScan();
+		scanner = testTable.getScanner(tx, scan);
+		result = scanner.next();
+		result2 = scanner.next();
+		HaeinsaResult result3 = scanner.next();
+		
+		assertNull(result3);
+		assertArrayEquals(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber")), Bytes.toBytes("010-9876-5432"));
+		assertArrayEquals(result.getRow(), Bytes.toBytes("kjwoo"));
+		assertArrayEquals(result2.getValue(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber")), Bytes.toBytes("010-1234-5678"));
+		assertArrayEquals(result2.getRow(), Bytes.toBytes("ymkim"));
+		scanner.close();
+		tx.rollback();
+		
+		tx = tm.begin();
+		HaeinsaDelete delete1 = new HaeinsaDelete(Bytes.toBytes("ymkim"));
+		delete1.deleteFamily(Bytes.toBytes("data"));
+		
+		HaeinsaDelete delete2 = new HaeinsaDelete(Bytes.toBytes("kjwoo"));
+		delete2.deleteColumns(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"));
+		
+		testTable.delete(tx, delete1);
+		testTable.delete(tx, delete2);
+		
+		tx.commit();
+		
+		testTable.close();
+		tablePool.close();
+		
 	}
 }
