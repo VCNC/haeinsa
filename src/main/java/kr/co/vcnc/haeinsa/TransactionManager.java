@@ -42,7 +42,7 @@ public class TransactionManager {
 	}
 	
 	private TRowLock getUnstableRowLock(byte[] tableName, byte[] row) throws IOException {
-		HaeinsaTableInterface.Private table = (HaeinsaTableInterface.Private) tablePool.getTable(tableName);
+		HaeinsaTable table = (HaeinsaTable) tablePool.getTable(tableName);
 		TRowLock rowLock = table.getRowLock(row);
 		if (rowLock.getState() == TRowLockState.STABLE){
 			return null;

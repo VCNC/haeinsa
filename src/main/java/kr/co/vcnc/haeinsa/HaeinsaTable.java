@@ -45,7 +45,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
-public class HaeinsaTable implements HaeinsaTableInterface.Private {
+public class HaeinsaTable implements HaeinsaTableInterface {
 
 	private final HTableInterface table;
 
@@ -189,7 +189,7 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 		}
 		scanners.add(new HBaseScanScanner(table.getScanner(hScan)));
 
-		return new ClientScanner(tx, scanners, hScan.getFamilyMap(), intraScan.getBatch(), false);
+		return new ClientScanner(tx, scanners, hScan.getFamilyMap(), intraScan, false);
 	}
 
 	@Override
@@ -286,8 +286,7 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 		table.close();
 	}
 
-	@Override
-	public void prewrite(RowTransaction rowState, byte[] row, boolean isPrimary)
+	protected void prewrite(RowTransaction rowState, byte[] row, boolean isPrimary)
 			throws IOException {
 		Put put = new Put(row);
 		Set<TCellKey> prewritten = Sets.newTreeSet();
@@ -353,8 +352,7 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 
 	}
 
-	@Override
-	public void applyMutations(RowTransaction rowTxState, byte[] row)
+	protected void applyMutations(RowTransaction rowTxState, byte[] row)
 			throws IOException {
 		if (rowTxState.getCurrent().getMutationsSize() == 0) {
 			return;
@@ -425,8 +423,13 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 		}
 	}
 
-	@Override
-	public void makeStable(RowTransaction rowTxState, byte[] row)
+	/**
+	 * make row from {@link TRowLockState#PREWRITTEN} or {@link TRowLockState#COMMITTED} or {@link TRowLockState#ABORTED} to {@link TRowLockState#STABLE}
+	 * @param tx
+	 * @param row
+	 * @throws IOException
+	 */
+	protected void makeStable(RowTransaction rowTxState, byte[] row)
 			throws IOException {
 		byte[] currentRowLockBytes = HaeinsaThriftUtils.serialize(rowTxState
 				.getCurrent());
@@ -447,8 +450,13 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 		}
 	}
 
-	@Override
-	public void commitPrimary(RowTransaction rowTxState, byte[] row)
+	/**
+	 * make primary row from {@link TRowLockState#PREWRITTEN} to {@link TRowLockState#COMMITTED}
+	 * @param tx
+	 * @param row
+	 * @throws IOException
+	 */
+	protected void commitPrimary(RowTransaction rowTxState, byte[] row)
 			throws IOException {
 		byte[] currentRowLockBytes = HaeinsaThriftUtils.serialize(rowTxState
 				.getCurrent());
@@ -475,8 +483,13 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 		}
 	}
 
-	@Override
-	public TRowLock getRowLock(byte[] row) throws IOException {
+	/**
+	 * get {@link TRowLock}
+	 * @param row row
+	 * @return row lock
+	 * @throws IOException
+	 */
+	protected TRowLock getRowLock(byte[] row) throws IOException {
 		Get get = new Get(row);
 		get.addColumn(LOCK_FAMILY, LOCK_QUALIFIER);
 		Result result = table.get(get);
@@ -488,8 +501,13 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 		}
 	}
 
-	@Override
-	public void abortPrimary(RowTransaction rowTxState, byte[] row)
+	/**
+	 * make primary row from {@link TRowLockState#PREWRITTEN} to {@link TRowLockState#ABORTED}  
+	 * @param tx
+	 * @param row
+	 * @throws IOException
+	 */
+	protected void abortPrimary(RowTransaction rowTxState, byte[] row)
 			throws IOException {
 		byte[] currentRowLockBytes = HaeinsaThriftUtils.serialize(rowTxState
 				.getCurrent());
@@ -515,8 +533,13 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 		}
 	}
 
-	@Override
-	public void deletePrewritten(RowTransaction rowTxState, byte[] row)
+	/**
+	 * delete primary row's puts({@link TRowLock#puts}).
+	 * @param rowTxState
+	 * @param row
+	 * @throws IOException
+	 */
+	protected void deletePrewritten(RowTransaction rowTxState, byte[] row)
 			throws IOException {
 		if (rowTxState.getCurrent().getPrewrittenSize() == 0) {
 			return;
@@ -536,8 +559,7 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 		}
 	}
 
-	@Override
-	public HTableInterface getHTable() {
+	protected HTableInterface getHTable() {
 		return table;
 	}
 
@@ -558,20 +580,26 @@ public class HaeinsaTable implements HaeinsaTableInterface.Private {
 		public ClientScanner(Transaction tx,
 				Iterable<HaeinsaKeyValueScanner> scanners,
 				Map<byte[], NavigableSet<byte[]>> familyMap, boolean lockInclusive) {
-			this(tx, scanners, familyMap, -1, lockInclusive);
+			this(tx, scanners, familyMap, null, lockInclusive);
 		}
 		
 		
 		public ClientScanner(Transaction tx,
 				Iterable<HaeinsaKeyValueScanner> scanners,
-				Map<byte[], NavigableSet<byte[]>> familyMap, int batch, boolean lockInclusive) {
+				Map<byte[], NavigableSet<byte[]>> familyMap, HaeinsaIntraScan intraScan, boolean lockInclusive) {
 			this.tx = tx;
 			this.tableState = tx.createOrGetTableState(getTableName());
 			for (HaeinsaKeyValueScanner kvScanner : scanners) {
 				scannerList.add(kvScanner);
 			}
-			this.columnTracker = new HaeinsaColumnTracker(familyMap);
-			this.batch = batch;
+			if (intraScan == null){
+				intraScan = new HaeinsaIntraScan(null, null, false, null, false);
+				intraScan.setBatch(-1);
+			}
+			this.columnTracker = new HaeinsaColumnTracker(familyMap
+					,intraScan.getMinColumn(), intraScan.isMinColumnInclusive()
+					,intraScan.getMaxColumn(), intraScan.isMaxColumnInclusive());
+			this.batch = intraScan.getBatch();
 			this.lockInclusive = lockInclusive;
 		}
 

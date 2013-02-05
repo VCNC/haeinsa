@@ -17,7 +17,7 @@ import org.apache.hadoop.hbase.util.PoolMap;
 import org.apache.hadoop.hbase.util.PoolMap.PoolType;
 
 public class HaeinsaTablePool {
-	private final PoolMap<String, HaeinsaTableInterface.Private> tables;
+	private final PoolMap<String, HaeinsaTable> tables;
 	private final int maxSize;
 	private final PoolType poolType;
 	private final Configuration config;
@@ -114,7 +114,7 @@ public class HaeinsaTablePool {
 				break;
 			}
 		}
-		this.tables = new PoolMap<String, HaeinsaTableInterface.Private>(
+		this.tables = new PoolMap<String, HaeinsaTable>(
 				this.poolType, this.maxSize);
 	}
 
@@ -131,7 +131,7 @@ public class HaeinsaTablePool {
 	 */
 	public HaeinsaTableInterface getTable(String tableName) {
 		// call the old getTable implementation renamed to findOrCreateTable
-		HaeinsaTableInterface.Private table = findOrCreateTable(tableName);
+		HaeinsaTable table = findOrCreateTable(tableName);
 		// return a proxy table so when user closes the proxy, the actual table
 		// will be returned to the pool
 		try {
@@ -153,8 +153,8 @@ public class HaeinsaTablePool {
 	 * @throws RuntimeException
 	 *             if there is a problem instantiating the HTable
 	 */
-	private HaeinsaTableInterface.Private findOrCreateTable(String tableName) {
-		HaeinsaTableInterface.Private table = tables.get(tableName);
+	private HaeinsaTable findOrCreateTable(String tableName) {
+		HaeinsaTable table = tables.get(tableName);
 		if (table == null) {
 			table = createHTable(tableName);
 		}
@@ -187,7 +187,7 @@ public class HaeinsaTablePool {
 	 * @param table
 	 *            table
 	 */
-	private void returnTable(HaeinsaTableInterface.Private table)
+	private void returnTable(HaeinsaTable table)
 			throws IOException {
 		// this is the old putTable method renamed and made private
 		String tableName = Bytes.toString(table.getTableName());
@@ -200,14 +200,14 @@ public class HaeinsaTablePool {
 		tables.put(tableName, table);
 	}
 
-	protected HaeinsaTableInterface.Private createHTable(String tableName) {
+	protected HaeinsaTable createHTable(String tableName) {
 		return new HaeinsaTable(this.tableFactory.createHTableInterface(config,
 				Bytes.toBytes(tableName)));
 	}
 
 	private void release(HaeinsaTableInterface table) throws IOException {
-		if (table instanceof HaeinsaTableInterface.Private) {
-			HaeinsaTableInterface.Private privateTable = (HaeinsaTableInterface.Private) table;
+		if (table instanceof HaeinsaTable) {
+			HaeinsaTable privateTable = (HaeinsaTable) table;
 			this.tableFactory.releaseHTableInterface(privateTable.getHTable());
 		} else {
 			table.close();
@@ -225,7 +225,7 @@ public class HaeinsaTablePool {
 	 * @param tableName
 	 */
 	public void closeTablePool(final String tableName) throws IOException {
-		Collection<HaeinsaTableInterface.Private> tables = this.tables
+		Collection<HaeinsaTable> tables = this.tables
 				.values(tableName);
 		if (tables != null) {
 			for (HaeinsaTableInterface table : tables) {
@@ -261,11 +261,12 @@ public class HaeinsaTablePool {
 		return tables.size(tableName);
 	}
 
-	class PooledHaeinsaTable implements HaeinsaTableInterface.Private {
-		private HaeinsaTableInterface.Private table;
+	class PooledHaeinsaTable extends HaeinsaTable {
+		private HaeinsaTable table;
 
-		public PooledHaeinsaTable(HaeinsaTableInterface.Private table)
+		public PooledHaeinsaTable(HaeinsaTable table)
 				throws IOException {
+			super(null);
 			this.table = table;
 		}
 
@@ -288,12 +289,6 @@ public class HaeinsaTablePool {
 		public HaeinsaResult get(Transaction tx, HaeinsaGet get) throws IOException {
 			return table.get(tx, get);
 		}
-
-//		@Override
-//		public Result[] get(Transaction tx, List<HaeinsaGet> gets)
-//				throws IOException {
-//			return table.get(tx, gets);
-//		}
 
 		@Override
 		public HaeinsaResultScanner getScanner(Transaction tx, HaeinsaScan scan)
@@ -350,7 +345,7 @@ public class HaeinsaTablePool {
 			returnTable(table);
 		}
 
-		HaeinsaTableInterface.Private getWrappedTable() {
+		HaeinsaTable getWrappedTable() {
 			return table;
 		}
 

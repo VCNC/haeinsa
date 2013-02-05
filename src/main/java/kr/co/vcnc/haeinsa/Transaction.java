@@ -97,7 +97,7 @@ public class Transaction {
 		HaeinsaTablePool tablePool = getManager().getTablePool();
 		// prewrite primary row
 		{
-			HaeinsaTableInterface.Private table = (HaeinsaTableInterface.Private) tablePool.getTable(primaryRowKey.getTableName());
+			HaeinsaTable table = (HaeinsaTable) tablePool.getTable(primaryRowKey.getTableName());
 			table.prewrite(primaryRowState, primaryRowKey.getRow(), true);
 		}
 		
@@ -107,7 +107,7 @@ public class Transaction {
 				if ((Bytes.equals(tableStateEntry.getKey(), primaryRowKey.getTableName()) && Bytes.equals(rowStateEntry.getKey(), primaryRowKey.getRow()))){
 					continue;
 				}
-				HaeinsaTableInterface.Private table = (HaeinsaTableInterface.Private) tablePool.getTable(tableStateEntry.getKey());
+				HaeinsaTable table = (HaeinsaTable) tablePool.getTable(tableStateEntry.getKey());
 				table.prewrite(rowStateEntry.getValue(), rowStateEntry.getKey(), false);
 			}
 		}
@@ -120,14 +120,14 @@ public class Transaction {
 		RowTransaction primaryRowTx = createOrGetTableState(primary.getTableName()).createOrGetRowState(primary.getRow());
 		// commit primary or get more time to commit this.
 		{
-			HaeinsaTableInterface.Private table = (HaeinsaTableInterface.Private) tablePool.getTable(primary.getTableName());
+			HaeinsaTable table = (HaeinsaTable) tablePool.getTable(primary.getTableName());
 			table.commitPrimary(primaryRowTx, primary.getRow());
 		}
 		
 		for (Entry<byte[], TableTransaction> tableStateEntry : tableStates.entrySet()){
 			for (Entry<byte[], RowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()){
 				// apply mutations  
-				HaeinsaTableInterface.Private table = (HaeinsaTableInterface.Private) tablePool.getTable(tableStateEntry.getKey());
+				HaeinsaTable table = (HaeinsaTable) tablePool.getTable(tableStateEntry.getKey());
 				table.applyMutations(rowStateEntry.getValue(), rowStateEntry.getKey());
 				
 				if ((Bytes.equals(tableStateEntry.getKey(), primary.getTableName()) && Bytes.equals(rowStateEntry.getKey(), primary.getRow()))){
@@ -139,7 +139,7 @@ public class Transaction {
 		}
 		
 		{
-			HaeinsaTableInterface.Private table = (HaeinsaTableInterface.Private) tablePool.getTable(primary.getTableName());
+			HaeinsaTable table = (HaeinsaTable) tablePool.getTable(primary.getTableName());
 			table.makeStable(primaryRowTx, primary.getRow());
 		}
 	}
@@ -178,14 +178,14 @@ public class Transaction {
 		RowTransaction primaryRowTx = createOrGetTableState(primary.getTableName()).createOrGetRowState(primary.getRow());
 		{
 			// abort primary row
-			HaeinsaTableInterface.Private table = (HaeinsaTableInterface.Private) tablePool.getTable(primary.getTableName());
+			HaeinsaTable table = (HaeinsaTable) tablePool.getTable(primary.getTableName());
 			table.abortPrimary(primaryRowTx, primary.getRow());
 		}
 		
 		for (Entry<byte[], TableTransaction> tableStateEntry : tableStates.entrySet()){
 			for (Entry<byte[], RowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()){
 				// delete prewritten  
-				HaeinsaTableInterface.Private table = (HaeinsaTableInterface.Private) tablePool.getTable(tableStateEntry.getKey());
+				HaeinsaTable table = (HaeinsaTable) tablePool.getTable(tableStateEntry.getKey());
 				table.deletePrewritten(rowStateEntry.getValue(), rowStateEntry.getKey());
 				
 				if ((Bytes.equals(tableStateEntry.getKey(), primary.getTableName()) && Bytes.equals(rowStateEntry.getKey(), primary.getRow()))){
@@ -197,7 +197,7 @@ public class Transaction {
 		}
 		
 		{
-			HaeinsaTableInterface.Private table = (HaeinsaTableInterface.Private) tablePool.getTable(primary.getTableName());
+			HaeinsaTable table = (HaeinsaTable) tablePool.getTable(primary.getTableName());
 			table.makeStable(primaryRowTx, primary.getRow());
 		}
 

@@ -3,65 +3,14 @@ package kr.co.vcnc.haeinsa;
 import java.io.IOException;
 import java.util.List;
 
-import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
-import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Delete;
-import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
 
 public interface HaeinsaTableInterface {
-	interface Private extends HaeinsaTableInterface {
-		void prewrite(RowTransaction rowTxState, byte[] row, boolean isPrimary) throws IOException;
-		
-		void applyMutations(RowTransaction rowTxState, byte[] row) throws IOException;
-		/**
-		 * make row from {@link TRowLockState#PREWRITTEN} or {@link TRowLockState#COMMITTED} or {@link TRowLockState#ABORTED} to {@link TRowLockState#STABLE}
-		 * @param tx
-		 * @param row
-		 * @throws IOException
-		 */
-		void makeStable(RowTransaction rowTxState, byte[] row) throws IOException;
-		
-		/**
-		 * make primary row from {@link TRowLockState#PREWRITTEN} to {@link TRowLockState#COMMITTED}
-		 * @param tx
-		 * @param row
-		 * @throws IOException
-		 */
-		void commitPrimary(RowTransaction rowTxState, byte[] row) throws IOException;
-			
-		/**
-		 * get {@link TRowLock}
-		 * @param row row
-		 * @return row lock
-		 * @throws IOException
-		 */
-		TRowLock getRowLock(byte[] row) throws IOException;
-		
-		/**
-		 * make primary row from {@link TRowLockState#PREWRITTEN} to {@link TRowLockState#ABORTED}  
-		 * @param tx
-		 * @param row
-		 * @throws IOException
-		 */
-		void abortPrimary(RowTransaction rowTxState, byte[] row) throws IOException;
-		
-		/**
-		 * delete primary row's puts({@link TRowLock#puts}).
-		 * @param rowTxState
-		 * @param row
-		 * @throws IOException
-		 */
-		void deletePrewritten(RowTransaction rowTxState, byte[] row) throws IOException;
-		
-		HTableInterface getHTable();
-	}
-
 	  /**
 	   * Gets the name of this table.
 	   *
