@@ -97,7 +97,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		if (rowState != null){
 			scanners.addAll(rowState.getScanners());
 		}
-		scanners.add(new HBaseGetScanner(result));
+		scanners.add(new HBaseGetScanner(result, Long.MAX_VALUE));
 		
 		ClientScanner scanner = new ClientScanner(tx, scanners, get.getFamilyMap(), lockInclusive);
 		HaeinsaResult hResult = scanner.next();
@@ -178,8 +178,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		RowTransaction rowState = tableState.getRowStates().get(intraScan.getRow());
 		
 		if (rowState == null){
-			rowState = tableState.createOrGetRowState(intraScan.getRow());
-			rowState.setCurrent(getRowLock(intraScan.getRow()));
+			rowState = checkOrRecoverLock(tx, intraScan.getRow(), tableState, rowState);
 		}
 		
 		List<HaeinsaKeyValueScanner> scanners = Lists.newArrayList();
@@ -212,7 +211,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 			throws IOException {
 		if (rowLock.getState() != TRowLockState.STABLE) {
 			if (rowLock.isSetTimeout()
-					&& rowLock.getTimeout() > System.currentTimeMillis()) {
+					&& rowLock.getTimeout() < System.currentTimeMillis()) {
 				return true;
 			}
 			throw new ConflictException("this row is unstable.");
@@ -224,7 +223,9 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 			throws IOException {
 		Transaction previousTx = tx.getManager().getTransaction(getTableName(),
 				row);
-		previousTx.recover();
+		if (previousTx != null){
+			previousTx.recover();
+		}
 	}
 
 	@Override
@@ -235,14 +236,28 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		RowTransaction rowState = tableState.getRowStates().get(row);
 		if (rowState == null) {
 			// TODO commit 시점에 lock을 가져오도록 바꾸는 것도 고민해봐야 함.
-			TRowLock rowLock = getRowLock(row);
-			if (checkAndIsShouldRecover(rowLock)) {
-				recover(tx, row, rowLock);
-			}
-			rowState = tableState.createOrGetRowState(row);
-			rowState.setCurrent(rowLock);
+			rowState = checkOrRecoverLock(tx, row, tableState, rowState);
 		}
 		rowState.addMutation(put);
+	}
+
+	private RowTransaction checkOrRecoverLock(Transaction tx, byte[] row,
+			TableTransaction tableState, RowTransaction rowState)
+			throws IOException {
+		if (rowState != null && rowState.getCurrent() != null){
+			return rowState;
+		}
+		while (true){
+			TRowLock currentRowLock = getRowLock(row);
+			if (checkAndIsShouldRecover(currentRowLock)) {
+				recover(tx, row, currentRowLock);
+			}else{
+				rowState = tableState.createOrGetRowState(row);
+				rowState.setCurrent(currentRowLock);
+				break;
+			}
+		}
+		return rowState;
 	}
 
 	@Override
@@ -262,13 +277,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 				.getTableName());
 		RowTransaction rowState = tableState.getRowStates().get(row);
 		if (rowState == null) {
-			// TODO commit 시점에 lock을 가져오도록 바꾸는 것도 고민해봐야 함.
-			TRowLock rowLock = getRowLock(row);
-			if (checkAndIsShouldRecover(rowLock)) {
-				recover(tx, row, rowLock);
-			}
-			rowState = tableState.createOrGetRowState(row);
-			rowState.setCurrent(rowLock);
+			rowState = checkOrRecoverLock(tx, row, tableState, rowState);
 		}
 		rowState.addMutation(delete);
 	}
@@ -575,7 +584,9 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		private final HaeinsaColumnTracker columnTracker;
 		private final boolean lockInclusive;
 		private final int batch;
+		private final Map<byte[], NavigableSet<byte[]>> familyMap; 
 		private HaeinsaKeyValue prevKV = null;
+		private long maxSeqID = Long.MAX_VALUE;
 		
 		public ClientScanner(Transaction tx,
 				Iterable<HaeinsaKeyValueScanner> scanners,
@@ -601,6 +612,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 					,intraScan.getMaxColumn(), intraScan.isMaxColumnInclusive());
 			this.batch = intraScan.getBatch();
 			this.lockInclusive = lockInclusive;
+			this.familyMap = familyMap;
 		}
 
 		private void initialize() throws IOException {
@@ -649,81 +661,105 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 				}
 			};
 		}
+		
+		private TRowLock peekLock(byte[] row) throws IOException{
+			
+			for (HaeinsaKeyValueScanner scanner : scanners){
+				HaeinsaKeyValue kv = scanner.peek();
+				if (!Bytes.equals(kv.getRow(), row)){
+					break;
+				}
+				TRowLock rowLock = scanner.peekLock();
+				if (rowLock != null){
+					return rowLock;
+				}
+			}
+			return null;
+		}
 
 		@Override
 		public HaeinsaResult next() throws IOException {
 			if (!initialized) {
 				initialize();
 			}
-			List<RowTransaction> rowStates = Lists.newArrayList();
 			final List<HaeinsaKeyValue> kvs = Lists.newArrayList();
-				try{
-				while (true) {
-					if (scanners.isEmpty()) {
-						break;
+			
+			while (true) {
+				if (scanners.isEmpty()) {
+					break;
+				}
+				HaeinsaKeyValueScanner currentScanner = scanners.first();
+				HaeinsaKeyValue currentKV = currentScanner.peek();
+				if (prevKV == null) {
+					// start new row
+					if (lockInclusive){
+						TRowLock currentRowLock = peekLock(currentKV.getRow());
+						RowTransaction rowState = tableState.createOrGetRowState(currentKV.getRow());
+						if (currentRowLock == null){
+							rowState.setCurrent(HaeinsaThriftUtils.deserialize(null));
+						}
+						
+						if (checkAndIsShouldRecover(currentRowLock)){
+							rowState = checkOrRecoverLock(tx, currentKV.getRow(), tableState, rowState);
+							Get get = new Get(currentKV.getRow());
+							for (Entry<byte[], NavigableSet<byte[]>> entry : familyMap.entrySet()){
+								if (entry.getValue() != null){
+									for (byte[] qualifier : entry.getValue()){
+										get.addColumn(entry.getKey(), qualifier);
+									}
+								}else{
+									get.addFamily(entry.getKey());
+								}
+							}
+							Result result = table.get(get);
+							maxSeqID --;
+							HBaseGetScanner getScanner = new HBaseGetScanner(result, maxSeqID);
+							scanners.add(getScanner);
+							continue;
+						}else{
+							rowState.setCurrent(currentRowLock);
+						}
 					}
-					HaeinsaKeyValueScanner currentScanner = scanners.first();
-					HaeinsaKeyValue currentKV = currentScanner.peek();
-					if (prevKV == null) {
-						// start new row
-						prevKV = currentKV;
-						if (lockInclusive){
-							// Lock이 설정되지 않은 상태일 수도 있으므로 Lock를 만들어놓는 것이 중요하다.
-							rowStates.add(tableState.createOrGetRowState(currentKV.getRow()));
+					prevKV = currentKV;
+				}
+				
+				if (Bytes.equals(prevKV.getRow(), currentKV.getRow())) {
+					if (currentScanner.getSequenceID() > maxSeqID) {
+						
+					} else if (Bytes.equals(currentKV.getFamily(), LOCK_FAMILY) && Bytes.equals(currentKV.getQualifier(), LOCK_QUALIFIER)){
+						
+					} else if (currentKV.getType() == Type.DeleteColumn || currentKV.getType() == Type.DeleteFamily){
+						deleteTracker.add(currentKV, currentScanner.getSequenceID());
+					} else if (prevKV == currentKV
+							|| !(Bytes.equals(prevKV.getRow(),
+									currentKV.getRow())
+									&& Bytes.equals(prevKV.getFamily(),
+											currentKV.getFamily()) && Bytes
+										.equals(prevKV.getQualifier(),
+												currentKV.getQualifier()))) {
+						if (!deleteTracker.isDeleted(currentKV, currentScanner.getSequenceID()) && columnTracker.isMatched(currentKV)){
+							kvs.add(currentKV);
+							prevKV = currentKV;
 						}
 					}
 					
-					if (Bytes.equals(prevKV.getRow(), currentKV.getRow())) {
-						if (Bytes.equals(currentKV.getFamily(), LOCK_FAMILY) && Bytes.equals(currentKV.getQualifier(), LOCK_QUALIFIER)){
-							byte[] currentRowLockBytes = currentKV.getValue();
-							TRowLock currentRowLock = HaeinsaThriftUtils
-									.deserialize(currentRowLockBytes);
-				
-							if (checkAndIsShouldRecover(currentRowLock)) {
-								recover(tx, currentKV.getRow(), currentRowLock);
-							}
-							RowTransaction rowState = tableState.createOrGetRowState(currentKV.getRow());
-							if (rowState.getCurrent() == null){
-								rowState.setCurrent(currentRowLock);
-							}
-						} else if (currentKV.getType() == Type.DeleteColumn || currentKV.getType() == Type.DeleteFamily){
-							deleteTracker.add(currentKV, currentScanner.getSequenceID());
-						} else if (prevKV == currentKV
-								|| !(Bytes.equals(prevKV.getRow(),
-										currentKV.getRow())
-										&& Bytes.equals(prevKV.getFamily(),
-												currentKV.getFamily()) && Bytes
-											.equals(prevKV.getQualifier(),
-													currentKV.getQualifier()))) {
-							if (!deleteTracker.isDeleted(currentKV, currentScanner.getSequenceID()) && columnTracker.isMatched(currentKV)){
-								kvs.add(currentKV);
-								prevKV = currentKV;
-							}
-						}
-						
-						nextScanner(currentScanner);
-					} else {
-						deleteTracker.reset();
-						prevKV = null;
-						if (kvs.size() > 0){
-							break;
-						}
-					}
-					if (batch > 0 && kvs.size() >= batch){
+					nextScanner(currentScanner);
+				} else {
+					deleteTracker.reset();
+					prevKV = null;
+					maxSeqID = Long.MAX_VALUE;
+					if (kvs.size() > 0){
 						break;
 					}
 				}
-				if (kvs.size() > 0) {
-					return new HaeinsaResultImpl(kvs);
-				} else {
-					return null;
+				if (batch > 0 && kvs.size() >= batch){
+					break;
 				}
-			}finally {
-				for (RowTransaction rowTx : rowStates){
-					if (rowTx.getCurrent() == null){
-						rowTx.setCurrent(HaeinsaThriftUtils.deserialize(null));
-					}
-				}
+			}
+			if (kvs.size() > 0) {
+				return new HaeinsaResultImpl(kvs);
+			} else {
+				return null;
 			}
 		}
 
@@ -833,8 +869,8 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 				if (currentResult == null) {
 					return null;
 				}
-				current = new HaeinsaKeyValue(currentResult.list().get(
-						resultIndex));
+				current = new HaeinsaKeyValue(currentResult.raw()[
+						resultIndex]);
 				resultIndex++;
 
 				return current;
@@ -848,6 +884,18 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 			HaeinsaKeyValue result = peek();
 			current = null;
 			return result;
+		}
+		
+		@Override
+		public TRowLock peekLock() throws IOException {
+			peek();
+			if (currentResult != null){
+				byte[] lock = currentResult.getValue(LOCK_FAMILY, LOCK_QUALIFIER);
+				if (lock != null){
+					return HaeinsaThriftUtils.deserialize(lock);
+				}
+			}
+			return null;
 		}
 
 		@Override
@@ -863,16 +911,18 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 
 	private static class HBaseGetScanner implements
 			HaeinsaKeyValueScanner {
+		private final long sequenceID;
 		private Result result;
 		private int resultIndex;
 		private HaeinsaKeyValue current;
-
-		public HBaseGetScanner(Result result) { 
+		
+		public HBaseGetScanner(Result result, final long sequenceID) { 
 			if (result != null && !result.isEmpty()) {
 				this.result = result;
 			} else {
 				this.result = null;
 			}
+			this.sequenceID = sequenceID;
 		}
 
 		@Override
@@ -898,10 +948,22 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 			current = null;
 			return result;
 		}
+		
+		@Override
+		public TRowLock peekLock() throws IOException {
+			peek();
+			if (result != null){
+				byte[] lock = result.getValue(LOCK_FAMILY, LOCK_QUALIFIER);
+				if (lock != null){
+					return HaeinsaThriftUtils.deserialize(lock);
+				}
+			}
+			return null;
+		}
 
 		@Override
 		public long getSequenceID() {
-			return Long.MAX_VALUE;
+			return sequenceID;
 		}
 
 		@Override

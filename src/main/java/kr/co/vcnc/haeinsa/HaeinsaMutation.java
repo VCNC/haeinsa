@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.TreeMap;
 
 import kr.co.vcnc.haeinsa.thrift.generated.TMutation;
+import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
 
 import org.apache.hadoop.hbase.client.Row;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -101,6 +102,11 @@ public abstract class HaeinsaMutation {
 		@Override
 		public long getSequenceID() {
 			return sequenceID;
+		}
+		
+		@Override
+		public TRowLock peekLock() throws IOException {
+			return null;
 		}
 
 		@Override

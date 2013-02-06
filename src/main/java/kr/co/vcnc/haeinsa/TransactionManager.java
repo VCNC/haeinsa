@@ -27,7 +27,7 @@ public class TransactionManager {
 		
 		TRowLock primaryRowLock = null;
 		TRowKey primaryRowKey = null;
-		if (startRowLock.getSecondariesSize() > 0){
+		if (!startRowLock.isSetPrimary()){
 			// 이 Row가 Primary Row
 			primaryRowKey = new TRowKey(ByteBuffer.wrap(tableName), ByteBuffer.wrap(row));
 			primaryRowLock = startRowLock;

@@ -3,6 +3,8 @@ package kr.co.vcnc.haeinsa;
 import java.io.IOException;
 import java.util.Comparator;
 
+import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
+
 import com.google.common.collect.ComparisonChain;
 
 public interface HaeinsaKeyValueScanner {
@@ -30,6 +32,8 @@ public interface HaeinsaKeyValueScanner {
 	 * @return the next KeyValue
 	 */
 	public HaeinsaKeyValue next() throws IOException;
+	
+	public TRowLock peekLock() throws IOException;
 
 	/**
 	 * Get the sequence id associated with this KeyValueScanner. This is
