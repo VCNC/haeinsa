@@ -580,7 +580,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 				.newTreeSet(HaeinsaKeyValueScanner.COMPARATOR);
 		private final List<HaeinsaKeyValueScanner> scannerList = Lists
 				.newArrayList();
-		private final HaeinsaDeleteTracker deleteTracker = new HaeinsaDeleteTrackerImpl();
+		private final HaeinsaDeleteTracker deleteTracker = new HaeinsaDeleteTracker();
 		private final HaeinsaColumnTracker columnTracker;
 		private final boolean lockInclusive;
 		private final int batch;
