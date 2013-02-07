@@ -294,6 +294,33 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	public void close() throws IOException {
 		table.close();
 	}
+	
+	protected void commitSingleRow(RowTransaction rowState, byte[] row) throws IOException{
+		Transaction tx = rowState.getTableTransaction().getTransaction();
+		Put put = new Put(row);
+		HaeinsaPut haeinsaPut = (HaeinsaPut) rowState.getMutations().remove(0);
+		for (HaeinsaKeyValue kv : Iterables.concat(haeinsaPut.getFamilyMap().values())){
+			put.add(kv.getFamily(), kv.getQualifier(), tx.getCommitTimestamp(), kv.getValue());
+		}
+		TRowLock newRowLock = new TRowLock(ROW_LOCK_VERSION, TRowLockState.STABLE, tx.getCommitTimestamp());
+		put.add(LOCK_FAMILY, LOCK_QUALIFIER, tx.getCommitTimestamp(), HaeinsaThriftUtils.serialize(newRowLock));
+		
+		byte[] currentRowLockBytes = HaeinsaThriftUtils.serialize(rowState
+				.getCurrent());
+		if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, put)){
+			throw new ConflictException("can't acquire row's lock");
+		}else {
+			rowState.setCurrent(newRowLock);
+		}
+	}
+	
+	protected void commitSingleReadOnlyRow(RowTransaction rowState, byte[] row) throws IOException{
+		TRowLock prevRowLock = rowState.getCurrent();
+		TRowLock currentRowLock = getRowLock(row);
+		if (!prevRowLock.equals(currentRowLock)){
+			throw new ConflictException("this row is modified.");
+		}
+	}
 
 	protected void prewrite(RowTransaction rowState, byte[] row, boolean isPrimary)
 			throws IOException {

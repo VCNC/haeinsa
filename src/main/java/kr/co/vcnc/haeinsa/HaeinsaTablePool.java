@@ -348,7 +348,18 @@ public class HaeinsaTablePool {
 		HaeinsaTable getWrappedTable() {
 			return table;
 		}
-
+		
+		@Override
+		protected void commitSingleReadOnlyRow(RowTransaction rowState,
+				byte[] row) throws IOException {
+			table.commitSingleReadOnlyRow(rowState, row);
+		}
+		
+		protected void commitSingleRow(RowTransaction rowState, byte[] row) 
+				throws IOException {
+			table.commitSingleRow(rowState, row);
+		}
+		
 		@Override
 		public void prewrite(RowTransaction rowTxState, byte[] row,
 				boolean isPrimary) throws IOException {
