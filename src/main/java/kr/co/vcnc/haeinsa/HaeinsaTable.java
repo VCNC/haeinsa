@@ -377,7 +377,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 			TMutation mutation = remaining.get(i);
 			switch (mutation.getType()) {
 			case PUT: {
-				TRowLock newRowLock = rowTxState.getCurrent();
+				TRowLock newRowLock = rowTxState.getCurrent().deepCopy();
 				newRowLock.setCurrentTimestmap(currentTimestamp + i + 1);
 				newRowLock.setMutations(remaining.subList(i + 1,
 						remaining.size()));
@@ -543,7 +543,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	}
 
 	/**
-	 * delete row's puts({@link TRowLock#puts}).
+	 * delete row's puts({@link TRowLock#prewritten}).
 	 * @param rowTxState
 	 * @param row
 	 * @throws IOException

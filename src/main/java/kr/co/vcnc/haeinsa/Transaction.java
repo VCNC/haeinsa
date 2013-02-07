@@ -25,7 +25,7 @@ public class Transaction {
 		this.manager = manager;
 	}
 	
-	public NavigableMap<byte[], TableTransaction> getTableStates() {
+	protected NavigableMap<byte[], TableTransaction> getTableStates() {
 		return tableStates;
 	}
 	
@@ -37,7 +37,7 @@ public class Transaction {
 		return prewriteTimestamp;
 	}
 	
-	void setPrewriteTimestamp(long startTimestamp) {
+	protected void setPrewriteTimestamp(long startTimestamp) {
 		this.prewriteTimestamp = startTimestamp;
 	}
 	
@@ -45,7 +45,7 @@ public class Transaction {
 		return commitTimestamp;
 	}
 	
-	void setCommitTimestamp(long commitTimestamp) {
+	protected void setCommitTimestamp(long commitTimestamp) {
 		this.commitTimestamp = commitTimestamp;
 	}
 	
@@ -53,11 +53,11 @@ public class Transaction {
 		return primary;
 	}
 	
-	void setPrimary(TRowKey primary) {
+	protected void setPrimary(TRowKey primary) {
 		this.primary = primary;
 	}
 	
-	public TableTransaction createOrGetTableState(byte[] tableName){
+	protected TableTransaction createOrGetTableState(byte[] tableName){
 		TableTransaction tableTxState = tableStates.get(tableName);
 		if (tableTxState == null){
 			tableTxState = new TableTransaction(this);
