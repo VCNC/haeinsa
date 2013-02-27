@@ -295,7 +295,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		table.close();
 	}
 	
-	protected void commitSingleRow(RowTransaction rowState, byte[] row) throws IOException{
+	protected void commitSingleRowPutOnly(RowTransaction rowState, byte[] row) throws IOException{
 		Transaction tx = rowState.getTableTransaction().getTransaction();
 		Put put = new Put(row);
 		HaeinsaPut haeinsaPut = (HaeinsaPut) rowState.getMutations().remove(0);
@@ -314,7 +314,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		}
 	}
 	
-	protected void commitSingleReadOnlyRow(RowTransaction rowState, byte[] row) throws IOException{
+	protected void commitSingleRowReadOnly(RowTransaction rowState, byte[] row) throws IOException{
 		TRowLock prevRowLock = rowState.getCurrent();
 		TRowLock currentRowLock = getRowLock(row);
 		if (!prevRowLock.equals(currentRowLock)){
@@ -722,29 +722,31 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 					if (lockInclusive){
 						TRowLock currentRowLock = peekLock(currentKV.getRow());
 						RowTransaction rowState = tableState.createOrGetRowState(currentKV.getRow());
-						if (currentRowLock == null){
-							rowState.setCurrent(HaeinsaThriftUtils.deserialize(null));
-						}
-						
-						if (checkAndIsShouldRecover(currentRowLock)){
-							rowState = checkOrRecoverLock(tx, currentKV.getRow(), tableState, rowState);
-							Get get = new Get(currentKV.getRow());
-							for (Entry<byte[], NavigableSet<byte[]>> entry : familyMap.entrySet()){
-								if (entry.getValue() != null){
-									for (byte[] qualifier : entry.getValue()){
-										get.addColumn(entry.getKey(), qualifier);
-									}
-								}else{
-									get.addFamily(entry.getKey());
-								}
+						if (rowState.getCurrent() == null){
+							if (currentRowLock == null){
+								rowState.setCurrent(HaeinsaThriftUtils.deserialize(null));
 							}
-							Result result = table.get(get);
-							maxSeqID --;
-							HBaseGetScanner getScanner = new HBaseGetScanner(result, maxSeqID);
-							scanners.add(getScanner);
-							continue;
-						}else{
-							rowState.setCurrent(currentRowLock);
+							
+							if (checkAndIsShouldRecover(currentRowLock)){
+								rowState = checkOrRecoverLock(tx, currentKV.getRow(), tableState, rowState);
+								Get get = new Get(currentKV.getRow());
+								for (Entry<byte[], NavigableSet<byte[]>> entry : familyMap.entrySet()){
+									if (entry.getValue() != null){
+										for (byte[] qualifier : entry.getValue()){
+											get.addColumn(entry.getKey(), qualifier);
+										}
+									}else{
+										get.addFamily(entry.getKey());
+									}
+								}
+								Result result = table.get(get);
+								maxSeqID --;
+								HBaseGetScanner getScanner = new HBaseGetScanner(result, maxSeqID);
+								scanners.add(getScanner);
+								continue;
+							}else{
+								rowState.setCurrent(currentRowLock);
+							}
 						}
 					}
 					prevKV = currentKV;
@@ -764,6 +766,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 											currentKV.getFamily()) && Bytes
 										.equals(prevKV.getQualifier(),
 												currentKV.getQualifier()))) {
+						// Row, Family, Qualifier 모두가 같은 경우가 더 나오면 무시한다.
 						if (!deleteTracker.isDeleted(currentKV, currentScanner.getSequenceID()) && columnTracker.isMatched(currentKV)){
 							kvs.add(currentKV);
 							prevKV = currentKV;

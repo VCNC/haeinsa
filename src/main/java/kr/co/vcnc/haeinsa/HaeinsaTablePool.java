@@ -350,14 +350,14 @@ public class HaeinsaTablePool {
 		}
 		
 		@Override
-		protected void commitSingleReadOnlyRow(RowTransaction rowState,
+		protected void commitSingleRowReadOnly(RowTransaction rowState,
 				byte[] row) throws IOException {
-			table.commitSingleReadOnlyRow(rowState, row);
+			table.commitSingleRowReadOnly(rowState, row);
 		}
 		
-		protected void commitSingleRow(RowTransaction rowState, byte[] row) 
+		protected void commitSingleRowPutOnly(RowTransaction rowState, byte[] row) 
 				throws IOException {
-			table.commitSingleRow(rowState, row);
+			table.commitSingleRowPutOnly(rowState, row);
 		}
 		
 		@Override
