@@ -724,7 +724,8 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 						RowTransaction rowState = tableState.createOrGetRowState(currentKV.getRow());
 						if (rowState.getCurrent() == null){
 							if (currentRowLock == null){
-								rowState.setCurrent(HaeinsaThriftUtils.deserialize(null));
+								currentRowLock = HaeinsaThriftUtils.deserialize(null);
+								rowState.setCurrent(currentRowLock);
 							}
 							
 							if (checkAndIsShouldRecover(currentRowLock)){
