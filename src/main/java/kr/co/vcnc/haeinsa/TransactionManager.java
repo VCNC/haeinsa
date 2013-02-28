@@ -72,6 +72,7 @@ public class TransactionManager {
 		if (rowLock == null){
 			return;
 		}
+		// commitTimestamp가 다르면, 다른 Transaction 이므로 추가하면 안됨  
 		if (rowLock.getCommitTimestamp() != transaction.getCommitTimestamp()){
 			return;
 		}

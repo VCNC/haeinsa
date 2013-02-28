@@ -21,8 +21,8 @@ public class Transaction {
 	private long commitTimestamp = Long.MIN_VALUE;
 	private long prewriteTimestamp = Long.MIN_VALUE;
 	private static enum CommitMethod {
-		SINGLE_ROW,
-		SINGLE_READ_ONLY_ROW,
+		SINGLE_ROW_PUT_ONLY,
+		SINGLE_ROW_READ_ONLY,
 		MULTI_ROW
 	}
 	
@@ -42,8 +42,8 @@ public class Transaction {
 		return prewriteTimestamp;
 	}
 	
-	protected void setPrewriteTimestamp(long startTimestamp) {
-		this.prewriteTimestamp = startTimestamp;
+	protected void setPrewriteTimestamp(long prewriteTimestamp) {
+		this.prewriteTimestamp = prewriteTimestamp;
 	}
 	
 	public long getCommitTimestamp() {
@@ -77,7 +77,7 @@ public class Transaction {
 	
 	protected CommitMethod determineCommitMethod(){
 		int count = 0;
-		CommitMethod method = CommitMethod.SINGLE_READ_ONLY_ROW;
+		CommitMethod method = CommitMethod.SINGLE_ROW_READ_ONLY;
 		for (TableTransaction tableState : getTableStates().values()){
 			for (RowTransaction rowState : tableState.getRowStates().values()){
 				count ++;
@@ -85,9 +85,9 @@ public class Transaction {
 					return CommitMethod.MULTI_ROW;
 				}
 				if (rowState.getMutations().size() <= 0){
-					method = CommitMethod.SINGLE_READ_ONLY_ROW;
+					method = CommitMethod.SINGLE_ROW_READ_ONLY;
 				}else if (rowState.getMutations().get(0) instanceof HaeinsaPut && rowState.getMutations().size() == 1) {
-					method = CommitMethod.SINGLE_ROW;
+					method = CommitMethod.SINGLE_ROW_PUT_ONLY;
 				}else {
 					method = CommitMethod.MULTI_ROW;
 				}
@@ -121,7 +121,7 @@ public class Transaction {
 		makeStable();
 	}
 	
-	protected void commitSingleRow() throws IOException {
+	protected void commitSingleRowPutOnly() throws IOException {
 		TableTransaction primaryTableState = createOrGetTableState(primary.getTableName());
 		RowTransaction primaryRowState = primaryTableState.createOrGetRowState(primary.getRow());
 		
@@ -129,11 +129,11 @@ public class Transaction {
 		// commit primary row
 		{
 			HaeinsaTable table = (HaeinsaTable) tablePool.getTable(primary.getTableName());
-			table.commitSingleRow(primaryRowState, primary.getRow());
+			table.commitSingleRowPutOnly(primaryRowState, primary.getRow());
 		}
 	}
 	
-	protected void commitSingleReadOnlyRow() throws IOException {
+	protected void commitSingleRowReadOnly() throws IOException {
 		TableTransaction primaryTableState = createOrGetTableState(primary.getTableName());
 		RowTransaction primaryRowState = primaryTableState.createOrGetRowState(primary.getRow());
 		
@@ -141,7 +141,7 @@ public class Transaction {
 		// commit primary row
 		{
 			HaeinsaTable table = (HaeinsaTable) tablePool.getTable(primary.getTableName());
-			table.commitSingleReadOnlyRow(primaryRowState, primary.getRow());
+			table.commitSingleRowReadOnly(primaryRowState, primary.getRow());
 		}
 	}
 		
@@ -173,13 +173,13 @@ public class Transaction {
 			commitMultiRows();
 			break;
 		}
-		case SINGLE_READ_ONLY_ROW:{
-			commitSingleReadOnlyRow();
+		case SINGLE_ROW_READ_ONLY:{
+			commitSingleRowReadOnly();
 			break;
 		}
 		
-		case SINGLE_ROW:{
-			commitSingleRow();
+		case SINGLE_ROW_PUT_ONLY:{
+			commitSingleRowPutOnly();
 			break;
 		}
 
