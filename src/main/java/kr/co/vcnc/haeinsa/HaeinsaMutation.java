@@ -15,6 +15,11 @@ import org.apache.hadoop.hbase.util.Bytes;
 
 import com.google.common.collect.Iterables;
 
+/**
+ * 
+ * @author Myungbo Kim
+ *
+ */
 public abstract class HaeinsaMutation {
 	protected byte[] row = null;
 	protected Map<byte[], NavigableSet<HaeinsaKeyValue>> familyMap = new TreeMap<byte[], NavigableSet<HaeinsaKeyValue>>(
@@ -65,12 +70,22 @@ public abstract class HaeinsaMutation {
 	
 	public abstract void add(HaeinsaMutation newMutation);
 	
+	/**
+	 * Change HaeinsaMutation to TMutation (Thrift Class).
+	 * <p> TMutation contains list of either TPut or TRemove.
+	 * @return TMutation (Thrift class)
+	 */
 	public abstract TMutation toTMutation();
 	
 	public HaeinsaKeyValueScanner getScanner(final long sequenceID){
 		return new MutationScanner(sequenceID);
 	}
 	
+	/**
+	 * 
+	 * @author Myungbo Kim
+	 *
+	 */
 	private class MutationScanner implements HaeinsaKeyValueScanner {
 		private final long sequenceID;
 		private final Iterator<HaeinsaKeyValue> iterator;

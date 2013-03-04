@@ -2,12 +2,28 @@ package kr.co.vcnc.haeinsa;
 
 import java.util.Comparator;
 
+import kr.co.vcnc.haeinsa.utils.NullableComparator;
+
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValue.Type;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.google.common.collect.ComparisonChain;
 
+/**
+ * Modified POJO container of KeyValue class in HBase.
+ * 
+ * <p>HaeinsaKeyValue contains row, family, qualifier, value information and Type information, but not timestamp.
+ * Because haeinsa use timestamp for version control, user cannot manually control timestamp of HaeinsaKeyValue. 
+ * Type is same Enum with {@link org.apache.hadoop.hbase.KeyValue.Type}.
+ * 
+ * <p>HaeinsaKeyValue has public static comparator which can be used in navigableMap.
+ * This comparator is ComparisionChain of {@link NullableCompator} wrapped {@link org.apache.hadoop.hbase.util.Bytes#BYTES_COMPARATOR}.
+ * The order of comparisonChain is row, family, qualifier, value and type.
+ * 
+ * @author Myungbo Kim
+ *
+ */
 public class HaeinsaKeyValue {
 	public static final Comparator<HaeinsaKeyValue> COMPARATOR =new Comparator<HaeinsaKeyValue>() {
 		@Override

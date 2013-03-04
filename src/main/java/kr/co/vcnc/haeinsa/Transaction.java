@@ -222,7 +222,7 @@ public class Transaction {
 		RowTransaction primaryRowTx = createOrGetTableState(primary.getTableName()).createOrGetRowState(primary.getRow());
 		if (primaryRowTx.getCurrent().getState() == TRowLockState.PREWRITTEN){
 			// prewritten 상태에서는 timeout 보다 primary이 시간이 더 지났으면 abort 시켜야 함.
-			if (primaryRowTx.getCurrent().getTimeout() < System.currentTimeMillis()){
+			if (primaryRowTx.getCurrent().getExpiry() < System.currentTimeMillis()){
 				
 			}else{
 				// timeout이 지나지 않았다면, recover를 실패시켜야 함.

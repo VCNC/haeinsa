@@ -13,7 +13,13 @@ import org.apache.thrift.TSerializer;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 
-public final class HaeinsaThriftUtils {
+/**
+ * Static class for TRowLock ( Thrift class ) 
+ * Provide static method to serialize / deserialize with TCompactProtocol of Thrift
+ * @author Myungbo Kim
+ *
+ */
+public final class TRowLocks {
 	private static final TProtocolFactory PROTOCOL_FACTORY = new TCompactProtocol.Factory();
 	
 	private static TSerializer createSerializer(){
