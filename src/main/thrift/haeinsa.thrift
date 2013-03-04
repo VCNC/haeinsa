@@ -47,7 +47,7 @@ struct TRowLock {
 	2: required TRowLockState state,
 	3: required i64 commitTimestamp,
 	4: optional i64 currentTimestmap,
-	5: optional i64 timeout,
+	5: optional i64 expiry,
 	6: optional TRowKey primary,
 	7: optional list<TRowKey> secondaries,
 	8: optional list<TCellKey> prewritten,

@@ -17,7 +17,7 @@ import java.util.NavigableSet;
 import java.util.Set;
 
 import kr.co.vcnc.haeinsa.exception.ConflictException;
-import kr.co.vcnc.haeinsa.thrift.HaeinsaThriftUtils;
+import kr.co.vcnc.haeinsa.thrift.TRowLocks;
 import kr.co.vcnc.haeinsa.thrift.generated.TCellKey;
 import kr.co.vcnc.haeinsa.thrift.generated.TKeyValue;
 import kr.co.vcnc.haeinsa.thrift.generated.TMutation;
@@ -210,8 +210,8 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	private boolean checkAndIsShouldRecover(TRowLock rowLock)
 			throws IOException {
 		if (rowLock.getState() != TRowLockState.STABLE) {
-			if (rowLock.isSetTimeout()
-					&& rowLock.getTimeout() < System.currentTimeMillis()) {
+			if (rowLock.isSetExpiry()
+					&& rowLock.getExpiry() < System.currentTimeMillis()) {
 				return true;
 			}
 			throw new ConflictException("this row is unstable.");
@@ -303,9 +303,9 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 			put.add(kv.getFamily(), kv.getQualifier(), tx.getCommitTimestamp(), kv.getValue());
 		}
 		TRowLock newRowLock = new TRowLock(ROW_LOCK_VERSION, TRowLockState.STABLE, tx.getCommitTimestamp());
-		put.add(LOCK_FAMILY, LOCK_QUALIFIER, tx.getCommitTimestamp(), HaeinsaThriftUtils.serialize(newRowLock));
+		put.add(LOCK_FAMILY, LOCK_QUALIFIER, tx.getCommitTimestamp(), TRowLocks.serialize(newRowLock));
 		
-		byte[] currentRowLockBytes = HaeinsaThriftUtils.serialize(rowState
+		byte[] currentRowLockBytes = TRowLocks.serialize(rowState
 				.getCurrent());
 		if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, put)){
 			throw new ConflictException("can't acquire row's lock");
@@ -370,11 +370,11 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 
 		newRowLock.setPrewritten(Lists.newArrayList(prewritten));
 		newRowLock.setMutations(remaining);
-		newRowLock.setTimeout(System.currentTimeMillis() + ROW_LOCK_TIMEOUT);
+		newRowLock.setExpiry(System.currentTimeMillis() + ROW_LOCK_TIMEOUT);
 		put.add(LOCK_FAMILY, LOCK_QUALIFIER, tx.getCommitTimestamp(),
-				HaeinsaThriftUtils.serialize(newRowLock));
+				TRowLocks.serialize(newRowLock));
 
-		byte[] currentRowLockBytes = HaeinsaThriftUtils.serialize(rowState
+		byte[] currentRowLockBytes = TRowLocks.serialize(rowState
 				.getCurrent());
 
 		if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER,
@@ -398,7 +398,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 				.getMutations());
 		long currentTimestamp = rowTxState.getCurrent().getCurrentTimestmap();
 		for (int i = 0; i < remaining.size(); i++) {
-			byte[] currentRowLockBytes = HaeinsaThriftUtils
+			byte[] currentRowLockBytes = TRowLocks
 					.serialize(rowTxState.getCurrent());
 
 			TMutation mutation = remaining.get(i);
@@ -408,12 +408,12 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 				newRowLock.setCurrentTimestmap(currentTimestamp + i + 1);
 				newRowLock.setMutations(remaining.subList(i + 1,
 						remaining.size()));
-				newRowLock.setTimeout(System.currentTimeMillis()
+				newRowLock.setExpiry(System.currentTimeMillis()
 						+ ROW_LOCK_TIMEOUT);
 				Put put = new Put(row);
 				put.add(LOCK_FAMILY, LOCK_QUALIFIER,
 						newRowLock.getCurrentTimestmap(),
-						HaeinsaThriftUtils.serialize(newRowLock));
+						TRowLocks.serialize(newRowLock));
 				for (TKeyValue kv : mutation.getPut().getValues()) {
 					put.add(kv.getKey().getFamily(),
 							kv.getKey().getQualifier(),
@@ -467,14 +467,14 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	 */
 	protected void makeStable(RowTransaction rowTxState, byte[] row)
 			throws IOException {
-		byte[] currentRowLockBytes = HaeinsaThriftUtils.serialize(rowTxState
+		byte[] currentRowLockBytes = TRowLocks.serialize(rowTxState
 				.getCurrent());
 		Transaction transaction = rowTxState.getTableTransaction()
 				.getTransaction();
 		long commitTimestamp = transaction.getCommitTimestamp();
 		TRowLock newRowLock = new TRowLock(ROW_LOCK_VERSION,
 				TRowLockState.STABLE, commitTimestamp);
-		byte[] newRowLockBytes = HaeinsaThriftUtils.serialize(newRowLock);
+		byte[] newRowLockBytes = TRowLocks.serialize(newRowLock);
 		Put put = new Put(row);
 		put.add(LOCK_FAMILY, LOCK_QUALIFIER, commitTimestamp, newRowLockBytes);
 
@@ -494,7 +494,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	 */
 	protected void commitPrimary(RowTransaction rowTxState, byte[] row)
 			throws IOException {
-		byte[] currentRowLockBytes = HaeinsaThriftUtils.serialize(rowTxState
+		byte[] currentRowLockBytes = TRowLocks.serialize(rowTxState
 				.getCurrent());
 		Transaction transaction = rowTxState.getTableTransaction()
 				.getTransaction();
@@ -503,9 +503,9 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		newRowLock.setCommitTimestamp(commitTimestamp);
 		newRowLock.setState(TRowLockState.COMMITTED);
 		newRowLock.setPrewrittenIsSet(false);
-		newRowLock.setTimeout(System.currentTimeMillis() + ROW_LOCK_TIMEOUT);
+		newRowLock.setExpiry(System.currentTimeMillis() + ROW_LOCK_TIMEOUT);
 
-		byte[] newRowLockBytes = HaeinsaThriftUtils.serialize(newRowLock);
+		byte[] newRowLockBytes = TRowLocks.serialize(newRowLock);
 		Put put = new Put(row);
 		put.add(LOCK_FAMILY, LOCK_QUALIFIER, commitTimestamp, newRowLockBytes);
 
@@ -530,10 +530,10 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		get.addColumn(LOCK_FAMILY, LOCK_QUALIFIER);
 		Result result = table.get(get);
 		if (result.isEmpty()) {
-			return HaeinsaThriftUtils.deserialize(null);
+			return TRowLocks.deserialize(null);
 		} else {
 			byte[] rowLockBytes = result.getValue(LOCK_FAMILY, LOCK_QUALIFIER);
-			return HaeinsaThriftUtils.deserialize(rowLockBytes);
+			return TRowLocks.deserialize(rowLockBytes);
 		}
 	}
 
@@ -545,7 +545,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	 */
 	protected void abortPrimary(RowTransaction rowTxState, byte[] row)
 			throws IOException {
-		byte[] currentRowLockBytes = HaeinsaThriftUtils.serialize(rowTxState
+		byte[] currentRowLockBytes = TRowLocks.serialize(rowTxState
 				.getCurrent());
 		Transaction transaction = rowTxState.getTableTransaction()
 				.getTransaction();
@@ -554,9 +554,9 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		newRowLock.setCommitTimestamp(commitTimestamp);
 		newRowLock.setState(TRowLockState.ABORTED);
 		newRowLock.setMutationsIsSet(false);
-		newRowLock.setTimeout(System.currentTimeMillis() + ROW_LOCK_TIMEOUT);
+		newRowLock.setExpiry(System.currentTimeMillis() + ROW_LOCK_TIMEOUT);
 
-		byte[] newRowLockBytes = HaeinsaThriftUtils.serialize(newRowLock);
+		byte[] newRowLockBytes = TRowLocks.serialize(newRowLock);
 		Put put = new Put(row);
 		put.add(LOCK_FAMILY, LOCK_QUALIFIER, commitTimestamp, newRowLockBytes);
 
@@ -580,7 +580,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		if (rowTxState.getCurrent().getPrewrittenSize() == 0) {
 			return;
 		}
-		byte[] currentRowLockBytes = HaeinsaThriftUtils.serialize(rowTxState
+		byte[] currentRowLockBytes = TRowLocks.serialize(rowTxState
 				.getCurrent());
 		long prewriteTimestamp = rowTxState.getCurrent().getCurrentTimestmap();
 		Delete delete = new Delete(row);
@@ -724,7 +724,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 						RowTransaction rowState = tableState.createOrGetRowState(currentKV.getRow());
 						if (rowState.getCurrent() == null){
 							if (currentRowLock == null){
-								currentRowLock = HaeinsaThriftUtils.deserialize(null);
+								currentRowLock = TRowLocks.deserialize(null);
 								rowState.setCurrent(currentRowLock);
 							}
 							
@@ -923,7 +923,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 			if (currentResult != null){
 				byte[] lock = currentResult.getValue(LOCK_FAMILY, LOCK_QUALIFIER);
 				if (lock != null){
-					return HaeinsaThriftUtils.deserialize(lock);
+					return TRowLocks.deserialize(lock);
 				}
 			}
 			return null;
@@ -986,7 +986,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 			if (result != null){
 				byte[] lock = result.getValue(LOCK_FAMILY, LOCK_QUALIFIER);
 				if (lock != null){
-					return HaeinsaThriftUtils.deserialize(lock);
+					return TRowLocks.deserialize(lock);
 				}
 			}
 			return null;

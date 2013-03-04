@@ -1,7 +1,14 @@
-package kr.co.vcnc.haeinsa;
+package kr.co.vcnc.haeinsa.utils;
 
 import java.util.Comparator;
 
+/**
+ * Wrapper of Comparator. It allow to compare element with null.
+ * Null is assumed to be the smallest element.
+ * @author EwMkKpE
+ *
+ * @param <T> the type of element to compare with
+ */
 public class NullableComparator<T> implements Comparator<T> {
 	private final Comparator<T> comparator;
 	

@@ -6,6 +6,12 @@ import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
 
 import com.google.common.collect.Lists;
 
+/**
+ * Contains Transaction information of single row.
+ * This information is only saved in client memory until {@link Transaction#commit()} called.
+ * @author EwMkKpE
+ *
+ */
 public class RowTransaction {
 	private TRowLock current;
 	private final List<HaeinsaMutation> mutations = Lists.newArrayList();
