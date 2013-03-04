@@ -2,6 +2,11 @@ package kr.co.vcnc.haeinsa.exception;
 
 import java.io.IOException;
 
+/**
+ * 
+ * @author Myungbo Kim
+ *
+ */
 public class ConflictException extends IOException {
 
 	/**

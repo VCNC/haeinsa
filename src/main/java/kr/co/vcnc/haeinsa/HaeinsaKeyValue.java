@@ -21,7 +21,7 @@ import com.google.common.collect.ComparisonChain;
  * This comparator is ComparisionChain of {@link NullableCompator} wrapped {@link org.apache.hadoop.hbase.util.Bytes#BYTES_COMPARATOR}.
  * The order of comparisonChain is row, family, qualifier, value and type.
  * 
- * @author EwMkKpE
+ * @author Myungbo Kim
  *
  */
 public class HaeinsaKeyValue {
