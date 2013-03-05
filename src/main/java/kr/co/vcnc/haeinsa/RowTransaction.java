@@ -13,7 +13,6 @@ import com.google.common.collect.Lists;
  *
  */
 public class RowTransaction {
-	//	다른 변수명을 고려해 봐야 합니다.
 	private TRowLock current;
 	private final List<HaeinsaMutation> mutations = Lists.newArrayList();
 	private final TableTransaction tableTransaction;
