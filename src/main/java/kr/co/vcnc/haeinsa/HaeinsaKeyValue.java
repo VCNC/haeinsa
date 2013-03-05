@@ -4,7 +4,6 @@ import java.util.Comparator;
 
 import kr.co.vcnc.haeinsa.utils.NullableComparator;
 
-import org.apache.commons.codec.binary.Hex;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValue.Type;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -113,18 +112,5 @@ public class HaeinsaKeyValue {
 	            .add("value", Bytes.toStringBinary(value))
 	            .add("type", type)
 	            .toString();
-	}
-	
-	/**
-	 * for {@link HaeinsaKeyValue#toString()}
-	 * @param bytes
-	 * @return
-	 */
-	private String bytesToString(byte[] bytes){
-		String result = "";
-		for(int i=0;i<bytes.length;i++){
-			result += (0xff & bytes[i]) + " ";			
-		}
-		return result;
 	}
 }
