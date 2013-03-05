@@ -838,9 +838,6 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		 */
 		public HaeinsaResultImpl(List<HaeinsaKeyValue> sortedKVs) {
 			this.sortedKVs = sortedKVs;
-			//	여기서 kvs 의 row 값이 다르면 어떻게 되나요.
-			//	Exception 을 띄우고 싶슾셒습
-			//	HBase Result 도 그냥 0 번 불렀네;; 
 			if (sortedKVs.size() > 0) {
 				row = sortedKVs.get(0).getRow();
 			}
