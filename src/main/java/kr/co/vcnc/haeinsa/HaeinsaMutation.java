@@ -16,7 +16,11 @@ import org.apache.hadoop.hbase.util.Bytes;
 import com.google.common.collect.Iterables;
 
 /**
+ * {@link TMutation} (Thrift class) 에 대응하는 abstract class 이다.
+ * 단일한 row 에 대한 여러 Put 혹은 Delete 를 한꺼번에 들고 있을 수 있다. 
+ * {@link HaeinsaPut} 혹은 {@link HaeinsaDelete} 로 구현해서 사용한다.
  * 
+ * <p>HaeinsaTable 이 put/delete 정보를 get/scan 에 projection 할 때 사용할 수 있도록 {@link HaeinsaKeyValueScanner} 를 return 해준다. 
  * @author Myungbo Kim
  *
  */
@@ -67,22 +71,31 @@ public abstract class HaeinsaMutation {
 	public int compareTo(final Row d) {
 		return Bytes.compareTo(this.getRow(), d.getRow());
 	}
-	
+		
 	public abstract void add(HaeinsaMutation newMutation);
 	
 	/**
 	 * Change HaeinsaMutation to TMutation (Thrift Class).
-	 * <p> TMutation contains list of either TPut or TRemove.
+	 * <p> TMutation contains list of either TPut or TRemove. (not both) 
 	 * @return TMutation (Thrift class)
 	 */
 	public abstract TMutation toTMutation();
 	
+	/**
+	 * 
+	 * @param sequenceID sequence id represent which Scanner is newer one. Lower id is newer one.
+	 * @return
+	 */
 	public HaeinsaKeyValueScanner getScanner(final long sequenceID){
 		return new MutationScanner(sequenceID);
 	}
 	
 	/**
-	 * 
+	 * HaeinsaMutation 가 가지고 있는 Put 혹은 Delete Type 의 HaeinsaKeyValue 를 모아서 
+	 * HaeinsaKeyValueScanner interface로 접근할 수 있게 해준다.
+	 * <p>MutationScanner 가 제공하는 iterator 는 {@link HaeinsaKeyValue#COMPARATOR} 에 의해서 정렬된 
+	 * HaeinsaKeyValue 의 Collection 에 접근하게 된다.
+	 * <p>하나의 MutationScanner 가 제공하는 값들은 동일한 sequenceID 를 가지게 된다.
 	 * @author Myungbo Kim
 	 *
 	 */
@@ -91,6 +104,13 @@ public abstract class HaeinsaMutation {
 		private final Iterator<HaeinsaKeyValue> iterator;
 		private HaeinsaKeyValue current;
 		
+		/**
+		 * Iterator provided by MutationScanner access to sorted list of HaeinsaKeyValue by {@link HaeinsaKeyValue#COMPARATOR}.
+		 * <p>The part of generating iterator in this constructor based on the assumption that 
+		 * values() function of TreeMap return sorted collection of values.
+		 * Otherwise, the way to generate iterator should be changed.
+		 * @param sequenceID sequence id represent which Scanner is newer one. Lower id is newer one.
+		 */
 		public MutationScanner(long sequenceID){
 			this.sequenceID = sequenceID;
 			this.iterator = Iterables.concat(getFamilyMap().values()).iterator();
