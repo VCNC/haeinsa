@@ -9,11 +9,21 @@ import kr.co.vcnc.haeinsa.thrift.generated.TMutationType;
 import kr.co.vcnc.haeinsa.thrift.generated.TRemove;
 
 import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.KeyValue.Type;
+import org.apache.hadoop.hbase.client.Delete;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 
+/**
+ * Implementation of {@link HaeinsaMuation} which only contains HaeinsaKeyValue with 
+ * {@link Type#DeleteFamily} and {@link Type#DeleteColumn} identifier.
+ * HaeinsaPut can be analogous to {@link Delete} class in HBase. 
+ * <p>HaeinsaDelete only contains data of single row.
+ * @author Myungbo Kim
+ *
+ */
 public class HaeinsaDelete extends HaeinsaMutation {
 	
 	public HaeinsaDelete(byte[] row) {
@@ -72,6 +82,10 @@ public class HaeinsaDelete extends HaeinsaMutation {
 		return this;
 	}
 
+	/**
+	 * Merge all familyMap to this instance.
+	 * @throw IllegalStateException if newMuatation is not HaeinsaDelete
+	 */
 	@Override
 	public void add(HaeinsaMutation newMutation) {
 		Preconditions.checkState(newMutation instanceof HaeinsaDelete);

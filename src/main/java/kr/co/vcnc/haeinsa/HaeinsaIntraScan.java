@@ -3,9 +3,18 @@ package kr.co.vcnc.haeinsa;
 import java.util.NavigableSet;
 import java.util.TreeSet;
 
+import org.apache.hadoop.hbase.filter.ColumnRangeFilter;
 import org.apache.hadoop.hbase.util.Bytes;
 
-
+/**
+ * Custom integration of {@link ColumnRangeFilter} in Haeinsa.
+ * {@link HaeinsaIntraScan} can be used to retrieve specific range of columns from single row in scan-like way.
+ * <p>User can specify column family, range of qualifier, size of batch at a time and 
+ * whether start column and last column are included. 
+ * Default batch size is 32.
+ * @author Myungbo Kim
+ *
+ */
 public class HaeinsaIntraScan {
 	private final byte[] row;
 	private final byte[] minColumn;

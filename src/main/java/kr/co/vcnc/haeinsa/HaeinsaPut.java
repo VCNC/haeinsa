@@ -12,6 +12,7 @@ import kr.co.vcnc.haeinsa.thrift.generated.TPut;
 
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValue.Type;
+import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.google.common.base.Preconditions;
@@ -20,6 +21,7 @@ import com.google.common.collect.Sets;
 
 /**
  * Implementation of {@link HaeinsaMuation} which only contains HaeinsaKeyValue with {@link Type#Put} identifier.
+ * HaeinsaPut can be analogous to {@link Put} class in HBase. 
  * <p>HaeinsaPut only contains data of single row.
  * @author Myungbo Kim
  *
@@ -55,6 +57,9 @@ public class HaeinsaPut extends HaeinsaMutation {
 	public HaeinsaPut add(byte[] family, byte[] qualifier, byte[] value) {
 		NavigableSet<HaeinsaKeyValue> set = getKeyValueSet(family);
 		HaeinsaKeyValue kv = createPutKeyValue(family, qualifier, value);
+		//	같은 family, qualifier 에 같은 값이 들어오면 예전 것을 제거하고 새로 추가된 값만 반영함
+		//	HaeinsaKeyValue 의 Comparator 가 Key 만 비교하기는 하지만 NavigableSet 에서 같은 값이 다시 add 되었을 때 
+		//	새롭게 들어온 값으로 대체한다는 명시가 없어서 remove 후에 다시 추가한다. 
 		if (set.contains(kv)) {
 			set.remove(kv);
 		}
@@ -92,6 +97,7 @@ public class HaeinsaPut extends HaeinsaMutation {
 	
 	/**
 	 * Merge all familyMap to this instance.
+	 * @throw IllegalStateException if newMuatation is not HaeinsaPut
 	 */
 	@Override
 	public void add(HaeinsaMutation newMutation) {

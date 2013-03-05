@@ -8,17 +8,32 @@ import java.util.TreeSet;
 
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 
+/**
+ * HaeinsaScan can be analogous to {@link Scan} class in HBase. 
+ * <p>HaeinsaScan do not support to set batch value, but only support caching.
+ * So if user only specify column family and retrieve data from HBase, 
+ * {@link HaeinsaResultScanner} will return whole column family of the row at one time. 
+ * <p>Setting batch size will be supported in future....(?) 
+ * @author Myungbo Kim
+ *
+ */
 public class HaeinsaScan {
 	private byte[] startRow = HConstants.EMPTY_START_ROW;
 	private byte[] stopRow = HConstants.EMPTY_END_ROW;
 	private int caching = -1;
 	private boolean cacheBlocks = true;
 
+	//	map of family to qualifier
 	private Map<byte[], NavigableSet<byte[]>> familyMap = new TreeMap<byte[], NavigableSet<byte[]>>(
 			Bytes.BYTES_COMPARATOR);
 	
+	/**
+	 * Create a HaeinsaScan instance.
+	 * <p>If row is not specified for HaeinsaScan, the Scanner will start from the beginning of the table.
+	 */
 	public HaeinsaScan(){
 	}
 
@@ -220,6 +235,9 @@ public class HaeinsaScan {
 
 	/**
 	 * Set whether blocks should be cached for this Scan.
+	 * HBase 에서 해당 Scan 을 위해서 HFile 의 Block 을 memory 에 Cache 하고 있을 것인지를 결정할 수 있다.
+	 * 일반적으로 Block 을 caching 하면 다음번 get request 에 대한 응답이 빠를 수 있으나 DB 의 메모리 소모가 심해진다.
+	 * cacheBlocks 와 caching 은 서로 관계가 없는 설정이다.
 	 * <p>
 	 * This is true by default. When true, default settings of the table and
 	 * family are used (this will never override caching blocks if the block
@@ -236,7 +254,7 @@ public class HaeinsaScan {
 	/**
 	 * Get whether blocks should be cached for this Scan.
 	 * 
-	 * @return true if default caching should be used, false if blocks should
+	 * @return true if default setting of block caching should be used, false if blocks should
 	 *         not be cached
 	 */
 	public boolean getCacheBlocks() {

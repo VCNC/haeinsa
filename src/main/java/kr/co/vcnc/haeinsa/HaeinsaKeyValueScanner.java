@@ -10,7 +10,7 @@ import com.google.common.collect.ComparisonChain;
 /**
  * Scanner wrapper of HaeinsaKeyValue. 
  * Contains multiple HaeinsaKeyValue inside to allow iterator pattern.
- * <p>HaeinsaKeyValueScanner interface provide additional {@link HaeinsaKeyValueScanner#peek} 
+ * <p>HaeinsaKeyValueScanner interface provides additional {@link HaeinsaKeyValueScanner#peek} 
  * method to peek element of scanner without moving iterator.
  * <p>Each HaeinsaKeyValueScanner have sequenceId which represent which scanner is newer one. 
  *  

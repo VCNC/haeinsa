@@ -8,10 +8,11 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValue.Type;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import com.google.common.base.Objects;
 import com.google.common.collect.ComparisonChain;
 
 /**
- * Modified POJO container of KeyValue class in HBase.
+ * Modified POJO container of {@link KeyValue} class in HBase.
  * Like {@link KeyValue}, contains only one Key-Value data.
  * 
  * <p>HaeinsaKeyValue contains row, family, qualifier, value information and Type information, but not timestamp.
@@ -97,5 +98,19 @@ public class HaeinsaKeyValue {
 
 	public void setType(Type type) {
 		this.type = type;
+	}
+	
+	/**
+	 * for debugging
+	 */
+	@Override
+	public String toString(){
+		return Objects.toStringHelper(this.getClass())
+				.add("row", Bytes.toStringBinary(row))
+	            .add("family", Bytes.toStringBinary(family))
+	            .add("qualifier", Bytes.toStringBinary(qualifier))
+	            .add("value", Bytes.toStringBinary(value))
+	            .add("type", type)
+	            .toString();
 	}
 }
