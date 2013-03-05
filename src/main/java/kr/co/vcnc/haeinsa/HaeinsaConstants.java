@@ -9,7 +9,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 /**
  * Static Class of Constants for Haeinsa
  * 
- * @author EwMkKpE
+ * @author Myungbo Kim
  *
  */
 public final class HaeinsaConstants {

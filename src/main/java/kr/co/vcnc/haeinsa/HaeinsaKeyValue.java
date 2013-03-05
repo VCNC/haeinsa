@@ -12,6 +12,7 @@ import com.google.common.collect.ComparisonChain;
 
 /**
  * Modified POJO container of KeyValue class in HBase.
+ * Like {@link KeyValue}, contains only one Key-Value data.
  * 
  * <p>HaeinsaKeyValue contains row, family, qualifier, value information and Type information, but not timestamp.
  * Because haeinsa use timestamp for version control, user cannot manually control timestamp of HaeinsaKeyValue. 
