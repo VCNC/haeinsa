@@ -13,6 +13,7 @@ import com.google.common.collect.Lists;
  *
  */
 public class RowTransaction {
+	//	이거 이름이 왜 current 인지 모르겠다능...
 	private TRowLock current;
 	private final List<HaeinsaMutation> mutations = Lists.newArrayList();
 	private final TableTransaction tableTransaction;

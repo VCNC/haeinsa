@@ -11,7 +11,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import com.google.common.collect.ComparisonChain;
 
 /**
- * Modified POJO container of KeyValue class in HBase.
+ * Modified POJO container of {@link KeyValue} class in HBase.
  * Like {@link KeyValue}, contains only one Key-Value data.
  * 
  * <p>HaeinsaKeyValue contains row, family, qualifier, value information and Type information, but not timestamp.
