@@ -26,9 +26,14 @@ public class HaeinsaScan {
 	private int caching = -1;
 	private boolean cacheBlocks = true;
 
+	//	map of family to qualifier
 	private Map<byte[], NavigableSet<byte[]>> familyMap = new TreeMap<byte[], NavigableSet<byte[]>>(
 			Bytes.BYTES_COMPARATOR);
 	
+	/**
+	 * Create a HaeinsaScan instance.
+	 * <p>If row is not specified for HaeinsaScan, the Scanner will start from the beginning of the table.
+	 */
 	public HaeinsaScan(){
 	}
 

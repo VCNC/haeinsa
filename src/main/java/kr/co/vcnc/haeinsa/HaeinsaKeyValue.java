@@ -4,10 +4,12 @@ import java.util.Comparator;
 
 import kr.co.vcnc.haeinsa.utils.NullableComparator;
 
+import org.apache.commons.codec.binary.Hex;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValue.Type;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import com.google.common.base.Objects;
 import com.google.common.collect.ComparisonChain;
 
 /**
@@ -104,13 +106,13 @@ public class HaeinsaKeyValue {
 	 */
 	@Override
 	public String toString(){
-		String result = "";
-		result += "{row:" + bytesToString(this.getRow());
-		result += "/family:" + bytesToString(this.getFamily());
-		result += "/qualifier:" + bytesToString(this.getQualifier());
-		result += "/value:" + bytesToString(this.getValue());
-		result += "/Type:" + this.getType() + "}";
-		return result;
+		return Objects.toStringHelper(this.getClass())
+				.add("row", Bytes.toStringBinary(row))
+	            .add("family", Bytes.toStringBinary(family))
+	            .add("qualifier", Bytes.toStringBinary(qualifier))
+	            .add("value", Bytes.toStringBinary(value))
+	            .add("type", type)
+	            .toString();
 	}
 	
 	/**
