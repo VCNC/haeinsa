@@ -5,8 +5,15 @@ import java.util.NavigableSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.util.Bytes;
 
+/**
+ * HaeinsaGet can be analogous to {@link Get} class in HBase. 
+ * <p>HaeinsaGet only contains data of single row.
+ * @author Myungbo Kim
+ *
+ */
 public class HaeinsaGet {
 	private byte[] row = null;
 	private Map<byte[], NavigableSet<byte[]>> familyMap = new TreeMap<byte[], NavigableSet<byte[]>>(

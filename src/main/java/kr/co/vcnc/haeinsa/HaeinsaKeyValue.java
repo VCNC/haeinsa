@@ -98,4 +98,31 @@ public class HaeinsaKeyValue {
 	public void setType(Type type) {
 		this.type = type;
 	}
+	
+	/**
+	 * for debugging
+	 */
+	@Override
+	public String toString(){
+		String result = "";
+		result += "{row:" + bytesToString(this.getRow());
+		result += "/family:" + bytesToString(this.getFamily());
+		result += "/qualifier:" + bytesToString(this.getQualifier());
+		result += "/value:" + bytesToString(this.getValue());
+		result += "/Type:" + this.getType() + "}";
+		return result;
+	}
+	
+	/**
+	 * for {@link HaeinsaKeyValue#toString()}
+	 * @param bytes
+	 * @return
+	 */
+	private String bytesToString(byte[] bytes){
+		String result = "";
+		for(int i=0;i<bytes.length;i++){
+			result += (0xff & bytes[i]) + " ";			
+		}
+		return result;
+	}
 }
