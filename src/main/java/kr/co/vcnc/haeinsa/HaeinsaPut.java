@@ -55,15 +55,10 @@ public class HaeinsaPut extends HaeinsaMutation {
 	public HaeinsaPut add(byte[] family, byte[] qualifier, byte[] value) {
 		NavigableSet<HaeinsaKeyValue> set = getKeyValueSet(family);
 		HaeinsaKeyValue kv = createPutKeyValue(family, qualifier, value);
-		/*
 		if (set.contains(kv)) {
 			set.remove(kv);
 		}
 		set.add(kv);
-		*/
-		if(!set.contains(kv)){
-			set.add(kv);
-		}
 		familyMap.put(kv.getFamily(), set);
 		return this;
 	}
