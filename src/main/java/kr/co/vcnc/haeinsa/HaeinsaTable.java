@@ -709,7 +709,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 			if (!initialized) {
 				initialize();
 			}
-			final List<HaeinsaKeyValue> kvs = Lists.newArrayList();
+			final List<HaeinsaKeyValue> sortedKVs = Lists.newArrayList();
 			
 			while (true) {
 				if (scanners.isEmpty()) {
@@ -769,7 +769,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 												currentKV.getQualifier()))) {
 						// Row, Family, Qualifier 모두가 같은 경우가 더 나오면 무시한다.
 						if (!deleteTracker.isDeleted(currentKV, currentScanner.getSequenceID()) && columnTracker.isMatched(currentKV)){
-							kvs.add(currentKV);
+							sortedKVs.add(currentKV);
 							prevKV = currentKV;
 						}
 					}
@@ -779,16 +779,16 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 					deleteTracker.reset();
 					prevKV = null;
 					maxSeqID = Long.MAX_VALUE;
-					if (kvs.size() > 0){
+					if (sortedKVs.size() > 0){
 						break;
 					}
 				}
-				if (batch > 0 && kvs.size() >= batch){
+				if (batch > 0 && sortedKVs.size() >= batch){
 					break;
 				}
 			}
-			if (kvs.size() > 0) {
-				return new HaeinsaResultImpl(kvs);
+			if (sortedKVs.size() > 0) {
+				return new HaeinsaResultImpl(sortedKVs);
 			} else {
 				return null;
 			}
@@ -829,13 +829,20 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	}
 
 	private static class HaeinsaResultImpl implements HaeinsaResult {
-		private final List<HaeinsaKeyValue> kvs;
+		private final List<HaeinsaKeyValue> sortedKVs;
 		private byte[] row = null;
 
-		public HaeinsaResultImpl(List<HaeinsaKeyValue> kvs) {
-			this.kvs = kvs;
-			if (kvs.size() > 0) {
-				row = kvs.get(0).getRow();
+		/**
+		 * Construct HaeinsaResultImpl from sorted list of HaeinsaKeyValue
+		 * @param sortedKVs - assume all the HaeinsaKeyValue in sortedKVs have same row and sorted in ascending order.
+		 */
+		public HaeinsaResultImpl(List<HaeinsaKeyValue> sortedKVs) {
+			this.sortedKVs = sortedKVs;
+			//	여기서 kvs 의 row 값이 다르면 어떻게 되나요.
+			//	Exception 을 띄우고 싶슾셒습
+			//	HBase Result 도 그냥 0 번 불렀네;; 
+			if (sortedKVs.size() > 0) {
+				row = sortedKVs.get(0).getRow();
 			}
 		}
 
@@ -846,16 +853,16 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 
 		@Override
 		public List<HaeinsaKeyValue> list() {
-			return kvs;
+			return sortedKVs;
 		}
 
 		@Override
 		public byte[] getValue(byte[] family, byte[] qualifier) {
-			int index = Collections.binarySearch(kvs, new HaeinsaKeyValue(row,
+			int index = Collections.binarySearch(sortedKVs, new HaeinsaKeyValue(row,
 					family, qualifier, null, KeyValue.Type.Put),
 					HaeinsaKeyValue.COMPARATOR);
 			if (index >= 0) {
-				return kvs.get(index).getValue();
+				return sortedKVs.get(index).getValue();
 			}
 			return null;
 		}
@@ -867,7 +874,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 
 		@Override
 		public boolean isEmpty() {
-			return kvs.size() == 0;
+			return sortedKVs.size() == 0;
 		}
 	}
 
