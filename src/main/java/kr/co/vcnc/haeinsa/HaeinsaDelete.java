@@ -74,7 +74,7 @@ public class HaeinsaDelete extends HaeinsaMutation {
 
 	@Override
 	public void add(HaeinsaMutation newMutation) {
-		Preconditions.checkState(!(newMutation instanceof HaeinsaDelete));
+		Preconditions.checkState(newMutation instanceof HaeinsaDelete);
 		for (HaeinsaKeyValue newKV : Iterables.concat(newMutation.getFamilyMap().values())){
 			if (newKV.getType() == KeyValue.Type.DeleteFamily){
 				deleteFamily(newKV.getFamily());

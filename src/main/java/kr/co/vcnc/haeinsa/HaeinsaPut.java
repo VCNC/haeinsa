@@ -11,12 +11,19 @@ import kr.co.vcnc.haeinsa.thrift.generated.TMutationType;
 import kr.co.vcnc.haeinsa.thrift.generated.TPut;
 
 import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.KeyValue.Type;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 
+/**
+ * Implementation of {@link HaeinsaMuation} which only contains {@link Type#Put}.
+ * <p>HaeinsaPut also contains data of single row.
+ * @author Myungbo Kim
+ *
+ */
 public class HaeinsaPut extends HaeinsaMutation {
 	public HaeinsaPut(byte[] row) {
 		this.row = row;
@@ -85,7 +92,7 @@ public class HaeinsaPut extends HaeinsaMutation {
 	
 	@Override
 	public void add(HaeinsaMutation newMutation) {
-		Preconditions.checkState(!(newMutation instanceof HaeinsaPut));
+		Preconditions.checkState(newMutation instanceof HaeinsaPut);
 		for (HaeinsaKeyValue newKV : Iterables.concat(newMutation.getFamilyMap().values())){
 			add(newKV.getFamily(), newKV.getQualifier(), newKV.getValue());
 		}
