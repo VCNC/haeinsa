@@ -55,6 +55,7 @@ public class HaeinsaPut extends HaeinsaMutation {
 	public HaeinsaPut add(byte[] family, byte[] qualifier, byte[] value) {
 		NavigableSet<HaeinsaKeyValue> set = getKeyValueSet(family);
 		HaeinsaKeyValue kv = createPutKeyValue(family, qualifier, value);
+		//	같은 family, qualifier 에 같은 값이 들어오면 예전 것을 제거하고 새로 추가된 값만 반영함
 		if (set.contains(kv)) {
 			set.remove(kv);
 		}
@@ -92,6 +93,7 @@ public class HaeinsaPut extends HaeinsaMutation {
 	
 	/**
 	 * Merge all familyMap to this instance.
+	 * @throw IllegalStateException if newMuatation is not HaeinsaPut
 	 */
 	@Override
 	public void add(HaeinsaMutation newMutation) {

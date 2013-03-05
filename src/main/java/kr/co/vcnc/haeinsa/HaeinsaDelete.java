@@ -72,6 +72,10 @@ public class HaeinsaDelete extends HaeinsaMutation {
 		return this;
 	}
 
+	/**
+	 * Merge all familyMap to this instance.
+	 * @throw IllegalStateException if newMuatation is not HaeinsaDelete
+	 */
 	@Override
 	public void add(HaeinsaMutation newMutation) {
 		Preconditions.checkState(newMutation instanceof HaeinsaDelete);
