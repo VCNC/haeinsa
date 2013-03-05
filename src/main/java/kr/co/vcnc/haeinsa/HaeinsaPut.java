@@ -19,8 +19,8 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 
 /**
- * Implementation of {@link HaeinsaMuation} which only contains {@link Type#Put}.
- * <p>HaeinsaPut also contains data of single row.
+ * Implementation of {@link HaeinsaMuation} which only contains HaeinsaKeyValue with {@link Type#Put} identifier.
+ * <p>HaeinsaPut only contains data of single row.
  * @author Myungbo Kim
  *
  */
@@ -55,10 +55,15 @@ public class HaeinsaPut extends HaeinsaMutation {
 	public HaeinsaPut add(byte[] family, byte[] qualifier, byte[] value) {
 		NavigableSet<HaeinsaKeyValue> set = getKeyValueSet(family);
 		HaeinsaKeyValue kv = createPutKeyValue(family, qualifier, value);
+		/*
 		if (set.contains(kv)) {
 			set.remove(kv);
 		}
 		set.add(kv);
+		*/
+		if(!set.contains(kv)){
+			set.add(kv);
+		}
 		familyMap.put(kv.getFamily(), set);
 		return this;
 	}
@@ -74,22 +79,25 @@ public class HaeinsaPut extends HaeinsaMutation {
 	}
 
 	/**
-	 * Creates an empty list if one doesnt exist for the given column family or
-	 * else it returns the associated list of KeyValue objects.
+	 * Creates an empty set if one doesn't exist for the given column family or
+	 * else it returns the associated set of KeyValue objects.
 	 * 
 	 * @param family
 	 *            column family
-	 * @return a list of KeyValue objects, returns an empty list if one doesnt
+	 * @return a set of KeyValue objects, returns an empty set if one doesn't
 	 *         exist.
 	 */
 	private NavigableSet<HaeinsaKeyValue> getKeyValueSet(byte[] family) {
-		NavigableSet<HaeinsaKeyValue> list = familyMap.get(family);
-		if (list == null) {
-			list = Sets.newTreeSet(HaeinsaKeyValue.COMPARATOR);
+		NavigableSet<HaeinsaKeyValue> set = familyMap.get(family);
+		if (set == null) {
+			set = Sets.newTreeSet(HaeinsaKeyValue.COMPARATOR);
 		}
-		return list;
+		return set;
 	}
 	
+	/**
+	 * Merge all familyMap to this instance.
+	 */
 	@Override
 	public void add(HaeinsaMutation newMutation) {
 		Preconditions.checkState(newMutation instanceof HaeinsaPut);
@@ -100,16 +108,16 @@ public class HaeinsaPut extends HaeinsaMutation {
 		
 	@Override
 	public TMutation toTMutation() {
-		TMutation newMutation = new TMutation();
-		newMutation.setType(TMutationType.PUT);
-		TPut put = new TPut();
+		TMutation newTMutation = new TMutation();
+		newTMutation.setType(TMutationType.PUT);
+		TPut newTPut = new TPut();
 		for (HaeinsaKeyValue kv : Iterables.concat(familyMap.values())){
-			TKeyValue newKV = new TKeyValue();
-			newKV.setKey(new TCellKey().setFamily(kv.getFamily()).setQualifier(kv.getQualifier()));
-			newKV.setValue(kv.getValue());
-			put.addToValues(newKV);
+			TKeyValue newTKV = new TKeyValue();
+			newTKV.setKey(new TCellKey().setFamily(kv.getFamily()).setQualifier(kv.getQualifier()));
+			newTKV.setValue(kv.getValue());
+			newTPut.addToValues(newTKV);
 		}
-		newMutation.setPut(put);
-		return newMutation;
+		newTMutation.setPut(newTPut);
+		return newTMutation;
 	}
 }

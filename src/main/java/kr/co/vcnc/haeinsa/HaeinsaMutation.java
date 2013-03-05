@@ -71,12 +71,12 @@ public abstract class HaeinsaMutation {
 	public int compareTo(final Row d) {
 		return Bytes.compareTo(this.getRow(), d.getRow());
 	}
-	
+		
 	public abstract void add(HaeinsaMutation newMutation);
 	
 	/**
 	 * Change HaeinsaMutation to TMutation (Thrift Class).
-	 * <p> TMutation contains list of either TPut or TRemove.
+	 * <p> TMutation contains list of either TPut or TRemove. (not both) 
 	 * @return TMutation (Thrift class)
 	 */
 	public abstract TMutation toTMutation();
