@@ -45,6 +45,12 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
+/**
+ * Implementation of {@link HaeinsaTableInterface}. 
+ * It works with {@link Transaction} to provide transaction on HBase. 
+ * @author Myungbo Kim
+ *
+ */
 public class HaeinsaTable implements HaeinsaTableInterface {
 
 	private final HTableInterface table;
@@ -756,19 +762,18 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 				if (Bytes.equals(prevKV.getRow(), currentKV.getRow())) {
 					if (currentScanner.getSequenceID() > maxSeqID) {
 						
-					} else if (Bytes.equals(currentKV.getFamily(), LOCK_FAMILY) && Bytes.equals(currentKV.getQualifier(), LOCK_QUALIFIER)){
+					} else if (Bytes.equals(currentKV.getFamily(), LOCK_FAMILY) 
+							&& Bytes.equals(currentKV.getQualifier(), LOCK_QUALIFIER)){
 						
 					} else if (currentKV.getType() == Type.DeleteColumn || currentKV.getType() == Type.DeleteFamily){
 						deleteTracker.add(currentKV, currentScanner.getSequenceID());
 					} else if (prevKV == currentKV
-							|| !(Bytes.equals(prevKV.getRow(),
-									currentKV.getRow())
-									&& Bytes.equals(prevKV.getFamily(),
-											currentKV.getFamily()) && Bytes
-										.equals(prevKV.getQualifier(),
-												currentKV.getQualifier()))) {
+							|| !(Bytes.equals(prevKV.getRow(), currentKV.getRow())
+									&& Bytes.equals(prevKV.getFamily(), currentKV.getFamily()) 
+									&& Bytes.equals(prevKV.getQualifier(), currentKV.getQualifier()))) {
 						// Row, Family, Qualifier 모두가 같은 경우가 더 나오면 무시한다.
-						if (!deleteTracker.isDeleted(currentKV, currentScanner.getSequenceID()) && columnTracker.isMatched(currentKV)){
+						if (!deleteTracker.isDeleted(currentKV, currentScanner.getSequenceID()) 
+								&& columnTracker.isMatched(currentKV)){
 							sortedKVs.add(currentKV);
 							prevKV = currentKV;
 						}

@@ -12,10 +12,13 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 
 /**
- * HaeinsaScan can be analogous to {@link Scan} class in HBase. 
+ * HaeinsaScan is analogous to {@link Scan} class in HBase.
+ * HaeinsaScan can be used to retrieve range of row with specific family or (family, qualifier) pairs. 
+ * 
  * <p>HaeinsaScan do not support to set batch value, but only support caching.
  * So if user only specify column family and retrieve data from HBase, 
- * {@link HaeinsaResultScanner} will return whole column family of the row at one time. 
+ * {@link HaeinsaResultScanner} will return whole column family of the row at one time.
+ *  
  * <p>Setting batch size will be supported in future....(?) 
  * @author Myungbo Kim
  *
@@ -26,7 +29,7 @@ public class HaeinsaScan {
 	private int caching = -1;
 	private boolean cacheBlocks = true;
 
-	//	map of family to qualifier
+	//	{ family -> qualifier } 
 	private Map<byte[], NavigableSet<byte[]>> familyMap = new TreeMap<byte[], NavigableSet<byte[]>>(
 			Bytes.BYTES_COMPARATOR);
 	
