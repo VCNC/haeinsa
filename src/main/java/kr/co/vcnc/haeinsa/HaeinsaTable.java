@@ -605,6 +605,11 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		return table;
 	}
 
+	/**
+	 * TODO
+	 * @author Myungbo Kim
+	 *
+	 */
 	private class ClientScanner implements HaeinsaResultScanner { 
 		private final Transaction tx;
 		private final TableTransaction tableState;
@@ -715,7 +720,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 			if (!initialized) {
 				initialize();
 			}
-			final List<HaeinsaKeyValue> sortedKVs = Lists.newArrayList();
+			final List<HaeinsaKeyValue> sortedKVPuts = Lists.newArrayList();
 			
 			while (true) {
 				if (scanners.isEmpty()) {
@@ -764,8 +769,9 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 						
 					} else if (Bytes.equals(currentKV.getFamily(), LOCK_FAMILY) 
 							&& Bytes.equals(currentKV.getQualifier(), LOCK_QUALIFIER)){
-						
+						//	if currentKV is Lock						
 					} else if (currentKV.getType() == Type.DeleteColumn || currentKV.getType() == Type.DeleteFamily){
+						//	if currentKV is delete
 						deleteTracker.add(currentKV, currentScanner.getSequenceID());
 					} else if (prevKV == currentKV
 							|| !(Bytes.equals(prevKV.getRow(), currentKV.getRow())
@@ -774,7 +780,8 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 						// Row, Family, Qualifier 모두가 같은 경우가 더 나오면 무시한다.
 						if (!deleteTracker.isDeleted(currentKV, currentScanner.getSequenceID()) 
 								&& columnTracker.isMatched(currentKV)){
-							sortedKVs.add(currentKV);
+							//	if currentKV is not deleted and inside scan range
+							sortedKVPuts.add(currentKV);
 							prevKV = currentKV;
 						}
 					}
@@ -784,16 +791,16 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 					deleteTracker.reset();
 					prevKV = null;
 					maxSeqID = Long.MAX_VALUE;
-					if (sortedKVs.size() > 0){
+					if (sortedKVPuts.size() > 0){
 						break;
 					}
 				}
-				if (batch > 0 && sortedKVs.size() >= batch){
+				if (batch > 0 && sortedKVPuts.size() >= batch){
 					break;
 				}
 			}
-			if (sortedKVs.size() > 0) {
-				return new HaeinsaResultImpl(sortedKVs);
+			if (sortedKVPuts.size() > 0) {
+				return new HaeinsaResultImpl(sortedKVPuts);
 			} else {
 				return null;
 			}
@@ -833,18 +840,26 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 
 	}
 
+	/**
+	 * HaeinsaResultImpl can contain list of HaeinsaKeyValues which have {@link Type#Put} Type.
+	 * This class will be used for Put/Delete projection.
+	 * <p>Only contains HaeinsaKeyValue of single row.
+	 * @author Myungbo Kim
+	 *
+	 */
 	private static class HaeinsaResultImpl implements HaeinsaResult {
-		private final List<HaeinsaKeyValue> sortedKVs;
+		private final List<HaeinsaKeyValue> sortedKVPuts;
 		private byte[] row = null;
 
 		/**
 		 * Construct HaeinsaResultImpl from sorted list of HaeinsaKeyValue
-		 * @param sortedKVs - assume all the HaeinsaKeyValue in sortedKVs have same row and sorted in ascending order.
+		 * @param sortedKVPuts - assume all the HaeinsaKeyValue in sortedKVPuts have {@link Type#Put}, 
+		 * from same row and sorted in ascending order.
 		 */
-		public HaeinsaResultImpl(List<HaeinsaKeyValue> sortedKVs) {
-			this.sortedKVs = sortedKVs;
-			if (sortedKVs.size() > 0) {
-				row = sortedKVs.get(0).getRow();
+		public HaeinsaResultImpl(List<HaeinsaKeyValue> sortedKVPuts) {
+			this.sortedKVPuts = sortedKVPuts;
+			if (sortedKVPuts.size() > 0) {
+				row = sortedKVPuts.get(0).getRow();
 			}
 		}
 
@@ -855,20 +870,28 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 
 		@Override
 		public List<HaeinsaKeyValue> list() {
-			return sortedKVs;
+			return sortedKVPuts;
 		}
 
+		/**
+		 * TODO 
+		 */
 		@Override
 		public byte[] getValue(byte[] family, byte[] qualifier) {
-			int index = Collections.binarySearch(sortedKVs, new HaeinsaKeyValue(row,
+			//	Because HaeinsaKeyValue Comparator only compare ( row, family, qualifier, type ), 
+			//	so null in argument value is not important.
+			int index = Collections.binarySearch(sortedKVPuts, new HaeinsaKeyValue(row,
 					family, qualifier, null, KeyValue.Type.Put),
 					HaeinsaKeyValue.COMPARATOR);
 			if (index >= 0) {
-				return sortedKVs.get(index).getValue();
+				return sortedKVPuts.get(index).getValue();
 			}
 			return null;
 		}
 
+		/**
+		 * return true if (family, qualifier) exist in HaeinsaResultImpl.
+		 */
 		@Override
 		public boolean containsColumn(byte[] family, byte[] qualifier) {
 			return getValue(family, qualifier) != null;
@@ -876,7 +899,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 
 		@Override
 		public boolean isEmpty() {
-			return sortedKVs.size() == 0;
+			return sortedKVPuts.size() == 0;
 		}
 	}
 
