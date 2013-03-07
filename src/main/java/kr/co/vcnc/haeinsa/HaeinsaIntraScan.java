@@ -8,10 +8,13 @@ import org.apache.hadoop.hbase.util.Bytes;
 
 /**
  * Custom integration of {@link ColumnRangeFilter} in Haeinsa.
- * {@link HaeinsaIntraScan} can be used to retrieve specific range of columns from single row in scan-like way.
+ * In contrast to {@link HaeinsaScan}, HaeinsaIntraScan can be used to retrieve 
+ * range of column qualifier inside single row with scan-like way.
+ * 
  * <p>User can specify column family, range of qualifier, size of batch at a time and 
  * whether start column and last column are included. 
- * Default batch size is 32.
+ * 
+ * <p>Default batch size is 32.
  * @author Myungbo Kim
  *
  */
@@ -23,6 +26,7 @@ public class HaeinsaIntraScan {
 	private final boolean maxColumnInclusive;
 	private int batch = 32;
 	
+	//	if thie set is empty, then scan every family
 	private final NavigableSet<byte[]> families = new TreeSet<byte[]>(Bytes.BYTES_COMPARATOR);
 
 	public HaeinsaIntraScan(final byte[] row, final byte[] minColumn,

@@ -6,15 +6,28 @@ import org.apache.hadoop.hbase.util.Bytes;
 
 import com.google.common.collect.Maps;
 
+/**
+ * Tracking deleted columns and family inside specific row.
+ * @author Myungbo Kim
+ *
+ */
 public class HaeinsaDeleteTracker {
+	//	{ family -> sequenceId } 
 	private final NavigableMap<byte[], Long> families = Maps.newTreeMap(Bytes.BYTES_COMPARATOR);
+	//	{ family -> { column -> sequenceId } }  
 	private final NavigableMap<byte[], NavigableMap<byte[], Long>> cells = Maps.newTreeMap(Bytes.BYTES_COMPARATOR);
 
+	/**
+	 * Update family map or column map if kv is not exist in map or sequenceId is lower. 
+	 * @param kv - HaeinsaKeyValue to track
+	 * @param sequenceID - sequence ID, lower is newer. 
+	 */
 	public void add(HaeinsaKeyValue kv, long sequenceID) {
 		switch (kv.getType()) {
 		case DeleteFamily:{
 			Long previous = families.get(kv.getFamily());
 			if (previous == null || previous.compareTo(sequenceID) > 0){
+				//	sequenceId is lower than previous one.
 				families.put(kv.getFamily(), sequenceID);
 			}
 			break;
@@ -28,6 +41,7 @@ public class HaeinsaDeleteTracker {
 			}
 			Long previous = families.get(kv.getQualifier());
 			if (previous == null || previous.compareTo(sequenceID) > 0){
+				//	sequenceId is lower than previous one.
 				cellMap.put(kv.getQualifier(), sequenceID);
 			}
 			break;
@@ -38,6 +52,12 @@ public class HaeinsaDeleteTracker {
 		} 
 	}
 
+	/**
+	 * 
+	 * @param kv
+	 * @param sequenceID
+	 * @return Return true if kv is deleted after sequenceID, return false otherwise.
+	 */
 	public boolean isDeleted(HaeinsaKeyValue kv, long sequenceID) {
 		// check family
 		Long deletedSequenceID = families.get(kv.getFamily());
@@ -56,6 +76,9 @@ public class HaeinsaDeleteTracker {
 		return false;
 	}
 
+	/**
+	 * clear inside family & column tracker
+	 */
 	public void reset() {
 		families.clear();
 		cells.clear();
