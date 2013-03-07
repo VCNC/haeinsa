@@ -16,11 +16,17 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.PoolMap;
 import org.apache.hadoop.hbase.util.PoolMap.PoolType;
 
+/**
+ * Provide pooling pattern to HaeinsaTable.
+ * @author Myungbo Kim
+ *
+ */
 public class HaeinsaTablePool {
 	private final PoolMap<String, HaeinsaTable> tables;
 	private final int maxSize;
 	private final PoolType poolType;
 	private final Configuration config;
+	//	null if use default factory
 	private final HTableInterfaceFactory tableFactory;
 
 	/**

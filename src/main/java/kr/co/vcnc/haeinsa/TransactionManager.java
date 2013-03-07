@@ -7,13 +7,26 @@ import kr.co.vcnc.haeinsa.thrift.generated.TRowKey;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
 
+/**
+ * 
+ * @author Myungbo Kim
+ *
+ */
 public class TransactionManager {
 	private final HaeinsaTablePool tablePool;
 	
+	/**
+	 * Constructor for TransactionManager
+	 * @param tablePool HaeinsaTablePool to access HBase.
+	 */
 	public TransactionManager(HaeinsaTablePool tablePool){
 		this.tablePool = tablePool;
 	}
 	
+	/**
+	 * Get {@link Transaction} instance which can be used to start new transaction.
+	 * @return new Transaction instance have reference to this manager instance.
+	 */
 	public Transaction begin(){
 		return new Transaction(this);
 	}
@@ -80,7 +93,10 @@ public class TransactionManager {
 		RowTransaction rowState = tableState.createOrGetRowState(rowKey.getRow());
 		rowState.setCurrent(rowLock);
 	}
-		
+
+	/**
+	 * @return HaeinsaTablePool contained in TransactionManager
+	 */
 	public HaeinsaTablePool getTablePool() {
 		return tablePool;
 	}

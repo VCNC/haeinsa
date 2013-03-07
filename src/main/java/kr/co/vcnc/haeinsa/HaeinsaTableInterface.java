@@ -7,9 +7,18 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Delete;
+import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
 
+/**
+ * Wrapper of HTableInterface for Haeinsa.
+ * Some of methods in {@link HTableInterface} are dropped because of implementing complexity.
+ * Most of methods which directly access to DB now need {@link Transaction} as an argument which supervises transaction.    
+ * <p>Implemented by {@link HaeinsaTable}.
+ * @author Myungbo Kim
+ *
+ */
 public interface HaeinsaTableInterface {
 	  /**
 	   * Gets the name of this table.
@@ -82,7 +91,8 @@ public interface HaeinsaTableInterface {
 	  HaeinsaResultScanner getScanner(Transaction tx, HaeinsaIntraScan intraScan) throws IOException;
 
 	  /**
-	   * Gets a scanner on the current table for the given family.
+	   * Gets a scanner on the current table for the given family. 
+	   * Similar with {@link HaeinsaTableInterface#getScanner(Transaction, HaeinsaScan)}
 	   *
 	   * @param family The column family to scan.
 	   * @return A scanner.
@@ -93,6 +103,7 @@ public interface HaeinsaTableInterface {
 
 	  /**
 	   * Gets a scanner on the current table for the given family and qualifier.
+	   * Similar with {@link HaeinsaTableInterface#getScanner(Transaction, HaeinsaScan)}
 	   *
 	   * @param family The column family to scan.
 	   * @param qualifier The column qualifier to scan.

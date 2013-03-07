@@ -45,6 +45,12 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
+/**
+ * Implementation of {@link HaeinsaTableInterface}. 
+ * It works with {@link Transaction} to provide transaction on HBase. 
+ * @author Myungbo Kim
+ *
+ */
 public class HaeinsaTable implements HaeinsaTableInterface {
 
 	private final HTableInterface table;
