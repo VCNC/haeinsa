@@ -28,7 +28,6 @@ import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValue.Type;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
@@ -110,7 +109,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		scanner.close();
 		if (hResult == null){
 			List<HaeinsaKeyValue> emptyList = Collections.emptyList();
-			hResult = new HaeinsaResultImpl(emptyList);
+			hResult = new HaeinsaResult(emptyList);
 		}
 		return hResult;
 	}
@@ -800,7 +799,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 				}
 			}
 			if (sortedKVPuts.size() > 0) {
-				return new HaeinsaResultImpl(sortedKVPuts);
+				return new HaeinsaResult(sortedKVPuts);
 			} else {
 				return null;
 			}
@@ -839,70 +838,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		}
 
 	}
-
-	/**
-	 * HaeinsaResultImpl can contain list of HaeinsaKeyValues which have {@link Type#Put} Type.
-	 * This class will be used for Put/Delete projection.
-	 * <p>Only contains HaeinsaKeyValue of single row.
-	 * @author Myungbo Kim
-	 *
-	 */
-	private static class HaeinsaResultImpl implements HaeinsaResult {
-		private final List<HaeinsaKeyValue> sortedKVPuts;
-		private byte[] row = null;
-
-		/**
-		 * Construct HaeinsaResultImpl from sorted list of HaeinsaKeyValue
-		 * @param sortedKVPuts - assume all the HaeinsaKeyValue in sortedKVPuts have {@link Type#Put}, 
-		 * from same row and sorted in ascending order.
-		 */
-		public HaeinsaResultImpl(List<HaeinsaKeyValue> sortedKVPuts) {
-			this.sortedKVPuts = sortedKVPuts;
-			if (sortedKVPuts.size() > 0) {
-				row = sortedKVPuts.get(0).getRow();
-			}
-		}
-
-		@Override
-		public byte[] getRow() {
-			return row;
-		}
-
-		@Override
-		public List<HaeinsaKeyValue> list() {
-			return sortedKVPuts;
-		}
-
-		/**
-		 * TODO 
-		 */
-		@Override
-		public byte[] getValue(byte[] family, byte[] qualifier) {
-			//	Because HaeinsaKeyValue Comparator only compare ( row, family, qualifier, type ), 
-			//	so null in argument value is not important.
-			int index = Collections.binarySearch(sortedKVPuts, new HaeinsaKeyValue(row,
-					family, qualifier, null, KeyValue.Type.Put),
-					HaeinsaKeyValue.COMPARATOR);
-			if (index >= 0) {
-				return sortedKVPuts.get(index).getValue();
-			}
-			return null;
-		}
-
-		/**
-		 * return true if (family, qualifier) exist in HaeinsaResultImpl.
-		 */
-		@Override
-		public boolean containsColumn(byte[] family, byte[] qualifier) {
-			return getValue(family, qualifier) != null;
-		}
-
-		@Override
-		public boolean isEmpty() {
-			return sortedKVPuts.size() == 0;
-		}
-	}
-
+	
 	private static class HBaseScanScanner implements
 			HaeinsaKeyValueScanner {
 		private final ResultScanner resultScanner;
