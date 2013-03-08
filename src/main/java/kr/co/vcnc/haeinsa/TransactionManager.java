@@ -8,7 +8,7 @@ import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
 
 /**
- * 
+ * TODO
  * @author Myungbo Kim
  *
  */
@@ -25,12 +25,21 @@ public class TransactionManager {
 	
 	/**
 	 * Get {@link Transaction} instance which can be used to start new transaction.
+	 * <p>This method is thread-safe. 
 	 * @return new Transaction instance have reference to this manager instance.
 	 */
 	public Transaction begin(){
 		return new Transaction(this);
 	}
 	
+	/**
+	 * Make new {@link Transaction} instance which can be used to recover other failed/uncompleted transaction.
+	 * <p>This method is thread-safe.
+	 * @param tableName TableName of Transaction to recover. 
+	 * @param row Row of Transaction to recover.
+	 * @return
+	 * @throws IOException
+	 */
 	public Transaction getTransaction(byte[] tableName, byte[] row) throws IOException {
 		TRowLock startRowLock = getUnstableRowLock(tableName, row);
 		

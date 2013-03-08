@@ -604,6 +604,11 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		return table;
 	}
 
+	/**
+	 * TODO
+	 * @author Myungbo Kim
+	 *
+	 */
 	private class ClientScanner implements HaeinsaResultScanner { 
 		private final Transaction tx;
 		private final TableTransaction tableState;
@@ -714,7 +719,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 			if (!initialized) {
 				initialize();
 			}
-			final List<HaeinsaKeyValue> sortedKVs = Lists.newArrayList();
+			final List<HaeinsaKeyValue> sortedKVPuts = Lists.newArrayList();
 			
 			while (true) {
 				if (scanners.isEmpty()) {
@@ -763,8 +768,9 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 						
 					} else if (Bytes.equals(currentKV.getFamily(), LOCK_FAMILY) 
 							&& Bytes.equals(currentKV.getQualifier(), LOCK_QUALIFIER)){
-						
+						//	if currentKV is Lock						
 					} else if (currentKV.getType() == Type.DeleteColumn || currentKV.getType() == Type.DeleteFamily){
+						//	if currentKV is delete
 						deleteTracker.add(currentKV, currentScanner.getSequenceID());
 					} else if (prevKV == currentKV
 							|| !(Bytes.equals(prevKV.getRow(), currentKV.getRow())
@@ -773,7 +779,8 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 						// Row, Family, Qualifier 모두가 같은 경우가 더 나오면 무시한다.
 						if (!deleteTracker.isDeleted(currentKV, currentScanner.getSequenceID()) 
 								&& columnTracker.isMatched(currentKV)){
-							sortedKVs.add(currentKV);
+							//	if currentKV is not deleted and inside scan range
+							sortedKVPuts.add(currentKV);
 							prevKV = currentKV;
 						}
 					}
@@ -783,16 +790,16 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 					deleteTracker.reset();
 					prevKV = null;
 					maxSeqID = Long.MAX_VALUE;
-					if (sortedKVs.size() > 0){
+					if (sortedKVPuts.size() > 0){
 						break;
 					}
 				}
-				if (batch > 0 && sortedKVs.size() >= batch){
+				if (batch > 0 && sortedKVPuts.size() >= batch){
 					break;
 				}
 			}
-			if (sortedKVs.size() > 0) {
-				return new HaeinsaResult(sortedKVs);
+			if (sortedKVPuts.size() > 0) {
+				return new HaeinsaResult(sortedKVPuts);
 			} else {
 				return null;
 			}
@@ -831,7 +838,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		}
 
 	}
-
+	
 	private static class HBaseScanScanner implements
 			HaeinsaKeyValueScanner {
 		private final ResultScanner resultScanner;
