@@ -28,7 +28,6 @@ import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValue.Type;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
@@ -110,7 +109,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		scanner.close();
 		if (hResult == null){
 			List<HaeinsaKeyValue> emptyList = Collections.emptyList();
-			hResult = new HaeinsaResultImpl(emptyList);
+			hResult = new HaeinsaResult(emptyList);
 		}
 		return hResult;
 	}
@@ -793,7 +792,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 				}
 			}
 			if (sortedKVs.size() > 0) {
-				return new HaeinsaResultImpl(sortedKVs);
+				return new HaeinsaResult(sortedKVs);
 			} else {
 				return null;
 			}
@@ -831,53 +830,6 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 			}
 		}
 
-	}
-
-	private static class HaeinsaResultImpl implements HaeinsaResult {
-		private final List<HaeinsaKeyValue> sortedKVs;
-		private byte[] row = null;
-
-		/**
-		 * Construct HaeinsaResultImpl from sorted list of HaeinsaKeyValue
-		 * @param sortedKVs - assume all the HaeinsaKeyValue in sortedKVs have same row and sorted in ascending order.
-		 */
-		public HaeinsaResultImpl(List<HaeinsaKeyValue> sortedKVs) {
-			this.sortedKVs = sortedKVs;
-			if (sortedKVs.size() > 0) {
-				row = sortedKVs.get(0).getRow();
-			}
-		}
-
-		@Override
-		public byte[] getRow() {
-			return row;
-		}
-
-		@Override
-		public List<HaeinsaKeyValue> list() {
-			return sortedKVs;
-		}
-
-		@Override
-		public byte[] getValue(byte[] family, byte[] qualifier) {
-			int index = Collections.binarySearch(sortedKVs, new HaeinsaKeyValue(row,
-					family, qualifier, null, KeyValue.Type.Put),
-					HaeinsaKeyValue.COMPARATOR);
-			if (index >= 0) {
-				return sortedKVs.get(index).getValue();
-			}
-			return null;
-		}
-
-		@Override
-		public boolean containsColumn(byte[] family, byte[] qualifier) {
-			return getValue(family, qualifier) != null;
-		}
-
-		@Override
-		public boolean isEmpty() {
-			return sortedKVs.size() == 0;
-		}
 	}
 
 	private static class HBaseScanScanner implements
