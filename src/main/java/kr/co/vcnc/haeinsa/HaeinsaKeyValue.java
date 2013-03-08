@@ -34,7 +34,7 @@ public class HaeinsaKeyValue {
 					.compare(o1.getRow(), o2.getRow(), new NullableComparator<byte[]>(Bytes.BYTES_COMPARATOR))
 					.compare(o1.getFamily(), o2.getFamily(), new NullableComparator<byte[]>(Bytes.BYTES_COMPARATOR))
 					.compare(o1.getQualifier(), o2.getQualifier(), new NullableComparator<byte[]>(Bytes.BYTES_COMPARATOR))
-					.compare(o1.getType(), o2.getType())
+					.compare((int)(o2.getType().getCode() & 0xFF), (int)(o1.getType().getCode() & 0xFF))
 					.result();
 		}
 	};
@@ -98,6 +98,10 @@ public class HaeinsaKeyValue {
 
 	public void setType(Type type) {
 		this.type = type;
+	}
+	
+	public boolean matchingColumn(byte[] family, byte[] qualifier){
+		return Bytes.equals(this.family, family) && Bytes.equals(this.qualifier, qualifier);
 	}
 	
 	/**
