@@ -38,12 +38,22 @@ public class HaeinsaResult {
 	}
 
 	public byte[] getValue(byte[] family, byte[] qualifier) {
-		int index = Collections.binarySearch(sortedKVs, new HaeinsaKeyValue(row,
+	    // pos === ( -(insertion point) - 1)
+		int pos = Collections.binarySearch(sortedKVs, new HaeinsaKeyValue(row,
 				family, qualifier, null, KeyValue.Type.Maximum),
 				HaeinsaKeyValue.COMPARATOR);
-		if (index >= 0) {
-			return sortedKVs.get(index).getValue();
-		}
+		// never will exact match
+	    if (pos < 0) {
+	    	pos = (pos+1) * -1;
+	    	// pos is now insertion point
+	    }
+	    if (pos == sortedKVs.size()) {
+	    	return null;
+	    }
+	    HaeinsaKeyValue kv = sortedKVs.get(pos);
+	    if (kv.matchingColumn(family, qualifier)){
+	    	return kv.getValue();
+	    }
 		return null;
 	}
 
