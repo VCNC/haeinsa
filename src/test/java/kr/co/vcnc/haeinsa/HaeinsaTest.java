@@ -83,9 +83,9 @@ public class HaeinsaTest {
 			}
 		});
 		
-		TransactionManager tm = new TransactionManager(tablePool);
+		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
 		HaeinsaTableInterface testTable = tablePool.getTable("test");
-		Transaction tx = tm.begin();
+		HaeinsaTransaction tx = tm.begin();
 		HaeinsaPut put = new HaeinsaPut(Bytes.toBytes("ymkim"));
 		put.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-1234-5678"));
 		testTable.put(tx, put);
@@ -274,10 +274,10 @@ public class HaeinsaTest {
 			}
 		});
 		
-		TransactionManager tm = new TransactionManager(tablePool);
+		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
 		HaeinsaTableInterface testTable = tablePool.getTable("test");
-		Transaction tx = tm.begin();
-		Transaction tx2 = tm.begin();
+		HaeinsaTransaction tx = tm.begin();
+		HaeinsaTransaction tx2 = tm.begin();
 		
 		HaeinsaPut put = new HaeinsaPut(Bytes.toBytes("ymkim"));
 		put.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-9876-5432")); 
@@ -377,10 +377,10 @@ public class HaeinsaTest {
 			}
 		});
 		
-		TransactionManager tm = new TransactionManager(tablePool);
+		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
 		HaeinsaTable testTable = (HaeinsaTable) tablePool.getTable("test");
-		Transaction tx = tm.begin();
-		Transaction tx2 = tm.begin();
+		HaeinsaTransaction tx = tm.begin();
+		HaeinsaTransaction tx2 = tm.begin();
 		
 		HaeinsaPut put = new HaeinsaPut(Bytes.toBytes("ymkim"));
 		put.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-9876-5432")); 
@@ -390,8 +390,8 @@ public class HaeinsaTest {
 		testTable.put(tx, put2);
 		
 		testTable.put(tx2, put);
-		TableTransaction tableState = tx2.createOrGetTableState(Bytes.toBytes("test"));
-		RowTransaction rowState = tableState.createOrGetRowState(Bytes.toBytes("ymkim"));
+		HaeinsaTableTransaction tableState = tx2.createOrGetTableState(Bytes.toBytes("test"));
+		HaeinsaRowTransaction rowState = tableState.createOrGetRowState(Bytes.toBytes("ymkim"));
 		tx2.setPrewriteTimestamp(rowState.getCurrent().getCommitTimestamp() + 1);
 		tx2.setCommitTimestamp(rowState.getCurrent().getCommitTimestamp() + 1);
 		testTable.prewrite(rowState, Bytes.toBytes("ymkim"), true);

@@ -6,6 +6,9 @@ import java.util.List;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Result;
 
+import com.google.common.base.Function;
+import com.google.common.collect.Lists;
+
 /**
  * Modified POJO container of {@link Result} class in HBase.
  * Link {@link Result}, can contain multiple {@link HaeinsaKeyValue}.
@@ -17,6 +20,27 @@ import org.apache.hadoop.hbase.client.Result;
 public class HaeinsaResult {
 	private final List<HaeinsaKeyValue> sortedKVs;
 	private byte[] row = null;
+	
+	
+	/**
+	 * Construct HaeinsaResult from Result
+	 * @param result HBase's result
+	 */
+	public HaeinsaResult(Result result){
+		if (result.isEmpty()){
+			List<HaeinsaKeyValue> emptyList = Collections.emptyList();
+			this.sortedKVs = emptyList;
+		}else{
+			List<HaeinsaKeyValue> transformed = Lists.transform(result.list(), new Function<KeyValue, HaeinsaKeyValue>() {
+				
+				@Override
+				public HaeinsaKeyValue apply(KeyValue kv){
+					return new HaeinsaKeyValue(kv);
+				}
+			});
+			this.sortedKVs = transformed;
+		}
+	}
 
 	/**
 	 * Construct HaeinsaResultImpl from sorted list of HaeinsaKeyValue
