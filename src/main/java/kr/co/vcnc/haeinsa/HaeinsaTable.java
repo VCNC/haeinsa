@@ -234,17 +234,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		}
 		return false;
 	}
-
 	
-	/*private void recover(Transaction tx, byte[] row, TRowLock rowLock)
-			throws IOException {
-		//	이 함수가 rowLock 을 받을 필요가 있나?
-		Transaction previousTx = tx.getManager().getTransaction(getTableName(), row);
-		if (previousTx != null){
-			//	해당 row 에 아직 종료되지 않은 Transaction 이 남아 있는 경우
-			previousTx.recover();
-		}
-	}*/
 	/**
 	 * {@link Transaction#recover()} 를 부른다.
 	 * <p>해당 row 에 실패한 Transaction 이 있는 경우 마무리하고, 아직 Transaction 이 진행되고 있는 경우 ConflictException 이 난다. 
@@ -274,7 +264,13 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	}
 
 	/**
-	 * rowState 를 검사해서 row 에 관한 정보를 이미 가지고 있는지 확인하고,  
+	 * rowState 를 검사해서 row 에 관한 정보를 이미 가지고 있는지 확인하고, 가지고 있지 않다면 새로 만든다.
+	 * <p>해당 row 에 대한 TRowLock 정보도 확인하게 되는데, 만약 정보가 없다면 HBase 에서 읽어오게 된다. 
+	 * 이 때 HBase 에 기록된 Lock 이 {@link TRowLockState#STABLE} 이 아니라면
+	 * {@link Transaction#recover()} 를 통해서 복원하는 것을 시도한다.
+	 * <p>이 과정을 통해서 {@link RowTransaction} 은 해당 row 에 대해서 가장 먼저 checkOrRecoverLock() 을 부를 때의 
+	 * TRowLock 정보를 가지고 있게 된다.   
+	 *   
 	 * @param tx
 	 * @param row
 	 * @param tableState
@@ -320,6 +316,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 				.getTableName());
 		RowTransaction rowState = tableState.getRowStates().get(row);
 		if (rowState == null) {
+			// TODO put 과 마찬가지로 commit 시점에 lock을 가져오도록 바꾸는 것도 고민해봐야 함.
 			rowState = checkOrRecoverLock(tx, row, tableState, rowState);
 		}
 		rowState.addMutation(delete);
@@ -663,13 +660,34 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		private HaeinsaKeyValue prevKV = null;
 		private long maxSeqID = Long.MAX_VALUE;
 		
+		/**
+		 * 
+		 * @param tx
+		 * @param scanners
+		 * @param familyMap
+		 * @param lockInclusive 
+		 * 						- scanners 안에 TRowLock 에 관한 정보가 포함되어 있는지를 나타낸다. 만약 포함되어 있지 않다면 
+		 * 						{@link RowTransaction} 에 이미 저장되어 있는 정보를 가지고 오거나
+		 * 						HBase 에서 직접 읽어야 한다. 
+		 */
 		public ClientScanner(Transaction tx,
 				Iterable<HaeinsaKeyValueScanner> scanners,
 				Map<byte[], NavigableSet<byte[]>> familyMap, boolean lockInclusive) {
 			this(tx, scanners, familyMap, null, lockInclusive);
 		}
 		
-		
+		/**
+		 * 
+		 * @param tx
+		 * @param scanners
+		 * @param familyMap
+		 * @param intraScan
+		 * @param lockInclusive 
+		 * 						- scanners 안에 TRowLock 에 관한 정보가 포함되어 있는지를 나타낸다. 만약 포함되어 있지 않다면 
+		 * 						{@link RowTransaction} 에 이미 저장되어 있는 정보를 가지고 오거나
+		 * 						HBase 에서 직접 읽어야 한다. 
+		 * 						
+		 */
 		public ClientScanner(Transaction tx,
 				Iterable<HaeinsaKeyValueScanner> scanners,
 				Map<byte[], NavigableSet<byte[]>> familyMap, HaeinsaIntraScan intraScan, boolean lockInclusive) {
@@ -737,6 +755,12 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 			};
 		}
 		
+		/**
+		 * 
+		 * @param row
+		 * @return null if there is no TRowLock information inside scanners, return rowLock otherwise.
+		 * @throws IOException
+		 */
 		private TRowLock peekLock(byte[] row) throws IOException{
 			
 			for (HaeinsaKeyValueScanner scanner : scanners){
@@ -766,11 +790,12 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 				HaeinsaKeyValueScanner currentScanner = scanners.first();
 				HaeinsaKeyValue currentKV = currentScanner.peek();
 				if (prevKV == null) {
-					// start new row
+					// start new row, deal with TRowLock and Recover()
 					if (lockInclusive){
 						TRowLock currentRowLock = peekLock(currentKV.getRow());
 						RowTransaction rowState = tableState.createOrGetRowState(currentKV.getRow());
 						if (rowState.getCurrent() == null){
+							//	rowState is just created by createOrGetRowState, TODO
 							if (currentRowLock == null){
 								currentRowLock = TRowLocks.deserialize(null);
 								rowState.setCurrent(currentRowLock);
