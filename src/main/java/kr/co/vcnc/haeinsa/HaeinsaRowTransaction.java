@@ -12,7 +12,7 @@ import com.google.common.collect.Lists;
  * @author Myungbo Kim
  *
  */	
-public class HaeinsaRowTransaction {
+class HaeinsaRowTransaction {
 	//	current RowLock saved in HBase. null if there is no lock at all.
 	private TRowLock current;
 	private final List<HaeinsaMutation> mutations = Lists.newArrayList();
