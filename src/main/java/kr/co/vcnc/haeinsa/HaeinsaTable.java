@@ -35,7 +35,6 @@ import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
-import org.apache.hadoop.hbase.client.RowLock;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.filter.ColumnRangeFilter;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -236,17 +235,25 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		return false;
 	}
 
+	
+	/*private void recover(Transaction tx, byte[] row, TRowLock rowLock)
+			throws IOException {
+		//	이 함수가 rowLock 을 받을 필요가 있나?
+		Transaction previousTx = tx.getManager().getTransaction(getTableName(), row);
+		if (previousTx != null){
+			//	해당 row 에 아직 종료되지 않은 Transaction 이 남아 있는 경우
+			previousTx.recover();
+		}
+	}*/
 	/**
 	 * {@link Transaction#recover()} 를 부른다.
 	 * <p>해당 row 에 실패한 Transaction 이 있는 경우 마무리하고, 아직 Transaction 이 진행되고 있는 경우 ConflictException 이 난다. 
 	 * @param tx
 	 * @param row
-	 * @param rowLock - Do not use this.
 	 * @throws IOException ConflictException, HBase IOException
 	 */
-	private void recover(Transaction tx, byte[] row, TRowLock rowLock)
+	private void recover(Transaction tx, byte[] row)
 			throws IOException {
-		//	이 함수가 rowLock 을 받을 필요가 있나?
 		Transaction previousTx = tx.getManager().getTransaction(getTableName(), row);
 		if (previousTx != null){
 			//	해당 row 에 아직 종료되지 않은 Transaction 이 남아 있는 경우
@@ -284,7 +291,8 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		while (true){
 			TRowLock currentRowLock = getRowLock(row);
 			if (checkAndIsShouldRecover(currentRowLock)) {
-				recover(tx, row, currentRowLock);
+				//recover(tx, row, currentRowLock);
+				recover(tx, row);
 			}else{
 				rowState = tableState.createOrGetRowState(row);
 				rowState.setCurrent(currentRowLock);
