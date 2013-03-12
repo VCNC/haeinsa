@@ -3,6 +3,8 @@ package kr.co.vcnc.haeinsa;
 import java.io.IOException;
 import java.util.List;
 
+import javax.annotation.Nullable;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
@@ -50,7 +52,7 @@ public interface HaeinsaTableInterface {
 	   * @throws IOException if a remote or network exception occurs.
 	   * @since 0.20.0
 	   */
-	  HaeinsaResult get(Transaction tx, HaeinsaGet get) throws IOException;
+	  HaeinsaResult get(@Nullable Transaction tx, HaeinsaGet get) throws IOException;
 
 	  /**
 	   * Extracts certain cells from the given rows, in batch.
@@ -77,7 +79,7 @@ public interface HaeinsaTableInterface {
 	   * @throws IOException if a remote or network exception occurs.
 	   * @since 0.20.0
 	   */
-	  HaeinsaResultScanner getScanner(Transaction tx, HaeinsaScan scan) throws IOException;
+	  HaeinsaResultScanner getScanner(@Nullable Transaction tx, HaeinsaScan scan) throws IOException;
 	  
 	  /**
 	   * Returns a scanner on the current table as specified by the {@link Scan}
@@ -88,7 +90,7 @@ public interface HaeinsaTableInterface {
 	   * @throws IOException if a remote or network exception occurs.
 	   * @since 0.20.0
 	   */
-	  HaeinsaResultScanner getScanner(Transaction tx, HaeinsaIntraScan intraScan) throws IOException;
+	  HaeinsaResultScanner getScanner(@Nullable Transaction tx, HaeinsaIntraScan intraScan) throws IOException;
 
 	  /**
 	   * Gets a scanner on the current table for the given family. 
@@ -99,7 +101,7 @@ public interface HaeinsaTableInterface {
 	   * @throws IOException if a remote or network exception occurs.
 	   * @since 0.20.0
 	   */
-	  HaeinsaResultScanner getScanner(Transaction tx, byte[] family) throws IOException;
+	  HaeinsaResultScanner getScanner(@Nullable Transaction tx, byte[] family) throws IOException;
 
 	  /**
 	   * Gets a scanner on the current table for the given family and qualifier.
@@ -111,7 +113,7 @@ public interface HaeinsaTableInterface {
 	   * @throws IOException if a remote or network exception occurs.
 	   * @since 0.20.0
 	   */
-	  HaeinsaResultScanner getScanner(Transaction tx, byte[] family, byte[] qualifier) throws IOException;
+	  HaeinsaResultScanner getScanner(@Nullable Transaction tx, byte[] family, byte[] qualifier) throws IOException;
 
 
 	  /**

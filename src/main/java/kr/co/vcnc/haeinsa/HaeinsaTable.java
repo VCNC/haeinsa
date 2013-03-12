@@ -16,6 +16,8 @@ import java.util.NavigableMap;
 import java.util.NavigableSet;
 import java.util.Set;
 
+import javax.annotation.Nullable;
+
 import kr.co.vcnc.haeinsa.exception.ConflictException;
 import kr.co.vcnc.haeinsa.thrift.TRowLocks;
 import kr.co.vcnc.haeinsa.thrift.generated.TCellKey;
@@ -39,8 +41,10 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.filter.ColumnRangeFilter;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
@@ -51,7 +55,7 @@ import com.google.common.collect.Sets;
  *
  */
 public class HaeinsaTable implements HaeinsaTableInterface {
-
+	
 	private final HTableInterface table;
 
 	public HaeinsaTable(HTableInterface table) {
@@ -72,9 +76,32 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	public HTableDescriptor getTableDescriptor() throws IOException {
 		return table.getTableDescriptor();
 	}
+	
+	private HaeinsaResult getWithoutTx(HaeinsaGet get) throws IOException {
+		Get hGet = new Get(get.getRow());
+		for (Entry<byte[], NavigableSet<byte[]>> entry : get.getFamilyMap()
+				.entrySet()) {
+			if (entry.getValue() == null) {
+				hGet.addFamily(entry.getKey());
+			} else {
+				for (byte[] qualifier : entry.getValue()) {
+					hGet.addColumn(entry.getKey(), qualifier);
+				}
+			}
+		}
+		
+		Result result = table.get(hGet);
+		return new HaeinsaResult(result);
+	}
 
 	@Override
-	public HaeinsaResult get(Transaction tx, HaeinsaGet get) throws IOException {
+	public HaeinsaResult get(@Nullable Transaction tx, HaeinsaGet get) throws IOException {
+		Preconditions.checkNotNull(get);
+		
+		if (tx == null){
+			return getWithoutTx(get);
+		}
+		
 		byte[] row = get.getRow();
 		TableTransaction tableState = tx.createOrGetTableState(this.table
 				.getTableName());
@@ -113,10 +140,50 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		}
 		return hResult;
 	}
+	
+	private HaeinsaResultScanner getScannerWithoutTx(HaeinsaScan scan) throws IOException {
+		Scan hScan = new Scan(scan.getStartRow(), scan.getStopRow());
+		hScan.setCaching(scan.getCaching());
+		hScan.setCacheBlocks(scan.getCacheBlocks());
+
+		for (Entry<byte[], NavigableSet<byte[]>> entry : scan.getFamilyMap()
+				.entrySet()) {
+			if (entry.getValue() == null) {
+				hScan.addFamily(entry.getKey());
+			} else {
+				for (byte[] qualifier : entry.getValue()) {
+					hScan.addColumn(entry.getKey(), qualifier);
+				}
+			}
+		}
+		final ResultScanner scanner = table.getScanner(hScan);
+		return new SimpleClientScanner(scanner);
+	}
+	
+	private HaeinsaResultScanner getScannerWithoutTx(HaeinsaIntraScan intraScan) throws IOException {
+		Scan hScan = new Scan(intraScan.getRow(), Bytes.add(intraScan.getRow(), new byte[]{ 0x00 }));
+		hScan.setBatch(intraScan.getBatch());
+		
+		for (byte[] family : intraScan.getFamilies()) {
+			hScan.addFamily(family);
+		}
+		
+		ColumnRangeFilter rangeFilter = new ColumnRangeFilter(intraScan.getMinColumn(), intraScan.isMinColumnInclusive(), intraScan.getMaxColumn(), intraScan.isMaxColumnInclusive());
+		hScan.setFilter(rangeFilter);
+		
+		final ResultScanner scanner = table.getScanner(hScan);
+		return new SimpleClientScanner(scanner);
+	}
 
 	@Override
-	public HaeinsaResultScanner getScanner(Transaction tx, HaeinsaScan scan)
+	public HaeinsaResultScanner getScanner(@Nullable Transaction tx, HaeinsaScan scan)
 			throws IOException {
+		Preconditions.checkNotNull(scan);
+		
+		if (tx == null){
+			return getScannerWithoutTx(scan);
+		}
+		
 		Scan hScan = new Scan(scan.getStartRow(), scan.getStopRow());
 		hScan.setCaching(scan.getCaching());
 		hScan.setCacheBlocks(scan.getCacheBlocks());
@@ -166,8 +233,14 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	}
 	
 	@Override
-	public HaeinsaResultScanner getScanner(Transaction tx,
+	public HaeinsaResultScanner getScanner(@Nullable Transaction tx,
 			HaeinsaIntraScan intraScan) throws IOException {
+		Preconditions.checkNotNull(intraScan);
+		
+		if (tx == null){
+			return getScannerWithoutTx(intraScan);
+		}
+		
 		Scan hScan = new Scan(intraScan.getRow(), Bytes.add(intraScan.getRow(), new byte[]{ 0x00 }));
 		hScan.setBatch(intraScan.getBatch());
 		
@@ -199,6 +272,8 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	@Override
 	public HaeinsaResultScanner getScanner(Transaction tx, byte[] family)
 			throws IOException {
+		Preconditions.checkNotNull(family);
+		
 		HaeinsaScan scan = new HaeinsaScan();
 		scan.addFamily(family);
 		return getScanner(tx, scan);
@@ -207,6 +282,9 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	@Override
 	public HaeinsaResultScanner getScanner(Transaction tx, byte[] family,
 			byte[] qualifier) throws IOException {
+		Preconditions.checkNotNull(family);
+		Preconditions.checkNotNull(qualifier);
+		
 		HaeinsaScan scan = new HaeinsaScan();
 		scan.addColumn(family, qualifier);
 		return getScanner(tx, scan);
@@ -235,6 +313,9 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 
 	@Override
 	public void put(Transaction tx, HaeinsaPut put) throws IOException {
+		Preconditions.checkNotNull(tx);
+		Preconditions.checkNotNull(put);
+		
 		byte[] row = put.getRow();
 		TableTransaction tableState = tx.createOrGetTableState(this.table
 				.getTableName());
@@ -267,6 +348,9 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 
 	@Override
 	public void put(Transaction tx, List<HaeinsaPut> puts) throws IOException {
+		Preconditions.checkNotNull(tx);
+		Preconditions.checkNotNull(puts);
+		
 		for (HaeinsaPut put : puts) {
 			put(tx, put);
 		}
@@ -274,6 +358,9 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 
 	@Override
 	public void delete(Transaction tx, HaeinsaDelete delete) throws IOException {
+		Preconditions.checkNotNull(tx);
+		Preconditions.checkNotNull(delete);
+		
 		byte[] row = delete.getRow();
 		// 전체 Row의 삭제는 불가능하다.
 		Preconditions.checkArgument(delete.getFamilyMap().size() > 0,
@@ -290,6 +377,9 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	@Override
 	public void delete(Transaction tx, List<HaeinsaDelete> deletes)
 			throws IOException {
+		Preconditions.checkNotNull(tx);
+		Preconditions.checkNotNull(deletes);
+		
 		for (HaeinsaDelete delete : deletes) {
 			delete(tx, delete);
 		}
@@ -602,6 +692,55 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 
 	protected HTableInterface getHTable() {
 		return table;
+	}
+	
+	
+	/**
+	 * Transaction 없이 Scan 할 때 사용하는 HaeinsaResultScanner
+	 * @author Youngmok Kim
+	 *
+	 */
+	private class SimpleClientScanner implements HaeinsaResultScanner {
+		private final ResultScanner scanner;
+		
+		public SimpleClientScanner(ResultScanner scanner){
+			this.scanner = scanner;
+		}
+
+		@Override
+		public Iterator<HaeinsaResult> iterator() {
+			return Iterators.transform(scanner.iterator(), new Function<Result, HaeinsaResult>(){
+				@Override
+				public HaeinsaResult apply(@Nullable Result result) {
+					return new HaeinsaResult(result);
+				}
+			});
+		}
+		
+		@Override
+		public HaeinsaResult[] next(int nbRows) throws IOException {
+			Result[] resultArray = scanner.next(nbRows);
+			HaeinsaResult[] transformed = new HaeinsaResult[resultArray.length];
+			for (int i=0;i<resultArray.length;i++){
+				transformed[i] = new HaeinsaResult(resultArray[i]);
+			}
+			return transformed;
+		}
+		
+		@Override
+		public HaeinsaResult next() throws IOException {
+			Result result = scanner.next();
+			if (result != null){
+				return new HaeinsaResult(result);
+			}else{
+				return null;
+			}
+		}
+		
+		@Override
+		public void close() {
+			scanner.close();
+		}
 	}
 
 	/**
