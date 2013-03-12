@@ -274,7 +274,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	}
 
 	/**
-	 * TODO
+	 * rowState 를 검사해서 row 에 관한 정보를 이미 가지고 있는지 확인하고,  
 	 * @param tx
 	 * @param row
 	 * @param tableState
@@ -286,6 +286,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 			TableTransaction tableState, RowTransaction rowState)
 			throws IOException {
 		if (rowState != null && rowState.getCurrent() != null){
+			//	return rowState itself if rowState already exist and contains lock information.
 			return rowState;
 		}
 		while (true){
