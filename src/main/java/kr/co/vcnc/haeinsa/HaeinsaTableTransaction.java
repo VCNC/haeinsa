@@ -8,23 +8,23 @@ import com.google.common.collect.Maps;
 
 /**
  * Contains Transaction information of single Table.
- * <p>It have map of {byte[] row -> {@link RowTransaction}} and reference to {@link Transaction} 
+ * <p>It have map of {byte[] row -> {@link HaeinsaRowTransaction}} and reference to {@link HaeinsaTransaction} 
  * @author Myungbo Kim
  *
  */
-public class TableTransaction {
-	private final NavigableMap<byte[], RowTransaction> rowStates = Maps.newTreeMap(Bytes.BYTES_COMPARATOR);
-	private final Transaction transaction;
+class HaeinsaTableTransaction {
+	private final NavigableMap<byte[], HaeinsaRowTransaction> rowStates = Maps.newTreeMap(Bytes.BYTES_COMPARATOR);
+	private final HaeinsaTransaction transaction;
 	
-	TableTransaction(Transaction transaction){
+	HaeinsaTableTransaction(HaeinsaTransaction transaction){
 		this.transaction = transaction;
 	}
 	
-	public NavigableMap<byte[], RowTransaction> getRowStates() {
+	public NavigableMap<byte[], HaeinsaRowTransaction> getRowStates() {
 		return rowStates;
 	}
 	
-	public Transaction getTransaction() {
+	public HaeinsaTransaction getTransaction() {
 		return transaction;
 	}
 	
@@ -33,12 +33,12 @@ public class TableTransaction {
 	 * 만약 주어진 row 에 해당하는 RowTransaction 이 존재하지 않는다면, TableTransaction 내에 해당 row 의 RowTransaction 을 만들고 
 	 * 그 RowTransaction 을 내부 map 에 저장한 후에 return 한다. 
 	 * @param row
-	 * @return RowTransaction - {@link RowTransaction} which contained in this instance.
+	 * @return RowTransaction - {@link HaeinsaRowTransaction} which contained in this instance.
 	 */
-	public RowTransaction createOrGetRowState(byte[] row) {
-		RowTransaction rowState = rowStates.get(row);
+	public HaeinsaRowTransaction createOrGetRowState(byte[] row) {
+		HaeinsaRowTransaction rowState = rowStates.get(row);
 		if (rowState == null){
-			rowState = new RowTransaction(this);
+			rowState = new HaeinsaRowTransaction(this);
 			rowStates.put(row, rowState);
 		}
 		return rowState;

@@ -292,55 +292,55 @@ public class HaeinsaTablePool {
 		}
 
 		@Override
-		public HaeinsaResult get(Transaction tx, HaeinsaGet get) throws IOException {
+		public HaeinsaResult get(HaeinsaTransaction tx, HaeinsaGet get) throws IOException {
 			return table.get(tx, get);
 		}
 
 		@Override
-		public HaeinsaResultScanner getScanner(Transaction tx, HaeinsaScan scan)
+		public HaeinsaResultScanner getScanner(HaeinsaTransaction tx, HaeinsaScan scan)
 				throws IOException {
 			return table.getScanner(tx, scan);
 		}
 		
 		@Override
-		public HaeinsaResultScanner getScanner(Transaction tx,
+		public HaeinsaResultScanner getScanner(HaeinsaTransaction tx,
 				HaeinsaIntraScan intraScan) throws IOException {
 			return table.getScanner(tx, intraScan);
 		}
 
 		@Override
-		public HaeinsaResultScanner getScanner(Transaction tx, byte[] family)
+		public HaeinsaResultScanner getScanner(HaeinsaTransaction tx, byte[] family)
 				throws IOException {
 			return table.getScanner(tx, family);
 		}
 
 		@Override
-		public HaeinsaResultScanner getScanner(Transaction tx, byte[] family,
+		public HaeinsaResultScanner getScanner(HaeinsaTransaction tx, byte[] family,
 				byte[] qualifier) throws IOException {
 			return table.getScanner(tx, family, qualifier);
 		}
 
 		@Override
-		public void put(Transaction tx, HaeinsaPut put) throws IOException {
+		public void put(HaeinsaTransaction tx, HaeinsaPut put) throws IOException {
 			table.put(tx, put);
 		}
 
 		@Override
-		public void put(Transaction tx, List<HaeinsaPut> puts)
+		public void put(HaeinsaTransaction tx, List<HaeinsaPut> puts)
 				throws IOException {
 			table.put(tx, puts);
 
 		}
 
 		@Override
-		public void delete(Transaction tx, HaeinsaDelete delete)
+		public void delete(HaeinsaTransaction tx, HaeinsaDelete delete)
 				throws IOException {
 			table.delete(tx, delete);
 
 		}
 
 		@Override
-		public void delete(Transaction tx, List<HaeinsaDelete> deletes)
+		public void delete(HaeinsaTransaction tx, List<HaeinsaDelete> deletes)
 				throws IOException {
 			table.delete(tx, deletes);
 
@@ -356,36 +356,36 @@ public class HaeinsaTablePool {
 		}
 		
 		@Override
-		protected void commitSingleRowReadOnly(RowTransaction rowState,
+		protected void commitSingleRowReadOnly(HaeinsaRowTransaction rowState,
 				byte[] row) throws IOException {
 			table.commitSingleRowReadOnly(rowState, row);
 		}
 		
-		protected void commitSingleRowPutOnly(RowTransaction rowState, byte[] row) 
+		protected void commitSingleRowPutOnly(HaeinsaRowTransaction rowState, byte[] row) 
 				throws IOException {
 			table.commitSingleRowPutOnly(rowState, row);
 		}
 		
 		@Override
-		public void prewrite(RowTransaction rowTxState, byte[] row,
+		public void prewrite(HaeinsaRowTransaction rowTxState, byte[] row,
 				boolean isPrimary) throws IOException {
 			table.prewrite(rowTxState, row, isPrimary);
 		}
 
 		@Override
-		public void applyMutations(RowTransaction rowTxState, byte[] row)
+		public void applyMutations(HaeinsaRowTransaction rowTxState, byte[] row)
 				throws IOException {
 			table.applyMutations(rowTxState, row);
 		}
 
 		@Override
-		public void makeStable(RowTransaction rowTxState, byte[] row)
+		public void makeStable(HaeinsaRowTransaction rowTxState, byte[] row)
 				throws IOException {
 			table.makeStable(rowTxState, row);
 		}
 
 		@Override
-		public void commitPrimary(RowTransaction rowTxState, byte[] row)
+		public void commitPrimary(HaeinsaRowTransaction rowTxState, byte[] row)
 				throws IOException {
 			table.commitPrimary(rowTxState, row);
 		}
@@ -396,13 +396,13 @@ public class HaeinsaTablePool {
 		}
 
 		@Override
-		public void abortPrimary(RowTransaction rowTxState, byte[] row)
+		public void abortPrimary(HaeinsaRowTransaction rowTxState, byte[] row)
 				throws IOException {
 			table.abortPrimary(rowTxState, row);
 		}
 
 		@Override
-		public void deletePrewritten(RowTransaction rowTxState, byte[] row)
+		public void deletePrewritten(HaeinsaRowTransaction rowTxState, byte[] row)
 				throws IOException {
 			table.deletePrewritten(rowTxState, row);
 		}

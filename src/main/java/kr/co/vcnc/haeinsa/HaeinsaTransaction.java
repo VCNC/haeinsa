@@ -14,9 +14,9 @@ import org.apache.hadoop.hbase.util.Bytes;
 
 import com.google.common.collect.Maps;
 
-public class Transaction {
-	private final NavigableMap<byte[], TableTransaction> tableStates = Maps.newTreeMap(Bytes.BYTES_COMPARATOR);
-	private final TransactionManager manager;
+public class HaeinsaTransaction {
+	private final NavigableMap<byte[], HaeinsaTableTransaction> tableStates = Maps.newTreeMap(Bytes.BYTES_COMPARATOR);
+	private final HaeinsaTransactionManager manager;
 	private TRowKey primary;
 	private long commitTimestamp = Long.MIN_VALUE;
 	private long prewriteTimestamp = Long.MIN_VALUE;
@@ -26,15 +26,15 @@ public class Transaction {
 		MULTI_ROW
 	}
 	
-	public Transaction(TransactionManager manager){
+	public HaeinsaTransaction(HaeinsaTransactionManager manager){
 		this.manager = manager;
 	}
 	
-	protected NavigableMap<byte[], TableTransaction> getTableStates() {
+	protected NavigableMap<byte[], HaeinsaTableTransaction> getTableStates() {
 		return tableStates;
 	}
 	
-	public TransactionManager getManager() {
+	public HaeinsaTransactionManager getManager() {
 		return manager;
 	}
 	
@@ -62,10 +62,10 @@ public class Transaction {
 		this.primary = primary;
 	}
 	
-	protected TableTransaction createOrGetTableState(byte[] tableName){
-		TableTransaction tableTxState = tableStates.get(tableName);
+	protected HaeinsaTableTransaction createOrGetTableState(byte[] tableName){
+		HaeinsaTableTransaction tableTxState = tableStates.get(tableName);
 		if (tableTxState == null){
-			tableTxState = new TableTransaction(this);
+			tableTxState = new HaeinsaTableTransaction(this);
 			tableStates.put(tableName, tableTxState);
 		}
 		return tableTxState;
@@ -78,8 +78,8 @@ public class Transaction {
 	protected CommitMethod determineCommitMethod(){
 		int count = 0;
 		CommitMethod method = CommitMethod.SINGLE_ROW_READ_ONLY;
-		for (TableTransaction tableState : getTableStates().values()){
-			for (RowTransaction rowState : tableState.getRowStates().values()){
+		for (HaeinsaTableTransaction tableState : getTableStates().values()){
+			for (HaeinsaRowTransaction rowState : tableState.getRowStates().values()){
 				count ++;
 				if (count > 1) {
 					return CommitMethod.MULTI_ROW;
@@ -97,8 +97,8 @@ public class Transaction {
 	}
 	
 	protected void commitMultiRows() throws IOException{		
-		TableTransaction primaryTableState = createOrGetTableState(primary.getTableName());
-		RowTransaction primaryRowState = primaryTableState.createOrGetRowState(primary.getRow());
+		HaeinsaTableTransaction primaryTableState = createOrGetTableState(primary.getTableName());
+		HaeinsaRowTransaction primaryRowState = primaryTableState.createOrGetRowState(primary.getRow());
 		
 		HaeinsaTablePool tablePool = getManager().getTablePool();
 		// prewrite primary row
@@ -108,8 +108,8 @@ public class Transaction {
 		}
 		
 		// prewrite secondaries
-		for (Entry<byte[], TableTransaction> tableStateEntry : tableStates.entrySet()){
-			for (Entry<byte[], RowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()){
+		for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : tableStates.entrySet()){
+			for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()){
 				if ((Bytes.equals(tableStateEntry.getKey(), primary.getTableName()) && Bytes.equals(rowStateEntry.getKey(), primary.getRow()))){
 					continue;
 				}
@@ -122,8 +122,8 @@ public class Transaction {
 	}
 	
 	protected void commitSingleRowPutOnly() throws IOException {
-		TableTransaction primaryTableState = createOrGetTableState(primary.getTableName());
-		RowTransaction primaryRowState = primaryTableState.createOrGetRowState(primary.getRow());
+		HaeinsaTableTransaction primaryTableState = createOrGetTableState(primary.getTableName());
+		HaeinsaRowTransaction primaryRowState = primaryTableState.createOrGetRowState(primary.getRow());
 		
 		HaeinsaTablePool tablePool = getManager().getTablePool();
 		// commit primary row
@@ -134,8 +134,8 @@ public class Transaction {
 	}
 	
 	protected void commitSingleRowReadOnly() throws IOException {
-		TableTransaction primaryTableState = createOrGetTableState(primary.getTableName());
-		RowTransaction primaryRowState = primaryTableState.createOrGetRowState(primary.getRow());
+		HaeinsaTableTransaction primaryTableState = createOrGetTableState(primary.getTableName());
+		HaeinsaRowTransaction primaryRowState = primaryTableState.createOrGetRowState(primary.getRow());
 		
 		HaeinsaTablePool tablePool = getManager().getTablePool();
 		// commit primary row
@@ -150,14 +150,14 @@ public class Transaction {
 		TRowKey primaryRowKey = null;
 		long commitTimestamp = ROW_LOCK_MIN_TIMESTAMP;
 		long prewriteTimestamp = ROW_LOCK_MIN_TIMESTAMP;
-		for (Entry<byte[], TableTransaction> tableStateEntry : tableStates.entrySet()){
-			for (Entry<byte[], RowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()){
+		for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : tableStates.entrySet()){
+			for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()){
 				if (primaryRowKey == null){
 					primaryRowKey = new TRowKey();
 					primaryRowKey.setTableName(tableStateEntry.getKey());
 					primaryRowKey.setRow(rowStateEntry.getKey());
 				}
-				RowTransaction rowState = rowStateEntry.getValue();
+				HaeinsaRowTransaction rowState = rowStateEntry.getValue();
 				commitTimestamp = Math.max(commitTimestamp, rowState.getCurrent().getCommitTimestamp() + rowState.getIterationCount());
 				prewriteTimestamp = Math.max(prewriteTimestamp, rowState.getCurrent().getCommitTimestamp() + 1);
 			}
@@ -191,15 +191,15 @@ public class Transaction {
 	
 	private void makeStable() throws IOException {
 		HaeinsaTablePool tablePool = getManager().getTablePool();
-		RowTransaction primaryRowTx = createOrGetTableState(primary.getTableName()).createOrGetRowState(primary.getRow());
+		HaeinsaRowTransaction primaryRowTx = createOrGetTableState(primary.getTableName()).createOrGetRowState(primary.getRow());
 		// commit primary or get more time to commit this.
 		{
 			HaeinsaTable table = (HaeinsaTable) tablePool.getTable(primary.getTableName());
 			table.commitPrimary(primaryRowTx, primary.getRow());
 		}
 		
-		for (Entry<byte[], TableTransaction> tableStateEntry : tableStates.entrySet()){
-			for (Entry<byte[], RowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()){
+		for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : tableStates.entrySet()){
+			for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()){
 				// apply mutations  
 				HaeinsaTable table = (HaeinsaTable) tablePool.getTable(tableStateEntry.getKey());
 				table.applyMutations(rowStateEntry.getValue(), rowStateEntry.getKey());
@@ -219,7 +219,7 @@ public class Transaction {
 	}
 	
 	protected void recover() throws IOException {
-		RowTransaction primaryRowTx = createOrGetTableState(primary.getTableName()).createOrGetRowState(primary.getRow());
+		HaeinsaRowTransaction primaryRowTx = createOrGetTableState(primary.getTableName()).createOrGetRowState(primary.getRow());
 		if (primaryRowTx.getCurrent().getState() == TRowLockState.PREWRITTEN){
 			// prewritten 상태에서는 timeout 보다 primary이 시간이 더 지났으면 abort 시켜야 함.
 			if (primaryRowTx.getCurrent().getExpiry() < System.currentTimeMillis()){
@@ -249,15 +249,15 @@ public class Transaction {
 
 	protected void abort() throws IOException {
 		HaeinsaTablePool tablePool = getManager().getTablePool();
-		RowTransaction primaryRowTx = createOrGetTableState(primary.getTableName()).createOrGetRowState(primary.getRow());
+		HaeinsaRowTransaction primaryRowTx = createOrGetTableState(primary.getTableName()).createOrGetRowState(primary.getRow());
 		{
 			// abort primary row
 			HaeinsaTable table = (HaeinsaTable) tablePool.getTable(primary.getTableName());
 			table.abortPrimary(primaryRowTx, primary.getRow());
 		}
 		
-		for (Entry<byte[], TableTransaction> tableStateEntry : tableStates.entrySet()){
-			for (Entry<byte[], RowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()){
+		for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : tableStates.entrySet()){
+			for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()){
 				// delete prewritten  
 				HaeinsaTable table = (HaeinsaTable) tablePool.getTable(tableStateEntry.getKey());
 				table.deletePrewritten(rowStateEntry.getValue(), rowStateEntry.getKey());

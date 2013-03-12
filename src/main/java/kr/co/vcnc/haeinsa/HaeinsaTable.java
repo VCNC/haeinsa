@@ -46,7 +46,7 @@ import com.google.common.collect.Sets;
 
 /**
  * Implementation of {@link HaeinsaTableInterface}. 
- * It works with {@link Transaction} to provide transaction on HBase. 
+ * It works with {@link HaeinsaTransaction} to provide transaction on HBase. 
  * @author Myungbo Kim
  *
  */
@@ -74,11 +74,11 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	}
 
 	@Override
-	public HaeinsaResult get(Transaction tx, HaeinsaGet get) throws IOException {
+	public HaeinsaResult get(HaeinsaTransaction tx, HaeinsaGet get) throws IOException {
 		byte[] row = get.getRow();
-		TableTransaction tableState = tx.createOrGetTableState(this.table
+		HaeinsaTableTransaction tableState = tx.createOrGetTableState(this.table
 				.getTableName());
-		RowTransaction rowState = tableState.getRowStates().get(row);
+		HaeinsaRowTransaction rowState = tableState.getRowStates().get(row);
 		boolean lockInclusive = false;
 		Get hGet = new Get(get.getRow());
 
@@ -115,7 +115,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	}
 
 	@Override
-	public HaeinsaResultScanner getScanner(Transaction tx, HaeinsaScan scan)
+	public HaeinsaResultScanner getScanner(HaeinsaTransaction tx, HaeinsaScan scan)
 			throws IOException {
 		Scan hScan = new Scan(scan.getStartRow(), scan.getStopRow());
 		hScan.setCaching(scan.getCaching());
@@ -135,8 +135,8 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 			hScan.addColumn(LOCK_FAMILY, LOCK_QUALIFIER);
 		}
 
-		TableTransaction tableState = tx.createOrGetTableState(getTableName());
-		NavigableMap<byte[], RowTransaction> rows;
+		HaeinsaTableTransaction tableState = tx.createOrGetTableState(getTableName());
+		NavigableMap<byte[], HaeinsaRowTransaction> rows;
 
 		if (Bytes.equals(scan.getStartRow(), HConstants.EMPTY_START_ROW)) {
 			if (Bytes.equals(scan.getStopRow(), HConstants.EMPTY_END_ROW)) {
@@ -157,7 +157,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 
 		List<HaeinsaKeyValueScanner> scanners = Lists.newArrayList();
 
-		for (RowTransaction rowTx : rows.values()) {
+		for (HaeinsaRowTransaction rowTx : rows.values()) {
 			scanners.addAll(rowTx.getScanners());
 		}
 		scanners.add(new HBaseScanScanner(table.getScanner(hScan)));
@@ -166,7 +166,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	}
 	
 	@Override
-	public HaeinsaResultScanner getScanner(Transaction tx,
+	public HaeinsaResultScanner getScanner(HaeinsaTransaction tx,
 			HaeinsaIntraScan intraScan) throws IOException {
 		Scan hScan = new Scan(intraScan.getRow(), Bytes.add(intraScan.getRow(), new byte[]{ 0x00 }));
 		hScan.setBatch(intraScan.getBatch());
@@ -178,9 +178,9 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		ColumnRangeFilter rangeFilter = new ColumnRangeFilter(intraScan.getMinColumn(), intraScan.isMinColumnInclusive(), intraScan.getMaxColumn(), intraScan.isMaxColumnInclusive());
 		hScan.setFilter(rangeFilter);
 
-		TableTransaction tableState = tx.createOrGetTableState(getTableName());
+		HaeinsaTableTransaction tableState = tx.createOrGetTableState(getTableName());
 		
-		RowTransaction rowState = tableState.getRowStates().get(intraScan.getRow());
+		HaeinsaRowTransaction rowState = tableState.getRowStates().get(intraScan.getRow());
 		
 		if (rowState == null){
 			rowState = checkOrRecoverLock(tx, intraScan.getRow(), tableState, rowState);
@@ -197,7 +197,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	}
 
 	@Override
-	public HaeinsaResultScanner getScanner(Transaction tx, byte[] family)
+	public HaeinsaResultScanner getScanner(HaeinsaTransaction tx, byte[] family)
 			throws IOException {
 		HaeinsaScan scan = new HaeinsaScan();
 		scan.addFamily(family);
@@ -205,7 +205,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	}
 
 	@Override
-	public HaeinsaResultScanner getScanner(Transaction tx, byte[] family,
+	public HaeinsaResultScanner getScanner(HaeinsaTransaction tx, byte[] family,
 			byte[] qualifier) throws IOException {
 		HaeinsaScan scan = new HaeinsaScan();
 		scan.addColumn(family, qualifier);
@@ -224,9 +224,9 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		return false;
 	}
 
-	private void recover(Transaction tx, byte[] row, TRowLock rowLock)
+	private void recover(HaeinsaTransaction tx, byte[] row, TRowLock rowLock)
 			throws IOException {
-		Transaction previousTx = tx.getManager().getTransaction(getTableName(),
+		HaeinsaTransaction previousTx = tx.getManager().getTransaction(getTableName(),
 				row);
 		if (previousTx != null){
 			previousTx.recover();
@@ -234,11 +234,11 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	}
 
 	@Override
-	public void put(Transaction tx, HaeinsaPut put) throws IOException {
+	public void put(HaeinsaTransaction tx, HaeinsaPut put) throws IOException {
 		byte[] row = put.getRow();
-		TableTransaction tableState = tx.createOrGetTableState(this.table
+		HaeinsaTableTransaction tableState = tx.createOrGetTableState(this.table
 				.getTableName());
-		RowTransaction rowState = tableState.getRowStates().get(row);
+		HaeinsaRowTransaction rowState = tableState.getRowStates().get(row);
 		if (rowState == null) {
 			// TODO commit 시점에 lock을 가져오도록 바꾸는 것도 고민해봐야 함.
 			rowState = checkOrRecoverLock(tx, row, tableState, rowState);
@@ -246,8 +246,8 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		rowState.addMutation(put);
 	}
 
-	private RowTransaction checkOrRecoverLock(Transaction tx, byte[] row,
-			TableTransaction tableState, RowTransaction rowState)
+	private HaeinsaRowTransaction checkOrRecoverLock(HaeinsaTransaction tx, byte[] row,
+			HaeinsaTableTransaction tableState, HaeinsaRowTransaction rowState)
 			throws IOException {
 		if (rowState != null && rowState.getCurrent() != null){
 			return rowState;
@@ -266,21 +266,21 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	}
 
 	@Override
-	public void put(Transaction tx, List<HaeinsaPut> puts) throws IOException {
+	public void put(HaeinsaTransaction tx, List<HaeinsaPut> puts) throws IOException {
 		for (HaeinsaPut put : puts) {
 			put(tx, put);
 		}
 	}
 
 	@Override
-	public void delete(Transaction tx, HaeinsaDelete delete) throws IOException {
+	public void delete(HaeinsaTransaction tx, HaeinsaDelete delete) throws IOException {
 		byte[] row = delete.getRow();
 		// 전체 Row의 삭제는 불가능하다.
 		Preconditions.checkArgument(delete.getFamilyMap().size() > 0,
 				"can't delete an entire row.");
-		TableTransaction tableState = tx.createOrGetTableState(this.table
+		HaeinsaTableTransaction tableState = tx.createOrGetTableState(this.table
 				.getTableName());
-		RowTransaction rowState = tableState.getRowStates().get(row);
+		HaeinsaRowTransaction rowState = tableState.getRowStates().get(row);
 		if (rowState == null) {
 			rowState = checkOrRecoverLock(tx, row, tableState, rowState);
 		}
@@ -288,7 +288,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	}
 
 	@Override
-	public void delete(Transaction tx, List<HaeinsaDelete> deletes)
+	public void delete(HaeinsaTransaction tx, List<HaeinsaDelete> deletes)
 			throws IOException {
 		for (HaeinsaDelete delete : deletes) {
 			delete(tx, delete);
@@ -300,8 +300,8 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		table.close();
 	}
 	
-	protected void commitSingleRowPutOnly(RowTransaction rowState, byte[] row) throws IOException{
-		Transaction tx = rowState.getTableTransaction().getTransaction();
+	protected void commitSingleRowPutOnly(HaeinsaRowTransaction rowState, byte[] row) throws IOException{
+		HaeinsaTransaction tx = rowState.getTableTransaction().getTransaction();
 		Put put = new Put(row);
 		HaeinsaPut haeinsaPut = (HaeinsaPut) rowState.getMutations().remove(0);
 		for (HaeinsaKeyValue kv : Iterables.concat(haeinsaPut.getFamilyMap().values())){
@@ -319,7 +319,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		}
 	}
 	
-	protected void commitSingleRowReadOnly(RowTransaction rowState, byte[] row) throws IOException{
+	protected void commitSingleRowReadOnly(HaeinsaRowTransaction rowState, byte[] row) throws IOException{
 		TRowLock prevRowLock = rowState.getCurrent();
 		TRowLock currentRowLock = getRowLock(row);
 		if (!prevRowLock.equals(currentRowLock)){
@@ -327,12 +327,12 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		}
 	}
 
-	protected void prewrite(RowTransaction rowState, byte[] row, boolean isPrimary)
+	protected void prewrite(HaeinsaRowTransaction rowState, byte[] row, boolean isPrimary)
 			throws IOException {
 		Put put = new Put(row);
 		Set<TCellKey> prewritten = Sets.newTreeSet();
 		List<TMutation> remaining = Lists.newArrayList();
-		Transaction tx = rowState.getTableTransaction().getTransaction();
+		HaeinsaTransaction tx = rowState.getTableTransaction().getTransaction();
 		if (rowState.getMutations().size() > 0) {
 			if (rowState.getMutations().get(0) instanceof HaeinsaPut) {
 				HaeinsaPut haeinsaPut = (HaeinsaPut) rowState.getMutations()
@@ -356,9 +356,9 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 				TRowLockState.PREWRITTEN, tx.getCommitTimestamp())
 				.setCurrentTimestmap(tx.getPrewriteTimestamp());
 		if (isPrimary) {
-			for (Entry<byte[], TableTransaction> tableStateEntry : tx
+			for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : tx
 					.getTableStates().entrySet()) {
-				for (Entry<byte[], RowTransaction> rowStateEntry : tableStateEntry
+				for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry
 						.getValue().getRowStates().entrySet()) {
 					if ((Bytes.equals(tableStateEntry.getKey(), getTableName()) && Bytes
 							.equals(rowStateEntry.getKey(), row))) {
@@ -393,7 +393,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 
 	}
 
-	protected void applyMutations(RowTransaction rowTxState, byte[] row)
+	protected void applyMutations(HaeinsaRowTransaction rowTxState, byte[] row)
 			throws IOException {
 		if (rowTxState.getCurrent().getMutationsSize() == 0) {
 			return;
@@ -470,11 +470,11 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	 * @param row
 	 * @throws IOException
 	 */
-	protected void makeStable(RowTransaction rowTxState, byte[] row)
+	protected void makeStable(HaeinsaRowTransaction rowTxState, byte[] row)
 			throws IOException {
 		byte[] currentRowLockBytes = TRowLocks.serialize(rowTxState
 				.getCurrent());
-		Transaction transaction = rowTxState.getTableTransaction()
+		HaeinsaTransaction transaction = rowTxState.getTableTransaction()
 				.getTransaction();
 		long commitTimestamp = transaction.getCommitTimestamp();
 		TRowLock newRowLock = new TRowLock(ROW_LOCK_VERSION,
@@ -497,11 +497,11 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	 * @param row
 	 * @throws IOException
 	 */
-	protected void commitPrimary(RowTransaction rowTxState, byte[] row)
+	protected void commitPrimary(HaeinsaRowTransaction rowTxState, byte[] row)
 			throws IOException {
 		byte[] currentRowLockBytes = TRowLocks.serialize(rowTxState
 				.getCurrent());
-		Transaction transaction = rowTxState.getTableTransaction()
+		HaeinsaTransaction transaction = rowTxState.getTableTransaction()
 				.getTransaction();
 		long commitTimestamp = transaction.getCommitTimestamp();
 		TRowLock newRowLock = rowTxState.getCurrent().deepCopy();
@@ -548,11 +548,11 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	 * @param row
 	 * @throws IOException
 	 */
-	protected void abortPrimary(RowTransaction rowTxState, byte[] row)
+	protected void abortPrimary(HaeinsaRowTransaction rowTxState, byte[] row)
 			throws IOException {
 		byte[] currentRowLockBytes = TRowLocks.serialize(rowTxState
 				.getCurrent());
-		Transaction transaction = rowTxState.getTableTransaction()
+		HaeinsaTransaction transaction = rowTxState.getTableTransaction()
 				.getTransaction();
 		long commitTimestamp = transaction.getCommitTimestamp();
 		TRowLock newRowLock = rowTxState.getCurrent().deepCopy();
@@ -580,7 +580,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	 * @param row
 	 * @throws IOException
 	 */
-	protected void deletePrewritten(RowTransaction rowTxState, byte[] row)
+	protected void deletePrewritten(HaeinsaRowTransaction rowTxState, byte[] row)
 			throws IOException {
 		if (rowTxState.getCurrent().getPrewrittenSize() == 0) {
 			return;
@@ -610,8 +610,8 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	 *
 	 */
 	private class ClientScanner implements HaeinsaResultScanner { 
-		private final Transaction tx;
-		private final TableTransaction tableState;
+		private final HaeinsaTransaction tx;
+		private final HaeinsaTableTransaction tableState;
 		private boolean initialized = false;
 		private final NavigableSet<HaeinsaKeyValueScanner> scanners = Sets
 				.newTreeSet(HaeinsaKeyValueScanner.COMPARATOR);
@@ -625,14 +625,14 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		private HaeinsaKeyValue prevKV = null;
 		private long maxSeqID = Long.MAX_VALUE;
 		
-		public ClientScanner(Transaction tx,
+		public ClientScanner(HaeinsaTransaction tx,
 				Iterable<HaeinsaKeyValueScanner> scanners,
 				Map<byte[], NavigableSet<byte[]>> familyMap, boolean lockInclusive) {
 			this(tx, scanners, familyMap, null, lockInclusive);
 		}
 		
 		
-		public ClientScanner(Transaction tx,
+		public ClientScanner(HaeinsaTransaction tx,
 				Iterable<HaeinsaKeyValueScanner> scanners,
 				Map<byte[], NavigableSet<byte[]>> familyMap, HaeinsaIntraScan intraScan, boolean lockInclusive) {
 			this.tx = tx;
@@ -731,7 +731,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 					// start new row
 					if (lockInclusive){
 						TRowLock currentRowLock = peekLock(currentKV.getRow());
-						RowTransaction rowState = tableState.createOrGetRowState(currentKV.getRow());
+						HaeinsaRowTransaction rowState = tableState.createOrGetRowState(currentKV.getRow());
 						if (rowState.getCurrent() == null){
 							if (currentRowLock == null){
 								currentRowLock = TRowLocks.deserialize(null);
