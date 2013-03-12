@@ -13,6 +13,7 @@ import com.google.common.collect.Lists;
  *
  */
 public class RowTransaction {
+	//	current RowLock saved in HBase. null if there is no lock.
 	private TRowLock current;
 	private final List<HaeinsaMutation> mutations = Lists.newArrayList();
 	private final TableTransaction tableTransaction;
@@ -61,6 +62,10 @@ public class RowTransaction {
 		return tableTransaction;
 	}
 	
+	/**
+	 * Return list of {@link HaeinsaKeyValueScanner}s which wrap mutations - (Put & Delete) contained inside instance. 
+	 * @return
+	 */
 	public List<HaeinsaKeyValueScanner> getScanners() {
 		List<HaeinsaKeyValueScanner> result = Lists.newArrayList();
 		for (int i=0;i<mutations.size();i++){
