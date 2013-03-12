@@ -16,7 +16,7 @@ import org.apache.hadoop.hbase.client.Scan;
 /**
  * Wrapper of HTableInterface for Haeinsa.
  * Some of methods in {@link HTableInterface} are dropped because of implementing complexity.
- * Most of methods which directly access to DB now need {@link Transaction} as an argument which supervises transaction.    
+ * Most of methods which directly access to DB now need {@link HaeinsaTransaction} as an argument which supervises transaction.    
  * <p>Implemented by {@link HaeinsaTable}.
  * @author Myungbo Kim
  *
@@ -52,7 +52,7 @@ public interface HaeinsaTableInterface {
 	   * @throws IOException if a remote or network exception occurs.
 	   * @since 0.20.0
 	   */
-	  HaeinsaResult get(@Nullable Transaction tx, HaeinsaGet get) throws IOException;
+	  HaeinsaResult get(@Nullable HaeinsaTransaction tx, HaeinsaGet get) throws IOException;
 
 	  /**
 	   * Extracts certain cells from the given rows, in batch.
@@ -79,7 +79,7 @@ public interface HaeinsaTableInterface {
 	   * @throws IOException if a remote or network exception occurs.
 	   * @since 0.20.0
 	   */
-	  HaeinsaResultScanner getScanner(@Nullable Transaction tx, HaeinsaScan scan) throws IOException;
+	  HaeinsaResultScanner getScanner(@Nullable HaeinsaTransaction tx, HaeinsaScan scan) throws IOException;
 	  
 	  /**
 	   * Returns a scanner on the current table as specified by the {@link Scan}
@@ -90,22 +90,22 @@ public interface HaeinsaTableInterface {
 	   * @throws IOException if a remote or network exception occurs.
 	   * @since 0.20.0
 	   */
-	  HaeinsaResultScanner getScanner(@Nullable Transaction tx, HaeinsaIntraScan intraScan) throws IOException;
+	  HaeinsaResultScanner getScanner(@Nullable HaeinsaTransaction tx, HaeinsaIntraScan intraScan) throws IOException;
 
 	  /**
 	   * Gets a scanner on the current table for the given family. 
-	   * Similar with {@link HaeinsaTableInterface#getScanner(Transaction, HaeinsaScan)}
+	   * Similar with {@link HaeinsaTableInterface#getScanner(HaeinsaTransaction, HaeinsaScan)}
 	   *
 	   * @param family The column family to scan.
 	   * @return A scanner.
 	   * @throws IOException if a remote or network exception occurs.
 	   * @since 0.20.0
 	   */
-	  HaeinsaResultScanner getScanner(@Nullable Transaction tx, byte[] family) throws IOException;
+	  HaeinsaResultScanner getScanner(@Nullable HaeinsaTransaction tx, byte[] family) throws IOException;
 
 	  /**
 	   * Gets a scanner on the current table for the given family and qualifier.
-	   * Similar with {@link HaeinsaTableInterface#getScanner(Transaction, HaeinsaScan)}
+	   * Similar with {@link HaeinsaTableInterface#getScanner(HaeinsaTransaction, HaeinsaScan)}
 	   *
 	   * @param family The column family to scan.
 	   * @param qualifier The column qualifier to scan.
@@ -113,7 +113,7 @@ public interface HaeinsaTableInterface {
 	   * @throws IOException if a remote or network exception occurs.
 	   * @since 0.20.0
 	   */
-	  HaeinsaResultScanner getScanner(@Nullable Transaction tx, byte[] family, byte[] qualifier) throws IOException;
+	  HaeinsaResultScanner getScanner(@Nullable HaeinsaTransaction tx, byte[] family, byte[] qualifier) throws IOException;
 
 
 	  /**
@@ -125,7 +125,7 @@ public interface HaeinsaTableInterface {
 	   * @throws IOException if a remote or network exception occurs.
 	   * @since 0.20.0
 	   */
-	  void put(Transaction tx, HaeinsaPut put) throws IOException;
+	  void put(HaeinsaTransaction tx, HaeinsaPut put) throws IOException;
 
 	  /**
 	   * Puts some data in the table, in batch.
@@ -143,7 +143,7 @@ public interface HaeinsaTableInterface {
 	   * @throws IOException if a remote or network exception occurs.
 	   * @since 0.20.0
 	   */
-	  void put(Transaction tx, List<HaeinsaPut> puts) throws IOException;
+	  void put(HaeinsaTransaction tx, List<HaeinsaPut> puts) throws IOException;
 
 	  /**
 	   * Deletes the specified cells/row.
@@ -152,7 +152,7 @@ public interface HaeinsaTableInterface {
 	   * @throws IOException if a remote or network exception occurs.
 	   * @since 0.20.0
 	   */
-	  void delete(Transaction tx, HaeinsaDelete delete) throws IOException;
+	  void delete(HaeinsaTransaction tx, HaeinsaDelete delete) throws IOException;
 
 	  /**
 	   * Deletes the specified cells/rows in bulk.
@@ -165,7 +165,7 @@ public interface HaeinsaTableInterface {
 	   * that have not be successfully applied.
 	   * @since 0.20.1
 	   */
-	  void delete(Transaction tx, List<HaeinsaDelete> deletes) throws IOException;
+	  void delete(HaeinsaTransaction tx, List<HaeinsaDelete> deletes) throws IOException;
 
 	  /**
 	   * Releases any resources help or pending changes in internal buffers.

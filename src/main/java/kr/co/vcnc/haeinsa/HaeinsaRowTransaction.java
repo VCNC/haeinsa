@@ -8,16 +8,16 @@ import com.google.common.collect.Lists;
 
 /**
  * Contains Transaction information of single row.
- * This information is only saved in client memory until {@link Transaction#commit()} called.
+ * This information is only saved in client memory until {@link HaeinsaTransaction#commit()} called.
  * @author Myungbo Kim
  *
  */
-public class RowTransaction {
+class HaeinsaRowTransaction {
 	private TRowLock current;
 	private final List<HaeinsaMutation> mutations = Lists.newArrayList();
-	private final TableTransaction tableTransaction;
+	private final HaeinsaTableTransaction tableTransaction;
 	
-	RowTransaction(TableTransaction tableTransaction) {
+	HaeinsaRowTransaction(HaeinsaTableTransaction tableTransaction) {
 		this.tableTransaction = tableTransaction;
 	}
 	
@@ -57,7 +57,7 @@ public class RowTransaction {
 		}
 	}
 	
-	public TableTransaction getTableTransaction() {
+	public HaeinsaTableTransaction getTableTransaction() {
 		return tableTransaction;
 	}
 	
