@@ -11,8 +11,9 @@ import com.google.common.collect.Lists;
  * This information is only saved in client memory until {@link HaeinsaTransaction#commit()} called.
  * @author Myungbo Kim
  *
- */
+ */	
 class HaeinsaRowTransaction {
+	//	current RowLock saved in HBase. null if there is no lock at all.
 	private TRowLock current;
 	private final List<HaeinsaMutation> mutations = Lists.newArrayList();
 	private final HaeinsaTableTransaction tableTransaction;
@@ -61,6 +62,10 @@ class HaeinsaRowTransaction {
 		return tableTransaction;
 	}
 	
+	/**
+	 * Return list of {@link HaeinsaKeyValueScanner}s which wrap mutations - (Put & Delete) contained inside instance. 
+	 * @return
+	 */
 	public List<HaeinsaKeyValueScanner> getScanners() {
 		List<HaeinsaKeyValueScanner> result = Lists.newArrayList();
 		for (int i=0;i<mutations.size();i++){
