@@ -237,11 +237,12 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	}
 
 	/**
-	 * {@link Transaction#recover()} 를 부른다. 
+	 * {@link Transaction#recover()} 를 부른다.
+	 * <p>해당 row 에 실패한 Transaction 이 있는 경우 마무리하고, 아직 Transaction 이 진행되고 있는 경우 ConflictException 이 난다. 
 	 * @param tx
 	 * @param row
-	 * @param rowLock
-	 * @throws IOException
+	 * @param rowLock - Do not use this.
+	 * @throws IOException ConflictException, HBase IOException
 	 */
 	private void recover(Transaction tx, byte[] row, TRowLock rowLock)
 			throws IOException {
@@ -256,8 +257,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	@Override
 	public void put(Transaction tx, HaeinsaPut put) throws IOException {
 		byte[] row = put.getRow();
-		TableTransaction tableState = tx.createOrGetTableState(this.table
-				.getTableName());
+		TableTransaction tableState = tx.createOrGetTableState(this.table.getTableName());
 		RowTransaction rowState = tableState.getRowStates().get(row);
 		if (rowState == null) {
 			// TODO commit 시점에 lock을 가져오도록 바꾸는 것도 고민해봐야 함.

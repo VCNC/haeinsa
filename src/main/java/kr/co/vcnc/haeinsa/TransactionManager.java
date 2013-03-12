@@ -37,24 +37,24 @@ public class TransactionManager {
 	 * <p>This method is thread-safe.
 	 * @param tableName TableName of Transaction to recover. 
 	 * @param row Row of Transaction to recover.
-	 * @return
+	 * @return Transaction instance if there is any ongoing Transaction on row, return null otherwise. 
 	 * @throws IOException
 	 */
 	public Transaction getTransaction(byte[] tableName, byte[] row) throws IOException {
-		TRowLock startRowLock = getUnstableRowLock(tableName, row);
+		TRowLock startUnstableRowLock = getUnstableRowLock(tableName, row);
 		
-		if (startRowLock == null){
+		if (startUnstableRowLock == null){
 			return null;
 		}
 		
 		TRowLock primaryRowLock = null;
 		TRowKey primaryRowKey = null;
-		if (!startRowLock.isSetPrimary()){
+		if (!startUnstableRowLock.isSetPrimary()){
 			// 이 Row가 Primary Row
 			primaryRowKey = new TRowKey(ByteBuffer.wrap(tableName), ByteBuffer.wrap(row));
-			primaryRowLock = startRowLock;
+			primaryRowLock = startUnstableRowLock;
 		}else {
-			primaryRowKey = startRowLock.getPrimary();
+			primaryRowKey = startUnstableRowLock.getPrimary();
 			primaryRowLock = getUnstableRowLock(primaryRowKey.getTableName(), primaryRowKey.getRow());
 		}
 		if (primaryRowLock == null){
@@ -63,6 +63,13 @@ public class TransactionManager {
 		return getTransactionFromPrimary(primaryRowKey, primaryRowLock);
 	}
 	
+	/**
+	 * 
+	 * @param tableName
+	 * @param row
+	 * @return null if TRowLock is {@link TRowLockState#STABLE}, otherwise return rowLock from HBase.
+	 * @throws IOException
+	 */
 	private TRowLock getUnstableRowLock(byte[] tableName, byte[] row) throws IOException {
 		HaeinsaTable table = (HaeinsaTable) tablePool.getTable(tableName);
 		TRowLock rowLock = table.getRowLock(row);
@@ -90,17 +97,17 @@ public class TransactionManager {
 	}
 	
 	private void addSecondaryRowLock(Transaction transaction, TRowKey rowKey) throws IOException {
-		TRowLock rowLock = getUnstableRowLock(rowKey.getTableName(),	rowKey.getRow());
-		if (rowLock == null){
+		TRowLock unstableRowLock = getUnstableRowLock(rowKey.getTableName(),	rowKey.getRow());
+		if (unstableRowLock == null){
 			return;
 		}
 		// commitTimestamp가 다르면, 다른 Transaction 이므로 추가하면 안됨  
-		if (rowLock.getCommitTimestamp() != transaction.getCommitTimestamp()){
+		if (unstableRowLock.getCommitTimestamp() != transaction.getCommitTimestamp()){
 			return;
 		}
 		TableTransaction tableState = transaction.createOrGetTableState(rowKey.getTableName());
 		RowTransaction rowState = tableState.createOrGetRowState(rowKey.getRow());
-		rowState.setCurrent(rowLock);
+		rowState.setCurrent(unstableRowLock);
 	}
 
 	/**
