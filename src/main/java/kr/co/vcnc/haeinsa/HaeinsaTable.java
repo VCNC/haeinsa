@@ -901,7 +901,12 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		 */
 		private void initialize() throws IOException {
 			try {
-				scanners.addAll(scannerList);
+				for (HaeinsaKeyValueScanner scanner : scannerList){
+					HaeinsaKeyValue peeked = scanner.peek();
+					if (peeked != null){
+						scanners.add(scanner);
+					}
+				}
 				initialized = true;
 			} catch (Exception e) {
 				throw new IOException(e.getMessage(), e);
