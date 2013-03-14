@@ -158,8 +158,8 @@ public class HaeinsaTransaction {
 					primaryRowKey.setRow(rowStateEntry.getKey());
 				}
 				HaeinsaRowTransaction rowState = rowStateEntry.getValue();
-				commitTimestamp = Math.max(commitTimestamp, rowState.getCurrent().getCommitTimestamp() + rowState.getIterationCount());
-				prewriteTimestamp = Math.max(prewriteTimestamp, rowState.getCurrent().getCommitTimestamp() + 1);
+				commitTimestamp = Math.max(commitTimestamp, Math.max(ROW_LOCK_MIN_TIMESTAMP, rowState.getCurrent().getCommitTimestamp()) + rowState.getIterationCount());
+				prewriteTimestamp = Math.max(prewriteTimestamp, Math.max(ROW_LOCK_MIN_TIMESTAMP, rowState.getCurrent().getCommitTimestamp()) + 1);
 			}
 		}
 		commitTimestamp = Math.max(commitTimestamp, prewriteTimestamp);
