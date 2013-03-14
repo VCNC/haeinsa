@@ -15,6 +15,7 @@ import com.google.common.collect.Lists;
 class HaeinsaRowTransaction {
 	//	current RowLock saved in HBase. null if there is no lock at all.
 	private TRowLock current;
+	//	mutations will be saved in order of executions. 
 	private final List<HaeinsaMutation> mutations = Lists.newArrayList();
 	private final HaeinsaTableTransaction tableTransaction;
 	
@@ -63,7 +64,8 @@ class HaeinsaRowTransaction {
 	}
 	
 	/**
-	 * Return list of {@link HaeinsaKeyValueScanner}s which wrap mutations - (Put & Delete) contained inside instance. 
+	 * Return list of {@link HaeinsaKeyValueScanner}s which wrap mutations - (Put & Delete) contained inside instance.
+	 * Also assign sequenceID to every {@link HaeinsaMutation#MutationScanner}. 
 	 * @return
 	 */
 	public List<HaeinsaKeyValueScanner> getScanners() {

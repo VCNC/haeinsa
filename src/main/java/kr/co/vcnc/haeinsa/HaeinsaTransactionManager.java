@@ -44,6 +44,7 @@ public class HaeinsaTransactionManager {
 		TRowLock startUnstableRowLock = getUnstableRowLock(tableName, row);
 		
 		if (startUnstableRowLock == null){
+			//	There is no on-going transaction on row.
 			return null;
 		}
 		

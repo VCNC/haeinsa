@@ -822,7 +822,9 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	}
 
 	/**
+	 * {@link HaeinsaGet} 와 {@link HaeinsaScan}, {@link HaeinsaIntraScan} 을 위해서 Put/delete projection 을 해주는 class 이다. 
 	 * 하나의 {@link HaeinsaTable} 에 대한 Scanner 들만 모아 놓게 된다.
+	 * TODO
 	 * @author Myungbo Kim
 	 *
 	 */
@@ -837,7 +839,14 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		//	tracking delete of one specific row.
 		private final HaeinsaDeleteTracker deleteTracker = new HaeinsaDeleteTracker();
 		private final HaeinsaColumnTracker columnTracker;
+		/**
+		 * true if TRowLock inside scanners, 
+		 * false if TRowLock is already included inside tableState.getRowStates().get(row) 
+		 */
 		private final boolean lockInclusive;
+		/**
+		 * -1 if not used. ( Get / Scan ) 
+		 */
 		private final int batch;
 		private final Map<byte[], NavigableSet<byte[]>> familyMap; 
 		private HaeinsaKeyValue prevKV = null;
@@ -954,7 +963,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		}
 		
 		/**
-		 * 정해진 row 에 대한 TRowLock 이 있는지 찾아서 return 한다. 없으면 null 을 return 한다.
+		 * 정해진 row 에 대한 TRowLock 이 있는지 {@link #scanners} 중에서 찾아서 return 한다. 없으면 null 을 return 한다.
 		 * 만약 {@link #scanners} 중 하나가 row 보다 선행하는 {@link HaeinsaKeyValueScanner} 라면 
 		 * 해당 Scanner 는 이 method 에 의해서 선택되지 않는다.
 		 * 즉, 올바른 동작을 위해서는 {@link #scanners} 에 들어 있는 모든 HaeinsaKeyValueScanner 의 peek() 값이 
@@ -1040,16 +1049,17 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 							//	rowState 가 이미 있다는 뜻으로, scan 이나 get 으로 읽어온 TRowLock 이 아니라 
 							//	rowState 에 포함된 current 을 사용하게 된다.
 						}
+						//	여기까지 왔다는 것은 currentKV.getRow() 에 대한 TRowLock 이 RowState 에 저장되어 있다는 뜻이다. 
 					}
 					prevKV = currentKV;
 				}
 				
 				if (Bytes.equals(prevKV.getRow(), currentKV.getRow())) {
 					if (currentScanner.getSequenceID() > maxSeqID) {
-						//	ignore
+						//	too old data, ignore
 					} else if (Bytes.equals(currentKV.getFamily(), LOCK_FAMILY) 
 							&& Bytes.equals(currentKV.getQualifier(), LOCK_QUALIFIER)){
-						//	if currentKV is Lock						
+						//	if currentKV is Lock, ignore
 					} else if (currentKV.getType() == Type.DeleteColumn || currentKV.getType() == Type.DeleteFamily){
 						//	if currentKV is delete
 						deleteTracker.add(currentKV, currentScanner.getSequenceID());
@@ -1057,7 +1067,8 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 							|| !(Bytes.equals(prevKV.getRow(), currentKV.getRow())
 									&& Bytes.equals(prevKV.getFamily(), currentKV.getFamily()) 
 									&& Bytes.equals(prevKV.getQualifier(), currentKV.getQualifier()))) {
-						// Row, Family, Qualifier 모두가 같은 경우가 더 나오면 무시한다.
+						//	prevKV 와 currentKV 의 reference 가 같은 경우는 해당 currentKV 가 새로운 row 인 경우이다. 
+						// 그 외에 Row, Family, Qualifier 모두가 같은 경우가 더 나오면 무시한다. ( 나올 가능성은 거의 없다. )
 						if (!deleteTracker.isDeleted(currentKV, currentScanner.getSequenceID()) 
 								&& columnTracker.isMatched(currentKV)){
 							//	if currentKV is not deleted and inside scan range
@@ -1068,7 +1079,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 					
 					nextScanner(currentScanner);
 				} else {
-					//	currentKV is different row with prevKV, so reset deleteTracker
+					//	currentKV is different row with prevKV, so reset deleteTracker & maxSeqID
 					deleteTracker.reset();
 					prevKV = null;
 					maxSeqID = Long.MAX_VALUE;
@@ -1079,6 +1090,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 					}
 				}
 				if (batch > 0 && sortedKVs.size() >= batch){
+					//	if intraScan & sortedKVs have more elements than batch.
 					break;
 				}
 			}

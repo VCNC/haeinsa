@@ -82,7 +82,7 @@ public abstract class HaeinsaMutation {
 	public abstract TMutation toTMutation();
 	
 	/**
-	 * 
+	 * 단일한 row 에 대한 {@link #MutationScanner} 를 반환하게 된다. 
 	 * @param sequenceID sequence id represent which Scanner is newer one. Lower id is newer one.
 	 * @return
 	 */
