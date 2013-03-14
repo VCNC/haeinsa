@@ -4,6 +4,7 @@ import static kr.co.vcnc.haeinsa.HaeinsaConstants.ROW_LOCK_MIN_TIMESTAMP;
 
 import java.io.IOException;
 import java.util.Map.Entry;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.NavigableMap;
 
 import kr.co.vcnc.haeinsa.exception.ConflictException;
@@ -25,6 +26,7 @@ public class HaeinsaTransaction {
 	private TRowKey primary;
 	private long commitTimestamp = Long.MIN_VALUE;
 	private long prewriteTimestamp = Long.MIN_VALUE;
+	private final AtomicBoolean used = new AtomicBoolean(false);
 	private static enum CommitMethod {
 		SINGLE_ROW_PUT_ONLY,	//	rowTx 가 하나만 존재하고, muation 의 종류가 HaeinsaPut 일 때 
 		SINGLE_ROW_READ_ONLY,	//	rowTx 가 하나만 존재하고, muations 가 없을 때 
@@ -78,7 +80,10 @@ public class HaeinsaTransaction {
 	}
 	
 	public void rollback() throws IOException {
-		// do nothing
+		// check if this transaction is used.
+		if (!used.compareAndSet(false, true)){
+			throw new IllegalStateException("this transaction is already used.");
+		}
 	}
 	
 	/**
@@ -172,6 +177,10 @@ public class HaeinsaTransaction {
 	 * @throws IOException ConflictException, HBase IOException.
 	 */
 	public void commit() throws IOException { 
+		// check if this transaction is used.
+		if (!used.compareAndSet(false, true)){
+			throw new IllegalStateException("this transaction is already used.");
+		}
 		// determine commitTimestamp & determine primary row
 		TRowKey primaryRowKey = null;
 		long commitTimestamp = ROW_LOCK_MIN_TIMESTAMP;
