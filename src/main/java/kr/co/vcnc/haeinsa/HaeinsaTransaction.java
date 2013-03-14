@@ -23,6 +23,7 @@ public class HaeinsaTransaction {
 	private long prewriteTimestamp = Long.MIN_VALUE;
 	private final AtomicBoolean used = new AtomicBoolean(false);
 	private static enum CommitMethod {
+		NOTHING,
 		SINGLE_ROW_PUT_ONLY,
 		SINGLE_ROW_READ_ONLY,
 		MULTI_ROW
@@ -82,7 +83,7 @@ public class HaeinsaTransaction {
 	
 	protected CommitMethod determineCommitMethod(){
 		int count = 0;
-		CommitMethod method = CommitMethod.SINGLE_ROW_READ_ONLY;
+		CommitMethod method = CommitMethod.NOTHING;
 		for (HaeinsaTableTransaction tableState : getTableStates().values()){
 			for (HaeinsaRowTransaction rowState : tableState.getRowStates().values()){
 				count ++;
@@ -189,6 +190,10 @@ public class HaeinsaTransaction {
 		
 		case SINGLE_ROW_PUT_ONLY:{
 			commitSingleRowPutOnly();
+			break;
+		}
+		
+		case NOTHING:{
 			break;
 		}
 
