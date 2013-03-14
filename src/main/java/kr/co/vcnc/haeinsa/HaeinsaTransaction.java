@@ -158,13 +158,8 @@ public class HaeinsaTransaction {
 					primaryRowKey.setRow(rowStateEntry.getKey());
 				}
 				HaeinsaRowTransaction rowState = rowStateEntry.getValue();
-				//	To ymkim
-				//	여기에 문제가 있을 수 있을 것 같습니다. 
-				//	rowState.getIterationCount() 이게 1보다 크고 ( 여러 mutation 이 들어가고 ), HBase의 해당 row 에 원래 TRowLock 이 없던 경우에 
-				//	( 즉, ROW_LOCK_MIN_TIMESTAMP 이 선택되는 경우에 ) 이상하게 동작할 수 있지 않을까요?
-				//	
-				commitTimestamp = Math.max(commitTimestamp, rowState.getCurrent().getCommitTimestamp() + rowState.getIterationCount());
-				prewriteTimestamp = Math.max(prewriteTimestamp, rowState.getCurrent().getCommitTimestamp() + 1);
+				commitTimestamp = Math.max(commitTimestamp, Math.max(ROW_LOCK_MIN_TIMESTAMP, rowState.getCurrent().getCommitTimestamp()) + rowState.getIterationCount());
+				prewriteTimestamp = Math.max(prewriteTimestamp, Math.max(ROW_LOCK_MIN_TIMESTAMP, rowState.getCurrent().getCommitTimestamp()) + 1);
 			}
 		}
 		commitTimestamp = Math.max(commitTimestamp, prewriteTimestamp);
