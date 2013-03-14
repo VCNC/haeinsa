@@ -464,6 +464,8 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 
 	@Override
 	public void close() throws IOException {
+		//	temp
+		System.out.println("Table closed");
 		table.close();
 	}
 	
@@ -513,26 +515,24 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	}
 
 	/**
-	 * TODO
+	 * rowState 값을 참조하여 row 에 prewrite 를 한다. 
 	 * @param rowState
 	 * @param row
 	 * @param isPrimary
-	 * @throws IOException
+	 * @throws IOException ConflictException, HBase IOException
 	 */
 	protected void prewrite(HaeinsaRowTransaction rowState, byte[] row, boolean isPrimary)
 			throws IOException {
 		Put put = new Put(row);
 		Set<TCellKey> prewritten = Sets.newTreeSet();
+		//	order of remaining as TRemove, TPut, TRemove, TPut, ...
 		List<TMutation> remaining = Lists.newArrayList();
 		HaeinsaTransaction tx = rowState.getTableTransaction().getTransaction();
 		if (rowState.getMutations().size() > 0) {
 			if (rowState.getMutations().get(0) instanceof HaeinsaPut) {
-				HaeinsaPut haeinsaPut = (HaeinsaPut) rowState.getMutations()
-						.remove(0);
-				for (HaeinsaKeyValue kv : Iterables.concat(haeinsaPut
-						.getFamilyMap().values())) {
-					put.add(kv.getFamily(), kv.getQualifier(),
-							tx.getPrewriteTimestamp(), kv.getValue());
+				HaeinsaPut haeinsaPut = (HaeinsaPut) rowState.getMutations().remove(0);
+				for (HaeinsaKeyValue kv : Iterables.concat(haeinsaPut.getFamilyMap().values())) {
+					put.add(kv.getFamily(), kv.getQualifier(), tx.getPrewriteTimestamp(), kv.getValue());
 					TCellKey cellKey = new TCellKey();
 					cellKey.setFamily(kv.getFamily());
 					cellKey.setQualifier(kv.getQualifier());
@@ -548,34 +548,30 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 				TRowLockState.PREWRITTEN, tx.getCommitTimestamp())
 				.setCurrentTimestmap(tx.getPrewriteTimestamp());
 		if (isPrimary) {
-			for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : tx
-					.getTableStates().entrySet()) {
-				for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry
-						.getValue().getRowStates().entrySet()) {
-					if ((Bytes.equals(tableStateEntry.getKey(), getTableName()) && Bytes
-							.equals(rowStateEntry.getKey(), row))) {
+			//	for primary row
+			for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : tx.getTableStates().entrySet()) {
+				for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()) {
+					if ((Bytes.equals(tableStateEntry.getKey(), getTableName()) 
+							&& Bytes.equals(rowStateEntry.getKey(), row))) {
+						//	if this is primaryRow
 						continue;
 					}
-					newRowLock.addToSecondaries(new TRowKey().setTableName(
-							tableStateEntry.getKey()).setRow(
-							rowStateEntry.getKey()));
+					newRowLock.addToSecondaries(new TRowKey().setTableName(tableStateEntry.getKey()).setRow(rowStateEntry.getKey()));
 				}
 			}
 		} else {
+			//	for secondary rows
 			newRowLock.setPrimary(tx.getPrimary());
 		}
 
 		newRowLock.setPrewritten(Lists.newArrayList(prewritten));
 		newRowLock.setMutations(remaining);
 		newRowLock.setExpiry(System.currentTimeMillis() + ROW_LOCK_TIMEOUT);
-		put.add(LOCK_FAMILY, LOCK_QUALIFIER, tx.getCommitTimestamp(),
-				TRowLocks.serialize(newRowLock));
+		put.add(LOCK_FAMILY, LOCK_QUALIFIER, tx.getCommitTimestamp(), TRowLocks.serialize(newRowLock));
 
-		byte[] currentRowLockBytes = TRowLocks.serialize(rowState
-				.getCurrent());
+		byte[] currentRowLockBytes = TRowLocks.serialize(rowState.getCurrent());
 
-		if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER,
-				currentRowLockBytes, put)) {
+		if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, put)) {
 			// 실패하는 경우는 다른 쪽에서 primary row의 lock을 획득했으므로 충돌이 났다고 처리한다.
 			tx.abort();
 			throw new ConflictException("can't acquire row's lock");
