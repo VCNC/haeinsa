@@ -44,6 +44,7 @@ public class HaeinsaTransactionManager {
 		TRowLock startUnstableRowLock = getUnstableRowLock(tableName, row);
 		
 		if (startUnstableRowLock == null){
+			//	There is no on-going transaction on row.
 			return null;
 		}
 		
@@ -72,7 +73,12 @@ public class HaeinsaTransactionManager {
 	 */
 	private TRowLock getUnstableRowLock(byte[] tableName, byte[] row) throws IOException {
 		HaeinsaTable table = (HaeinsaTable) tablePool.getTable(tableName);
-		TRowLock rowLock = table.getRowLock(row);
+		TRowLock rowLock = null;
+		try{
+			 rowLock = table.getRowLock(row);
+		} finally {
+			table.close();
+		}
 		if (rowLock.getState() == TRowLockState.STABLE){
 			return null;
 		}else{

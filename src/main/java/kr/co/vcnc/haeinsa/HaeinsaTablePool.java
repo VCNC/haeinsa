@@ -1,5 +1,6 @@
 package kr.co.vcnc.haeinsa;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
@@ -21,7 +22,7 @@ import org.apache.hadoop.hbase.util.PoolMap.PoolType;
  * @author Myungbo Kim
  *
  */
-public class HaeinsaTablePool {
+public class HaeinsaTablePool implements Closeable{
 	private final PoolMap<String, HaeinsaTable> tables;
 	private final int maxSize;
 	private final PoolType poolType;
@@ -256,6 +257,7 @@ public class HaeinsaTablePool {
 	 * <p>
 	 * Note: this is a 'shutdown' of all the table pools.
 	 */
+	@Override
 	public void close() throws IOException {
 		for (String tableName : tables.keySet()) {
 			closeTablePool(tableName);

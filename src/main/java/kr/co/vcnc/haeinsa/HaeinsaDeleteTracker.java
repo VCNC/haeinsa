@@ -56,7 +56,7 @@ public class HaeinsaDeleteTracker {
 	 * 
 	 * @param kv
 	 * @param sequenceID
-	 * @return Return true if kv is deleted after sequenceID, return false otherwise.
+	 * @return Return true if kv is deleted after sequenceID ( lower sequenceID ), return false otherwise.
 	 */
 	public boolean isDeleted(HaeinsaKeyValue kv, long sequenceID) {
 		// check family
