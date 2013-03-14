@@ -148,6 +148,14 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		HaeinsaResult hResult = scanner.next();
 		scanner.close();
 		if (hResult == null){
+			// row가 비어있고 해당 row에 아무런 put도 하지 않았을 경우, ClientScanner를 initailize하면서 scanners에 들어있는 scanner가 아무것도 없게 됨
+			// 그러므로, 해당 row에 RowState를 만들지 않아서 제대로 된 transaction 처리가 되지 않는다.
+			// 그래서 여기서 RowState가 없다면 만들어준다.
+			rowState = tableState.createOrGetRowState(row);
+			if (rowState.getCurrent() == null){
+				rowState.setCurrent(TRowLocks.deserialize(null));
+			}
+			
 			List<HaeinsaKeyValue> emptyList = Collections.emptyList();
 			hResult = new HaeinsaResult(emptyList);
 		}
