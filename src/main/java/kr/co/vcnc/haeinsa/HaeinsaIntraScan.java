@@ -26,7 +26,7 @@ public class HaeinsaIntraScan {
 	private final boolean maxColumnInclusive;
 	private int batch = 32;
 	
-	//	if thie set is empty, then scan every family
+	//	if this set is empty, then scan every family
 	private final NavigableSet<byte[]> families = new TreeSet<byte[]>(Bytes.BYTES_COMPARATOR);
 
 	public HaeinsaIntraScan(final byte[] row, final byte[] minColumn,

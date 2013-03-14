@@ -26,6 +26,7 @@ import com.google.common.collect.Iterables;
  */
 public abstract class HaeinsaMutation {
 	protected byte[] row = null;
+	//	{ family -> HaeinsaKeyValue }
 	protected Map<byte[], NavigableSet<HaeinsaKeyValue>> familyMap = new TreeMap<byte[], NavigableSet<HaeinsaKeyValue>>(
 			Bytes.BYTES_COMPARATOR);
 
