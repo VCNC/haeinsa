@@ -1,5 +1,6 @@
 package kr.co.vcnc.haeinsa;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
 
@@ -21,7 +22,7 @@ import org.apache.hadoop.hbase.client.Scan;
  * @author Myungbo Kim
  *
  */
-public interface HaeinsaTableInterface {
+public interface HaeinsaTableInterface extends Closeable{
 	  /**
 	   * Gets the name of this table.
 	   *
@@ -172,6 +173,7 @@ public interface HaeinsaTableInterface {
 	   *
 	   * @throws IOException if a remote or network exception occurs.
 	   */
+	  @Override
 	  void close() throws IOException;
 	  
 }
