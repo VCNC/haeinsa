@@ -256,6 +256,10 @@ public class HaeinsaTransaction {
 		
 	}
 	
+	/**
+	 * TODO
+	 * @throws IOException
+	 */
 	private void makeStable() throws IOException {
 		HaeinsaTablePool tablePool = getManager().getTablePool();
 		HaeinsaRowTransaction primaryRowTx = createOrGetTableState(primary.getTableName()).createOrGetRowState(primary.getRow());

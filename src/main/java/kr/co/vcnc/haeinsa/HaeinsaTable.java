@@ -516,6 +516,13 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 
 	/**
 	 * rowState 값을 참조하여 row 에 prewrite 를 한다. 
+	 * {@link TRowLock} 의 version, state, commitTimestamp, currentTimestamp 를 기록한다.
+	 * rowState 의 첫 번째 mutation 이 HaeinsaPut 일 경우 그 put 들도 모아서 lock 을 {@link TRowLockState#PREWRITTEN} 으로 변경할 때
+	 * 함께 변경한다.
+	 * mutation 들 중에서 아직 적용 되지 않은 mutation 들은 {@link TRowLock#mutations} 에 기록하고, 
+	 * prewrite 동안에 put 된 데이터는 {@link TRowLock#prewritten} 에 기록된다.
+	 * 후자는 후에 {@link HaeinsaTransaction#abort()} 에서 기록된 데이터를 제거할 때 사용된다. 
+	 * <p> primary row 일 경우에는 secondaries 가 추가되고, secondary row 일 경우에는 primary 가 추가된다.
 	 * @param rowState
 	 * @param row
 	 * @param isPrimary
@@ -607,6 +614,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 				newRowLock.setCurrentTimestmap(currentTimestamp + i + 1);
 				newRowLock.setMutations(remaining.subList(i + 1,
 						remaining.size()));
+				//	prewritten state 로 변하면서 ROW_LOCK_TIMEOUT 만큼의 lock expiry가 생긴다. 
 				newRowLock.setExpiry(System.currentTimeMillis()
 						+ ROW_LOCK_TIMEOUT);
 				Put put = new Put(row);
@@ -660,7 +668,8 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 
 	/**
 	 * TODO
-	 * make row from {@link TRowLockState#PREWRITTEN} or {@link TRowLockState#COMMITTED} or {@link TRowLockState#ABORTED} to {@link TRowLockState#STABLE}
+	 * make row from {@link TRowLockState#PREWRITTEN} or {@link TRowLockState#COMMITTED} or {@link TRowLockState#ABORTED} 
+	 * to {@link TRowLockState#STABLE}
 	 * @param tx
 	 * @param row
 	 * @throws IOException
@@ -704,6 +713,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		newRowLock.setCommitTimestamp(commitTimestamp);
 		newRowLock.setState(TRowLockState.COMMITTED);
 		newRowLock.setPrewrittenIsSet(false);
+		//	expiry 가 ROW_LOCK_TIMEOUT 만큼 뒤로 다시 밀린다. 
 		newRowLock.setExpiry(System.currentTimeMillis() + ROW_LOCK_TIMEOUT);
 
 		byte[] newRowLockBytes = TRowLocks.serialize(newRowLock);
