@@ -16,8 +16,16 @@ import org.apache.hadoop.hbase.util.Bytes;
 import com.google.common.collect.Maps;
 
 /**
- * TODO
- * @author Myungbo Kim
+ * Haeinsa 에서 하나의 Transaction 을 표현하는 단위이다. 
+ * 내부에 하나의 Transaction 을 표현하기 위한 {@link HaeinsaTableTransaction} 을 들고 있으며, 
+ * {@link HaeinsaTransactionManager} 로의 reference 를 가지고 있다.
+ * 
+ * <p>{@link HaeinsaTransactionManager#begin()} 을 통해서 생성되거나
+ * {@link HaeinsaTransactionManager#getTransaction()} 을 통해서 생성되어서 사용할 수 있다. 
+ * 전자는 새로운 Transaction 을 시작하는 경우에 사용되고, 후자는 실패한 Transaction 을 rollback 하거나 재시도 시킬 때에 사용된다.
+ * 
+ * <p>하나의 {@link HaeinsaTransaction} 은 {@link #commit()} 이나 {@link #rollback()} 이 되고 나면 더 이상 사용할 수 없다.
+ * @author Youngmok Kim
  *
  */
 public class HaeinsaTransaction {
@@ -72,6 +80,13 @@ public class HaeinsaTransaction {
 		this.primary = primary;
 	}
 	
+	/**
+	 * tableName 을 가지는 {@link HaeinsaTableTransaction} 을 가져온다. 
+	 * 만약 해당 이름의 {@link HaeinsaTableTrasaction} 이 존재하지 않으면 새로 instance 를 생성해서 
+	 * HaeinsaTransaction 내부의 {@link #tableStates} 에 저장하고 return 한다.
+	 * @param tableName
+	 * @return
+	 */
 	protected HaeinsaTableTransaction createOrGetTableState(byte[] tableName){
 		HaeinsaTableTransaction tableTxState = tableStates.get(tableName);
 		if (tableTxState == null){
@@ -117,6 +132,7 @@ public class HaeinsaTransaction {
 	}
 	
 	/**
+	 * Commit multiple row Transaction or single row Transaction which includes Delete operation.
 	 * 
 	 * @throws IOException ConflictException, HBase IOException
 	 */
@@ -262,6 +278,16 @@ public class HaeinsaTransaction {
 		
 	}
 	
+	/**
+	 * 하나의 Transaction 에 해당하는 모든 row 의 {@link TRowLock} 의 state 를 {@link TRowLockState#STABLE} 로 바꾼다.
+	 * 다음 2가지 경우에 불릴 수 있다.  
+	 * <p> 1. {@link #commitMultiRows()} 에서 primary row 를 {@link TRowLockState#COMMITTED} 로 바꾸고 
+	 * primary row 와 secondary row 의 mutation 을 모두 적용한 후에 {@link TRowLockState#STABLE} 로 바꾸는 작업을 수행한다. 
+	 * <p> 2. {@link #recover()} 에서부터 불려서 중간에 실패한 Transaction 을 완성시키는 작업을 수행한다. 
+	 * 이 함수가 실행되기 위해선 primary row 가 {@link TRowLockState#COMMITTED} 에 와 있어야 한다.
+	 *  
+	 * @throws IOException ConflictException, HBase IOException.
+	 */
 	private void makeStable() throws IOException {
 		HaeinsaTablePool tablePool = getManager().getTablePool();
 		HaeinsaRowTransaction primaryRowTx = createOrGetTableState(primary.getTableName()).createOrGetRowState(primary.getRow());
@@ -269,11 +295,14 @@ public class HaeinsaTransaction {
 		{
 			HaeinsaTable table = (HaeinsaTable) tablePool.getTable(primary.getTableName());
 			try{
+				//	
+				//	commit 이 2번 일어날 수 있는데, 복원하는 Client 가 lock 에 대한 권한을 가질려면 expiry 를 추가로 늘려야 하기 때문입니다.
 				table.commitPrimary(primaryRowTx, primary.getRow());
 			} finally {
 				table.close();
 			}
 		}
+		//	이 지점에 도달하면 이 transaction 은 이미 성공한 것으로 취급됩니다. 
 		
 		for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : tableStates.entrySet()){
 			for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()){
@@ -282,7 +311,9 @@ public class HaeinsaTransaction {
 				try{
 					table.applyMutations(rowStateEntry.getValue(), rowStateEntry.getKey());
 					
-					if ((Bytes.equals(tableStateEntry.getKey(), primary.getTableName()) && Bytes.equals(rowStateEntry.getKey(), primary.getRow()))){
+					if ((Bytes.equals(tableStateEntry.getKey(), primary.getTableName()) 
+							&& Bytes.equals(rowStateEntry.getKey(), primary.getRow()))){
+						//	primary row 일 때 
 						continue;
 					}
 					// make secondary rows from prewritten to stable
@@ -293,6 +324,7 @@ public class HaeinsaTransaction {
 			}
 		}
 		
+		//	make primary row stable
 		{
 			HaeinsaTable table = (HaeinsaTable) tablePool.getTable(primary.getTableName());
 			try{
@@ -303,6 +335,13 @@ public class HaeinsaTransaction {
 		}
 	}
 	
+	/**
+	 * 과거에 시도되었지만 완료되지 못한 Transaction 을 재현한 후에 이미 성공한 Transaction 이면 ( primaryRow 가 {@link TRowLockState#COMMITTED} 이면 )
+	 * {@link #makeStable()} method 를 불러서 stable 시키고,
+	 * 아직 commit 되지 못한 Transaction 일 경우엔 {@link #abort()} method 를 부른다.
+	 * 
+	 * @throws IOException
+	 */
 	protected void recover() throws IOException {
 		HaeinsaRowTransaction primaryRowTx = createOrGetTableState(primary.getTableName()).createOrGetRowState(primary.getRow());
 		if (primaryRowTx.getCurrent().getState() == TRowLockState.PREWRITTEN){
@@ -323,6 +362,7 @@ public class HaeinsaTransaction {
 		}
 
 		case COMMITTED: {
+			//	이미 성공한 Transaction 이다. 
 			makeStable();
 			break;
 		}
@@ -332,6 +372,21 @@ public class HaeinsaTransaction {
 		}
 	}
 
+	/**
+	 * Transaction 을 abort 시켜서 Transaction 을 시작하기 전의 상태로 되돌리는 method 이다.
+	 * Transaction 을 진행하던 Client 가 lock 을 가져오지 못하는 등의 이유로 취소 시킬 수 있고, 
+	 * 다른 Client 가 시도하던 Transaction 이 실패하고 expiry 가 지난 후에 취소 시킬 수도 있다. 
+	 * abort 는 기본적으로 lazy-recovery 로 진행된다.    
+	 * <p> 다른 Client 가 시도한 Transaction 을 rollback 하는 작업을 진행하는 경우에는 
+	 * 실패한 Transaction 의 상태를 primary row 의 lock 에 담긴 secondary 정보와 
+	 * secondary row 들의 lock 에 담긴 정보를 통해서 복구되었다고 가정한다.  
+	 * <p> 다음과 같은 순서로 abort 가 진행된다. 
+	 * <p> 1. primary row 를 abort 시킨다. ( {@link HaeinsaTable#abortPrimary()} )
+	 * <p> 2. secondary row 들을 돌아가면서 prewritten 을 지우고 stable 로 바꾼다.  
+	 * <p> 3. primary row 를 stable 로 바꾼다. 
+	 *  
+	 * @throws IOException ConflictException, HBase IOException.
+	 */
 	protected void abort() throws IOException {
 		HaeinsaTablePool tablePool = getManager().getTablePool();
 		HaeinsaRowTransaction primaryRowTx = createOrGetTableState(primary.getTableName()).createOrGetRowState(primary.getRow());
@@ -347,12 +402,13 @@ public class HaeinsaTransaction {
 		
 		for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : tableStates.entrySet()){
 			for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()){
-				// delete prewritten  
+				// delete prewritten, transaction 에 포함된 row 마다 table 이 다를 수 있기 때문에 HaeinsaTable 을 매번 다시 받아야 한다.
 				HaeinsaTable table = (HaeinsaTable) tablePool.getTable(tableStateEntry.getKey());
 				try{
 					table.deletePrewritten(rowStateEntry.getValue(), rowStateEntry.getKey());
 					
-					if ((Bytes.equals(tableStateEntry.getKey(), primary.getTableName()) && Bytes.equals(rowStateEntry.getKey(), primary.getRow()))){
+					if ((Bytes.equals(tableStateEntry.getKey(), primary.getTableName()) 
+							&& Bytes.equals(rowStateEntry.getKey(), primary.getRow()))){
 						continue;
 					}
 					// make secondary rows from prewritten to stable
@@ -363,7 +419,8 @@ public class HaeinsaTransaction {
 				}
 			}
 		}
-		
+
+		//	make primary row stable
 		{
 			HaeinsaTable table = (HaeinsaTable) tablePool.getTable(primary.getTableName());
 			try{

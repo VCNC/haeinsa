@@ -22,8 +22,7 @@ import com.google.common.collect.ComparisonChain;
  * <p>HaeinsaKeyValue has public static comparator which can be used in navigableMap.
  * This comparator is ComparisionChain of {@link NullableCompator} wrapped {@link org.apache.hadoop.hbase.util.Bytes#BYTES_COMPARATOR}.
  * The order of comparisonChain is row, family, qualifier, value and type.
- * 
- * @author Myungbo Kim
+ * @author Youngmok Kim
  *
  */
 public class HaeinsaKeyValue {

@@ -21,7 +21,7 @@ import com.google.common.collect.Iterables;
  * {@link HaeinsaPut} 혹은 {@link HaeinsaDelete} 로 구현해서 사용한다.
  * 
  * <p>HaeinsaTable 이 put/delete 정보를 get/scan 에 projection 할 때 사용할 수 있도록 {@link HaeinsaKeyValueScanner} 를 return 해준다. 
- * @author Myungbo Kim
+ * @author Youngmok Kim
  *
  */
 public abstract class HaeinsaMutation {

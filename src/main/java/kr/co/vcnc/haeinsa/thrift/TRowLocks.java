@@ -17,7 +17,7 @@ import org.apache.thrift.protocol.TProtocolFactory;
  * Static class for TRowLock ( Thrift class ) 
  * Provide static method to serialize / deserialize with TCompactProtocol of Thrift
  * <p>TRowLock(commitTimestamp = Long.MIN_VALUE) <=> byte[] null
- * @author Myungbo Kim
+ * @author Youngmok Kim
  *
  */
 public final class TRowLocks {
