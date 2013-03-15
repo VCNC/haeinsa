@@ -23,6 +23,7 @@ import kr.co.vcnc.haeinsa.thrift.TRowLocks;
 import kr.co.vcnc.haeinsa.thrift.generated.TCellKey;
 import kr.co.vcnc.haeinsa.thrift.generated.TKeyValue;
 import kr.co.vcnc.haeinsa.thrift.generated.TMutation;
+import kr.co.vcnc.haeinsa.thrift.generated.TMutationType;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowKey;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
@@ -51,7 +52,7 @@ import com.google.common.collect.Sets;
 /**
  * Implementation of {@link HaeinsaTableInterface}. 
  * It works with {@link HaeinsaTransaction} to provide transaction on HBase. 
- * @author Myungbo Kim
+ * @author Youngmok Kim
  *
  */
 public class HaeinsaTable implements HaeinsaTableInterface {
@@ -472,8 +473,6 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 
 	@Override
 	public void close() throws IOException {
-		//	temp
-		System.out.println("Table closed");
 		table.close();
 	}
 	
@@ -486,7 +485,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	 * <p>If TRowLock is changed and checkAndPut failed, it means transaction is failed so throw {@link ConflictException}.
 	 * @param rowState
 	 * @param row
-	 * @throws IOException
+	 * @throws IOException ConflictException, HBase IOException.
 	 */
 	protected void commitSingleRowPutOnly(HaeinsaRowTransaction rowState, byte[] row) throws IOException{
 		HaeinsaTransaction tx = rowState.getTableTransaction().getTransaction();
@@ -512,7 +511,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	 * If TRowLock is changed, it means transaction is failed, so throw {@link ConflictException}. 
 	 * @param rowState
 	 * @param row
-	 * @throws IOException ConflictException or HBase IOException.
+	 * @throws IOException  ConflictException, HBase IOException.
 	 */
 	protected void commitSingleRowReadOnly(HaeinsaRowTransaction rowState, byte[] row) throws IOException{
 		TRowLock prevRowLock = rowState.getCurrent();
@@ -597,34 +596,39 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	}
 
 	/**
-	 * TODO
+	 * {@link TRowLockState#PREWRITTEN} state 에서 Row 의 lock 에 적혀 있는 mutation 들을 모두 적용해 주는 method 이다.
+	 * <p> REMOVE 와 PUT 형태의 mutation 을 번갈아 가면서 적용하게 되며, PUT mutation 을 적용할 때만 HBase 에 적힌 TRowLock 이 최신 값으로 변경된다.
+	 * <p> mutation 의 종류가 {@link TMutationType#REMOVE} 일 경우에는 증가된 currentTimestamp 와 줄어든 remaining 을 
+	 * {@link TRowLock} 에 기록하지 못한다. 
+	 * 따라서 REMOVE mutation 에 실패한 후에 transaction 이 중단되는 경우, 다른 클라이언트가 받아서 recover 를 시도하면 
+	 * currentTimestamp 가 1만큼 작을 수 있다.
+	 * 이 경우에도 단지 이미 delete 명령이 수행된 timestamp 에 해당 명령이 한 번 더 수행될 뿐 정상적인 transaction 종료에 문제는 없다.  
+	 *  
 	 * @param rowTxState
 	 * @param row
-	 * @throws IOException
+	 * @throws IOException ConflictException, HBase IOException.
 	 */
 	protected void applyMutations(HaeinsaRowTransaction rowTxState, byte[] row)
 			throws IOException {
 		if (rowTxState.getCurrent().getMutationsSize() == 0) {
+			//	해당 row 에 mutation 이 하나도 없을 때
 			return;
 		}
 
-		List<TMutation> remaining = Lists.newArrayList(rowTxState.getCurrent()
-				.getMutations());
+		List<TMutation> remaining = Lists.newArrayList(rowTxState.getCurrent().getMutations());
 		long currentTimestamp = rowTxState.getCurrent().getCurrentTimestmap();
+		
 		for (int i = 0; i < remaining.size(); i++) {
-			byte[] currentRowLockBytes = TRowLocks
-					.serialize(rowTxState.getCurrent());
+			byte[] currentRowLockBytes = TRowLocks.serialize(rowTxState.getCurrent());
 
 			TMutation mutation = remaining.get(i);
 			switch (mutation.getType()) {
 			case PUT: {
 				TRowLock newRowLock = rowTxState.getCurrent().deepCopy();
 				newRowLock.setCurrentTimestmap(currentTimestamp + i + 1);
-				newRowLock.setMutations(remaining.subList(i + 1,
-						remaining.size()));
-				//	prewritten state 로 변하면서 ROW_LOCK_TIMEOUT 만큼의 lock expiry가 생긴다. 
-				newRowLock.setExpiry(System.currentTimeMillis()
-						+ ROW_LOCK_TIMEOUT);
+				newRowLock.setMutations(remaining.subList(i + 1, remaining.size()));
+				//	prewritten state 로 변하면서 ROW_LOCK_TIMEOUT 만큼 lock expiry 가 길어진다.  
+				newRowLock.setExpiry(System.currentTimeMillis() + ROW_LOCK_TIMEOUT);
 				Put put = new Put(row);
 				put.add(LOCK_FAMILY, LOCK_QUALIFIER,
 						newRowLock.getCurrentTimestmap(),
@@ -634,8 +638,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 							kv.getKey().getQualifier(),
 							newRowLock.getCurrentTimestmap(), kv.getValue());
 				}
-				if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER,
-						currentRowLockBytes, put)) {
+				if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, put)) {
 					// 실패하는 경우는 다른 쪽에서 row의 lock을 획득했으므로 충돌이 났다고 처리한다.
 					throw new ConflictException("can't acquire row's lock");
 				} else {
@@ -649,8 +652,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 				if (mutation.getRemove().getRemoveFamiliesSize() > 0){
 					for (ByteBuffer removeFamily : mutation.getRemove()
 							.getRemoveFamilies()) {
-						delete.deleteFamily(removeFamily.array(), currentTimestamp
-								+ i + 1);
+						delete.deleteFamily(removeFamily.array(), currentTimestamp + i + 1);
 					}
 				}
 				if (mutation.getRemove().getRemoveCellsSize() > 0){
@@ -675,22 +677,19 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	}
 
 	/**
-	 * TODO
-	 * make row from {@link TRowLockState#PREWRITTEN} or {@link TRowLockState#COMMITTED} or {@link TRowLockState#ABORTED} 
-	 * to {@link TRowLockState#STABLE}
+	 * 특정 row 의 {@link TRowLock} 를 Stable 로 바꾼다.
+	 * HBase 의 timestamp 가 commitTimestamp 인 곳에 쓰여진다.
+	 * {@link TRowLock#version}, {@link TRowLock#state} 와 {@link TRowLock#commitTimestamp} 정보만 쓰여진다.
 	 * @param tx
 	 * @param row
-	 * @throws IOException
+	 * @throws IOException ConflictException, HBase IOException.
 	 */
 	protected void makeStable(HaeinsaRowTransaction rowTxState, byte[] row)
 			throws IOException {
-		byte[] currentRowLockBytes = TRowLocks.serialize(rowTxState
-				.getCurrent());
-		HaeinsaTransaction transaction = rowTxState.getTableTransaction()
-				.getTransaction();
+		byte[] currentRowLockBytes = TRowLocks.serialize(rowTxState.getCurrent());
+		HaeinsaTransaction transaction = rowTxState.getTableTransaction().getTransaction();
 		long commitTimestamp = transaction.getCommitTimestamp();
-		TRowLock newRowLock = new TRowLock(ROW_LOCK_VERSION,
-				TRowLockState.STABLE, commitTimestamp);
+		TRowLock newRowLock = new TRowLock(ROW_LOCK_VERSION, TRowLockState.STABLE, commitTimestamp);
 		byte[] newRowLockBytes = TRowLocks.serialize(newRowLock);
 		Put put = new Put(row);
 		put.add(LOCK_FAMILY, LOCK_QUALIFIER, commitTimestamp, newRowLockBytes);
@@ -704,11 +703,16 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	}
 
 	/**
-	 * TODO
-	 * make primary row from {@link TRowLockState#PREWRITTEN} to {@link TRowLockState#COMMITTED}
+	 * 특정 primary row 의 state 를 {@link TRowLockState#COMMITTED} 로 바꾼다. 
+	 * Transaction 이 정상적으로 수행되는 동안 해당 method 가 불릴 경우 
+	 * state 가 {@link TRowLockState#PREWRITTEN} 에서 {@link TRowLockState#COMMITTED} 로 바뀌게 되며,
+	 * Transaction 이 stable 상태까지 도달하는 데 실패하고 {@link TRowLockState#COMMITTED} 에서 중단된 경우 
+	 * {@link HaeinsaTransaction} 에 의해서 불려서 primary row 의 state 를 
+	 * {@link TRowLockState#COMMITTED} 를 {@link TRowLockState#COMMITTED} 로 바꾼다. 
+	 * 
 	 * @param tx
 	 * @param row
-	 * @throws IOException
+	 * @throws IOException ConflictException, HBase IOException.
 	 */
 	protected void commitPrimary(HaeinsaRowTransaction rowTxState, byte[] row)
 			throws IOException {
@@ -720,6 +724,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		TRowLock newRowLock = rowTxState.getCurrent().deepCopy();
 		newRowLock.setCommitTimestamp(commitTimestamp);
 		newRowLock.setState(TRowLockState.COMMITTED);
+		//	make prewritten to null
 		newRowLock.setPrewrittenIsSet(false);
 		//	expiry 가 ROW_LOCK_TIMEOUT 만큼 뒤로 다시 밀린다. 
 		newRowLock.setExpiry(System.currentTimeMillis() + ROW_LOCK_TIMEOUT);
@@ -742,7 +747,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	 * get {@link TRowLock} from HBase.
 	 * @param row row
 	 * @return row lock
-	 * @throws IOException
+	 * @throws IOException HBase IOException.
 	 */
 	protected TRowLock getRowLock(byte[] row) throws IOException {
 		Get get = new Get(row);
@@ -757,11 +762,14 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	}
 
 	/**
-	 * TODO
-	 * make primary row from {@link TRowLockState#PREWRITTEN} to {@link TRowLockState#ABORTED}  
+	 * 중단되거나 lock 을 획득하는 데 실패한 Transaction 을 Transaction 을 시도하기 전의 상태로 rollback 하기 위해서 
+	 * primary row 의 lock 를 {@link TRowLockState#ABORTED} 로 바꾸는 method 이다.
+	 * <p>primary row 의 lock 은 {@link TRowLockState#PREWRITTEN} 상태에서 {@link TRowLockState#ABORTED} 로 바뀔 수도 있고, 
+	 * 하나의 {@link TRowLockState#ABORTED} state 를 가진 lock 에서 또 다른 {@link TRowLockState#ABORTED} 상태의 lock 으로 바뀔 수도 있다.
+	 * 후자는 다른 클라이언트가 해당 row 의 실패한 transaction 을 abort 하는 시도를 하다가 다시 실패한 경우에 해당한다.
 	 * @param tx
 	 * @param row
-	 * @throws IOException
+	 * @throws IOException ConflictException, HBase IOException.
 	 */
 	protected void abortPrimary(HaeinsaRowTransaction rowTxState, byte[] row)
 			throws IOException {
@@ -774,6 +782,8 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		newRowLock.setCommitTimestamp(commitTimestamp);
 		newRowLock.setState(TRowLockState.ABORTED);
 		newRowLock.setMutationsIsSet(false);
+		//	이 expiry extension 때문에 이미 abort 된 primary row 가 다시 두 개 이상의 Client 에 의해서 abort 가 될 때 
+		//	하나의 Client 만 lock 을 가져오는 데 성공한다. 
 		newRowLock.setExpiry(System.currentTimeMillis() + ROW_LOCK_TIMEOUT);
 
 		byte[] newRowLockBytes = TRowLocks.serialize(newRowLock);
@@ -790,15 +800,20 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	}
 
 	/**
-	 * TODO
-	 * delete row's puts({@link TRowLock#prewritten}).
+	 * {@link TRowLockState#PREWRITTEN} 과정에서 해당 row 에 put 된 데이터를 지우는 역할을 한다. 
+	 * {@link TRowLock#prewritten} 에 쓰여 있는 값을 읽어서 prewrite 시에 put 되었던 데이터를 알아낼 수 있다. 
+	 * currentTimestamp 에 해당하는 값만 지정해서 지워야 한다.
+	 * 
+	 * <p>{@link HTableInterface#checkAndDelete()} 을 통해서 prewritten 들을 지우기 때문에 HBase 에 쓰여진 {@link TRowLock} 은 변하지 않는다. 
+	 * lock 을 소유하는데 실패하면 {@link ConflictException} 을 throw 한다. 
 	 * @param rowTxState
 	 * @param row
-	 * @throws IOException
+	 * @throws IOException ConflictException, HBase IOException.
 	 */
 	protected void deletePrewritten(HaeinsaRowTransaction rowTxState, byte[] row)
 			throws IOException {
 		if (rowTxState.getCurrent().getPrewrittenSize() == 0) {
+			//	nothing to do
 			return;
 		}
 		byte[] currentRowLockBytes = TRowLocks.serialize(rowTxState

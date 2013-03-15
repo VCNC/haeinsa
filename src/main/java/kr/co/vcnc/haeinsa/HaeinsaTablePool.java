@@ -19,10 +19,11 @@ import org.apache.hadoop.hbase.util.PoolMap.PoolType;
 
 /**
  * Provide pooling pattern to HaeinsaTable.
- * @author Myungbo Kim
+ * @author Youngmok Kim
  *
  */
 public class HaeinsaTablePool implements Closeable{
+	//	{ tableName -> HaeinsaTable }
 	private final PoolMap<String, HaeinsaTable> tables;
 	private final int maxSize;
 	private final PoolType poolType;
@@ -232,8 +233,7 @@ public class HaeinsaTablePool implements Closeable{
 	 * @param tableName
 	 */
 	public void closeTablePool(final String tableName) throws IOException {
-		Collection<HaeinsaTable> tables = this.tables
-				.values(tableName);
+		Collection<HaeinsaTable> tables = this.tables.values(tableName);
 		if (tables != null) {
 			for (HaeinsaTableInterface table : tables) {
 				release(table);
@@ -369,42 +369,42 @@ public class HaeinsaTablePool implements Closeable{
 		}
 		
 		@Override
-		public void prewrite(HaeinsaRowTransaction rowTxState, byte[] row,
+		protected void prewrite(HaeinsaRowTransaction rowTxState, byte[] row,
 				boolean isPrimary) throws IOException {
 			table.prewrite(rowTxState, row, isPrimary);
 		}
 
 		@Override
-		public void applyMutations(HaeinsaRowTransaction rowTxState, byte[] row)
+		protected void applyMutations(HaeinsaRowTransaction rowTxState, byte[] row)
 				throws IOException {
 			table.applyMutations(rowTxState, row);
 		}
 
 		@Override
-		public void makeStable(HaeinsaRowTransaction rowTxState, byte[] row)
+		protected void makeStable(HaeinsaRowTransaction rowTxState, byte[] row)
 				throws IOException {
 			table.makeStable(rowTxState, row);
 		}
 
 		@Override
-		public void commitPrimary(HaeinsaRowTransaction rowTxState, byte[] row)
+		protected void commitPrimary(HaeinsaRowTransaction rowTxState, byte[] row)
 				throws IOException {
 			table.commitPrimary(rowTxState, row);
 		}
 
 		@Override
-		public TRowLock getRowLock(byte[] row) throws IOException {
+		protected TRowLock getRowLock(byte[] row) throws IOException {
 			return table.getRowLock(row);
 		}
 
 		@Override
-		public void abortPrimary(HaeinsaRowTransaction rowTxState, byte[] row)
+		protected void abortPrimary(HaeinsaRowTransaction rowTxState, byte[] row)
 				throws IOException {
 			table.abortPrimary(rowTxState, row);
 		}
 
 		@Override
-		public void deletePrewritten(HaeinsaRowTransaction rowTxState, byte[] row)
+		protected void deletePrewritten(HaeinsaRowTransaction rowTxState, byte[] row)
 				throws IOException {
 			table.deletePrewritten(rowTxState, row);
 		}

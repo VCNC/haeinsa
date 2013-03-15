@@ -4,7 +4,7 @@ import java.io.IOException;
 
 /**
  * 
- * @author Myungbo Kim
+ * @author Youngmok Kim
  *
  */
 public class ConflictException extends IOException {

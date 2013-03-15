@@ -11,7 +11,7 @@ import com.google.common.collect.Maps;
 /** 
  * Contains Transaction information of single Table.
  * <p>It have map of {byte[] row -> {@link HaeinsaRowTransaction}} and reference to {@link HaeinsaTransaction} 
- * @author Myungbo Kim
+ * @author Youngmok Kim
  *
  */
 class HaeinsaTableTransaction {

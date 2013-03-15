@@ -7,7 +7,7 @@ import java.io.IOException;
  * Scanner wrapper of HaeinsaResult.
  * Can contain multiple HaeinsaResult inside to allow iterator pattern.
  * <p>HaeinsaResultScanner interface provides both iterator pattern and next(), next(int) methods.
- * @author Myungbo Kim
+ * @author Youngmok Kim
  *
  */
 public interface HaeinsaResultScanner extends Closeable, Iterable<HaeinsaResult> {

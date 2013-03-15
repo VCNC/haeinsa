@@ -8,7 +8,7 @@ import com.google.common.collect.Maps;
 
 /**
  * Tracking deleted columns and family inside specific row.
- * @author Myungbo Kim
+ * @author Youngmok Kim
  *
  */
 public class HaeinsaDeleteTracker {
