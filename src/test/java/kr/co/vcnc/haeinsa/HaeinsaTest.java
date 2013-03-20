@@ -6,6 +6,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -40,6 +41,9 @@ public class HaeinsaTest {
 		CLUSTER = utility.startMiniCluster();
 		CONF = CLUSTER.getConfiguration();
 		HBaseAdmin admin = new HBaseAdmin(CONF);
+		
+		//	Table	->	ColumnFamily 
+		//	{ test } -> { !lock!, data, meta }
 		HTableDescriptor tableDesc = new HTableDescriptor("test");
 		HColumnDescriptor lockColumnDesc = new HColumnDescriptor(HaeinsaConstants.LOCK_FAMILY);
 		lockColumnDesc.setMaxVersions(1);
@@ -47,7 +51,21 @@ public class HaeinsaTest {
 		tableDesc.addFamily(lockColumnDesc);
 		HColumnDescriptor dataColumnDesc = new HColumnDescriptor("data");
 		tableDesc.addFamily(dataColumnDesc);
+		HColumnDescriptor metaColumnDesc = new HColumnDescriptor("meta");
+		tableDesc.addFamily(metaColumnDesc);
 		admin.createTable(tableDesc);
+		
+		//	Table	->	ColumnFamily 
+		//	{ log } -> { !lock!, raw }
+		HTableDescriptor logDesc = new HTableDescriptor("log");
+		lockColumnDesc = new HColumnDescriptor(HaeinsaConstants.LOCK_FAMILY);
+		lockColumnDesc.setMaxVersions(1);
+		lockColumnDesc.setInMemory(true);
+		logDesc.addFamily(lockColumnDesc);
+		HColumnDescriptor rawColumnDesc = new HColumnDescriptor("raw");
+		logDesc.addFamily(rawColumnDesc);
+		admin.createTable(logDesc);
+		
 		admin.close();
 	}
 	
@@ -85,6 +103,8 @@ public class HaeinsaTest {
 		
 		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
 		HaeinsaTableInterface testTable = tablePool.getTable("test");
+		
+		//	Test 2 puts tx
 		HaeinsaTransaction tx = tm.begin();
 		HaeinsaPut put = new HaeinsaPut(Bytes.toBytes("ymkim"));
 		put.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-1234-5678"));
@@ -128,7 +148,7 @@ public class HaeinsaTest {
 		HaeinsaResultScanner scanner = testTable.getScanner(tx, scan);
 		result = scanner.next();
 		result2 = scanner.next();
-		HaeinsaResult result3 = scanner.next();
+		HaeinsaResult result3 = scanner.next();		
 		
 		assertNull(result3);
 		assertArrayEquals(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber")), Bytes.toBytes("010-1234-5678"));
@@ -243,8 +263,89 @@ public class HaeinsaTest {
 		testTable.delete(tx, delete2);
 		
 		tx.commit();
+		
+		//	test Table-cross transaction & multi-Column transaction
+		tx = tm.begin();
+		HaeinsaTableInterface logTable = tablePool.getTable("log");
+		put = new HaeinsaPut(Bytes.toBytes("previousTime"));
+		put.add(Bytes.toBytes("raw"), Bytes.toBytes("time-0"), Bytes.toBytes("log-value-1"));
+		logTable.put(tx, put);
+		put = new HaeinsaPut(Bytes.toBytes("row-0"));
+		put.add(Bytes.toBytes("data"), Bytes.toBytes("time-0"), Bytes.toBytes("data-value-1"));
+		put.add(Bytes.toBytes("meta"), Bytes.toBytes("time-0"), Bytes.toBytes("meta-value-1"));
+		testTable.put(tx, put);
+		tx.commit();
+
+		//		check tx result 
+		tx = tm.begin();
+		get = new HaeinsaGet(Bytes.toBytes("previousTime"));
+		get.addColumn(Bytes.toBytes("raw"), Bytes.toBytes("time-0"));
+		assertArrayEquals(logTable.get(tx, get).getValue(Bytes.toBytes("raw"), Bytes.toBytes("time-0")), Bytes.toBytes("log-value-1"));
+		get = new HaeinsaGet(Bytes.toBytes("row-0"));
+		get.addColumn(Bytes.toBytes("data"), Bytes.toBytes("time-0"));
+		assertArrayEquals(testTable.get(tx, get).getValue(Bytes.toBytes("data"), Bytes.toBytes("time-0")), Bytes.toBytes("data-value-1"));
+		get = new HaeinsaGet(Bytes.toBytes("row-0"));
+		get.addColumn(Bytes.toBytes("meta"), Bytes.toBytes("time-0"));
+		assertArrayEquals(testTable.get(tx, get).getValue(Bytes.toBytes("meta"), Bytes.toBytes("time-0")), Bytes.toBytes("meta-value-1"));
+		tx.rollback();
+		
+		
+		//	clear test - table
+		tx = tm.begin();
+		scan = new HaeinsaScan();
+		scanner = testTable.getScanner(tx, scan);
+		Iterator<HaeinsaResult> iter = scanner.iterator();
+		while(iter.hasNext()){
+			result = iter.next();
+			for(HaeinsaKeyValue kv : result.list()){
+				kv.getRow();
+				//	delete specific kv
+				HaeinsaDelete delete = new HaeinsaDelete(kv.getRow());
+				delete.deleteColumns(kv.getFamily(), kv.getQualifier());
+				testTable.delete(tx, delete);
+			}
+		}
+		tx.commit();
+		scanner.close();
+		
+		//	clear log - table
+		tx = tm.begin();
+		scan = new HaeinsaScan();
+		scanner = logTable.getScanner(tx, scan);
+		iter = scanner.iterator();
+		while(iter.hasNext()){
+			result = iter.next();
+			for(HaeinsaKeyValue kv : result.list()){
+				kv.getRow();
+				//	delete specific kv
+				HaeinsaDelete delete = new HaeinsaDelete(kv.getRow());
+				delete.deleteColumns(kv.getFamily(), kv.getQualifier());
+				logTable.delete(tx, delete);
+			}
+		}
+		tx.commit();
+		scanner.close();
+		
+		//	check whether table is clear - testTable
+		tx = tm.begin();
+		scan = new HaeinsaScan();
+		scanner = testTable.getScanner(tx, scan);
+		iter = scanner.iterator();
+		assertFalse(iter.hasNext());
+		tx.rollback();
+		scanner.close();
+		//	check whether table is clear - logTable
+		tx = tm.begin();
+		scan = new HaeinsaScan();
+		scanner = logTable.getScanner(tx, scan);
+		iter = scanner.iterator();
+		assertFalse(iter.hasNext());
+		tx.rollback();
+		scanner.close();
+		
 
 		testTable.close();
+		logTable.close();
 		tablePool.close();
 	}
 	@Test
