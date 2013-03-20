@@ -788,11 +788,31 @@ public class HaeinsaTest {
 		assertTrue(checkLockExist(hTestTable, Bytes.toBytes("row10")));
 		
 		
+		//	access to Empty row
+		tx = tm.begin();
+		intraScan = new HaeinsaIntraScan(
+				Bytes.toBytes("row11"), 
+				Bytes.toBytes("col11"), true, 
+				Bytes.toBytes("col11-ver3"), true);
+		intraScan.setBatch(1);
+		resultScanner = testTable.getScanner(tx, intraScan);
+		iter = resultScanner.iterator();
+		resultScanner.close();
+
+		put = new HaeinsaPut(Bytes.toBytes("row10"));
+		put.add(Bytes.toBytes("data"), Bytes.toBytes("col10"), Bytes.toBytes("value10"));
+		testTable.put(tx, put);
+		tx.commit();
+		assertTrue(checkLockExist(hTestTable, Bytes.toBytes("row11")));
+		assertTrue(checkLockExist(hTestTable, Bytes.toBytes("row10")));
+		
+		
 		hTestTable.close();
 		testTable.close();
 		tablePool.close();
 		hbasePool.close();
 	}
+	
 	
 	/**
 	 * return true if TRowLock exist in specific ( table, row ) 
