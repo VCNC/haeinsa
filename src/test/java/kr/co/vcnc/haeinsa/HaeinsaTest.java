@@ -306,6 +306,8 @@ public class HaeinsaTest {
 			}
 		}
 		tx.commit();
+		scanner.close();
+		
 		//	clear log - table
 		tx = tm.begin();
 		scan = new HaeinsaScan();
@@ -322,6 +324,7 @@ public class HaeinsaTest {
 			}
 		}
 		tx.commit();
+		scanner.close();
 		
 		//	check whether table is clear - testTable
 		tx = tm.begin();
@@ -330,6 +333,7 @@ public class HaeinsaTest {
 		iter = scanner.iterator();
 		assertFalse(iter.hasNext());
 		tx.rollback();
+		scanner.close();
 		//	check whether table is clear - logTable
 		tx = tm.begin();
 		scan = new HaeinsaScan();
@@ -337,6 +341,7 @@ public class HaeinsaTest {
 		iter = scanner.iterator();
 		assertFalse(iter.hasNext());
 		tx.rollback();
+		scanner.close();
 		
 
 		testTable.close();
