@@ -19,12 +19,17 @@ import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
 import org.apache.hadoop.hbase.ZooKeeperConnectionException;
+import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.HTableInterfaceFactory;
+import org.apache.hadoop.hbase.client.HTablePool;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.PoolMap.PoolType;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -299,10 +304,13 @@ public class HaeinsaTest {
 			result = iter.next();
 			for(HaeinsaKeyValue kv : result.list()){
 				kv.getRow();
-				//	delete specific kv
+				//	delete specific kv - delete only if it's not lock family
 				HaeinsaDelete delete = new HaeinsaDelete(kv.getRow());
+				//	should not return lock by scanner
+				assertFalse(Bytes.equals(kv.getFamily(),HaeinsaConstants.LOCK_FAMILY));
 				delete.deleteColumns(kv.getFamily(), kv.getQualifier());
 				testTable.delete(tx, delete);
+				
 			}
 		}
 		tx.commit();
@@ -317,8 +325,10 @@ public class HaeinsaTest {
 			result = iter.next();
 			for(HaeinsaKeyValue kv : result.list()){
 				kv.getRow();
-				//	delete specific kv
+				//	delete specific kv - delete only if it's not lock family
 				HaeinsaDelete delete = new HaeinsaDelete(kv.getRow());
+				//	should not return lock by scanner
+				assertFalse(Bytes.equals(kv.getFamily(),HaeinsaConstants.LOCK_FAMILY));
 				delete.deleteColumns(kv.getFamily(), kv.getQualifier());
 				logTable.delete(tx, delete);
 			}
@@ -583,5 +593,215 @@ public class HaeinsaTest {
 		testTable.close();
 		tablePool.close();
 		
+	}
+	
+
+	@Test
+	public void testHBaseHaeinsaMigration() throws Exception {
+		final ExecutorService threadPool = Executors.newCachedThreadPool();
+		HaeinsaTablePool tablePool = new HaeinsaTablePool(CONF, 128, new HTableInterfaceFactory() {
+			
+			@Override
+			public void releaseHTableInterface(HTableInterface table)
+					throws IOException {
+				table.close();
+			}
+			
+			@Override
+			public HTableInterface createHTableInterface(Configuration config,
+					byte[] tableName) {
+				try {
+					return new HTable(tableName, HConnectionManager.getConnection(config), threadPool);
+				} catch (ZooKeeperConnectionException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				return null;
+			}
+		});
+		
+		
+		//	test HBase put -> Haeinsa Get ( w\ multiRowCommit() ) Migration
+		HTablePool hbasePool = new HTablePool(CONF,128,PoolType.Reusable);
+		HTableInterface hTestTable = hbasePool.getTable("test");
+		Put hPut = new Put(Bytes.toBytes("row1"));
+		hPut.add(Bytes.toBytes("data"), Bytes.toBytes("col1"), Bytes.toBytes("value1"));
+		hTestTable.put(hPut);
+		Result lockResult = hTestTable.get(new Get(Bytes.toBytes("row1")).addColumn(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER));
+		//	no lock
+		assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row1")));
+		
+		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
+		HaeinsaTableInterface testTable = tablePool.getTable("test");
+		
+		HaeinsaTransaction tx = tm.begin();
+		HaeinsaGet get = new HaeinsaGet(Bytes.toBytes("row1"));
+		get.addColumn(Bytes.toBytes("data"), Bytes.toBytes("col1"));
+		HaeinsaResult result = testTable.get(tx, get);
+		assertTrue(Bytes.equals(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("col1")), Bytes.toBytes("value1")));
+		HaeinsaPut put = new HaeinsaPut(Bytes.toBytes("row2"));
+		put.add(Bytes.toBytes("data"), Bytes.toBytes("col2"), Bytes.toBytes("value2"));
+		testTable.put(tx, put);
+		tx.commit();
+		
+		tx = tm.begin();
+		get = new HaeinsaGet(Bytes.toBytes("row1"));
+		get.addColumn(Bytes.toBytes("data"), Bytes.toBytes("col1"));
+		result = testTable.get(tx, get);
+		assertTrue(Bytes.equals(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("col1")), Bytes.toBytes("value1")));
+		get = new HaeinsaGet(Bytes.toBytes("row2"));
+		get.addColumn(Bytes.toBytes("data"), Bytes.toBytes("col2"));
+		result = testTable.get(tx, get);
+		assertTrue(Bytes.equals(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("col2")), Bytes.toBytes("value2")));
+		tx.rollback();
+		lockResult = hTestTable.get(new Get(Bytes.toBytes("row1")).addColumn(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER));
+		//	now have lock
+		assertTrue(checkLockExist(hTestTable, Bytes.toBytes("row1")));
+
+		
+		//	test HBase put -> Haeinsa Put ( w\ multiRowCommit() ) Migration
+		hPut = new Put(Bytes.toBytes("row3"));
+		hPut.add(Bytes.toBytes("data"), Bytes.toBytes("col3"), Bytes.toBytes("value3"));
+		hTestTable.put(hPut);
+		lockResult = hTestTable.get(new Get(Bytes.toBytes("row3")).addColumn(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER));
+		//	no lock
+		assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row3")));
+		
+		tx = tm.begin();
+		put = new HaeinsaPut(Bytes.toBytes("row3"));
+		put.add(Bytes.toBytes("data"), Bytes.toBytes("col3"), Bytes.toBytes("value3-2.0"));
+		testTable.put(tx, put);
+		tx.commit();
+
+		tx = tm.begin();
+		get = new HaeinsaGet(Bytes.toBytes("row3"));
+		get.addColumn(Bytes.toBytes("data"), Bytes.toBytes("col3"));
+		result = testTable.get(tx, get);
+		assertTrue(Bytes.equals(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("col3")), Bytes.toBytes("value3-2.0")));
+		tx.rollback();
+		lockResult = hTestTable.get(new Get(Bytes.toBytes("row3")).addColumn(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER));
+		//	now have lock
+		assertTrue(checkLockExist(hTestTable, Bytes.toBytes("row3")));
+		
+		
+		//	test HBase put -> Haeinsa Delete ( w\ multiRowCommit() ) Migration
+		hPut = new Put(Bytes.toBytes("row4"));
+		hPut.add(Bytes.toBytes("data"), Bytes.toBytes("col4"), Bytes.toBytes("value4"));
+		hTestTable.put(hPut);
+		lockResult = hTestTable.get(new Get(Bytes.toBytes("row4")).addColumn(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER));
+		//	no lock
+		assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row4")));
+		
+		tx = tm.begin();
+		HaeinsaDelete delete = new HaeinsaDelete(Bytes.toBytes("row4"));
+		delete.deleteColumns(Bytes.toBytes("data"), Bytes.toBytes("col4"));
+		testTable.delete(tx, delete);
+		tx.commit();
+		
+		tx = tm.begin();
+		result = testTable.get(tx, get);
+		assertTrue(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("col4")) == null);
+		tx.rollback();
+		lockResult = hTestTable.get(new Get(Bytes.toBytes("row4")).addColumn(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER));
+		//	now have lock
+		assertTrue(checkLockExist(hTestTable, Bytes.toBytes("row4")));
+		
+
+		//	test HBase put -> Haeinsa Scan ( w\ multiRowCommit() ) Migration
+		hPut = new Put(Bytes.toBytes("row5"));
+		hPut.add(Bytes.toBytes("data"), Bytes.toBytes("col5"), Bytes.toBytes("value5"));
+		hTestTable.put(hPut);
+		lockResult = hTestTable.get(new Get(Bytes.toBytes("row5")).addColumn(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER));
+		//	no lock
+		assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row5")));
+		
+		hPut = new Put(Bytes.toBytes("row6"));
+		hPut.add(Bytes.toBytes("data"), Bytes.toBytes("col6"), Bytes.toBytes("value6"));
+		hTestTable.put(hPut);
+		lockResult = hTestTable.get(new Get(Bytes.toBytes("row6")).addColumn(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER));
+		//	no lock
+		assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row6")));
+		
+		hPut = new Put(Bytes.toBytes("row7"));
+		hPut.add(Bytes.toBytes("data"), Bytes.toBytes("col7"), Bytes.toBytes("value7"));
+		hTestTable.put(hPut);
+		//	no lock
+		assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row7")));
+		
+		tx = tm.begin();
+		HaeinsaScan scan = new HaeinsaScan();
+		scan.setStartRow(Bytes.toBytes("row5"));
+		scan.setStopRow(Bytes.toBytes("row8"));
+		Iterator<HaeinsaResult> iter = testTable.getScanner(tx, scan).iterator();
+		while(iter.hasNext()){
+			iter.next();
+		}		
+		put = new HaeinsaPut(Bytes.toBytes("row8"));
+		put.add(Bytes.toBytes("data"), Bytes.toBytes("col8"), Bytes.toBytes("value8"));
+		testTable.put(tx, put);
+		tx.commit();
+		
+		//	now have lock
+		assertTrue(checkLockExist(hTestTable, Bytes.toBytes("row5")));
+		assertTrue(checkLockExist(hTestTable, Bytes.toBytes("row6")));
+		assertTrue(checkLockExist(hTestTable, Bytes.toBytes("row7")));
+		assertTrue(checkLockExist(hTestTable, Bytes.toBytes("row8")));
+		
+		tx = tm.begin();
+		assertArrayEquals(testTable.get(tx, new HaeinsaGet(Bytes.toBytes("row5"))).getValue(Bytes.toBytes("data"), Bytes.toBytes("col5")), Bytes.toBytes("value5"));
+		assertArrayEquals(testTable.get(tx, new HaeinsaGet(Bytes.toBytes("row6"))).getValue(Bytes.toBytes("data"), Bytes.toBytes("col6")), Bytes.toBytes("value6"));
+		assertArrayEquals(testTable.get(tx, new HaeinsaGet(Bytes.toBytes("row7"))).getValue(Bytes.toBytes("data"), Bytes.toBytes("col7")), Bytes.toBytes("value7"));
+		assertArrayEquals(testTable.get(tx, new HaeinsaGet(Bytes.toBytes("row8"))).getValue(Bytes.toBytes("data"), Bytes.toBytes("col8")), Bytes.toBytes("value8"));
+		tx.rollback();
+		
+		//	test HBase put -> Haeinsa intraScan ( w\ multiRowCommit() ) Migration
+		hPut = new Put(Bytes.toBytes("row9"));
+		hPut.add(Bytes.toBytes("data"), Bytes.toBytes("col9-ver1"), Bytes.toBytes("value9-ver1"));
+		hPut.add(Bytes.toBytes("data"), Bytes.toBytes("col9-ver2"), Bytes.toBytes("value9-ver2"));
+		hPut.add(Bytes.toBytes("data"), Bytes.toBytes("col9-ver3"), Bytes.toBytes("value9-ver3"));
+		hTestTable.put(hPut);
+		//	no lock
+		assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row9")));
+		
+		tx = tm.begin();
+		HaeinsaIntraScan intraScan = new HaeinsaIntraScan(
+				Bytes.toBytes("row9"), 
+				Bytes.toBytes("col9"), true, 
+				Bytes.toBytes("col9-ver3"), true);
+		intraScan.setBatch(1);
+		HaeinsaResultScanner resultScanner = testTable.getScanner(tx, intraScan);
+		iter = resultScanner.iterator();
+		assertArrayEquals(iter.next().getValue(Bytes.toBytes("data"),Bytes.toBytes("col9-ver1")), Bytes.toBytes("value9-ver1"));
+		assertArrayEquals(iter.next().getValue(Bytes.toBytes("data"),Bytes.toBytes("col9-ver2")), Bytes.toBytes("value9-ver2"));
+		assertArrayEquals(iter.next().getValue(Bytes.toBytes("data"),Bytes.toBytes("col9-ver3")), Bytes.toBytes("value9-ver3"));
+		resultScanner.close();
+
+		put = new HaeinsaPut(Bytes.toBytes("row10"));
+		put.add(Bytes.toBytes("data"), Bytes.toBytes("col10"), Bytes.toBytes("value10"));
+		testTable.put(tx, put);
+		tx.commit();
+		//	now have lock
+		assertTrue(checkLockExist(hTestTable, Bytes.toBytes("row9")));
+		assertTrue(checkLockExist(hTestTable, Bytes.toBytes("row10")));
+		
+		
+		hTestTable.close();
+		testTable.close();
+		tablePool.close();
+		hbasePool.close();
+	}
+	
+	/**
+	 * return true if TRowLock exist in specific ( table, row ) 
+	 * @param table
+	 * @param row
+	 * @return
+	 * @throws Exception
+	 */
+	public boolean checkLockExist(HTableInterface table, byte[] row) throws Exception{
+		return table.get(new Get(row)).getValue(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER) != null; 
 	}
 }
