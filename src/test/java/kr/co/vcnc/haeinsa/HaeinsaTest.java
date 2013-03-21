@@ -914,32 +914,113 @@ public class HaeinsaTest {
 		});		
 		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
 		HaeinsaTableInterface testTable = tablePool.getTable("test");
+		HTablePool hbasePool = new HTablePool(CONF,128,PoolType.Reusable);
+		HTableInterface hTestTable = hbasePool.getTable("test");
+		
+		//	put initial data
+		HaeinsaTransaction tx = tm.begin();
+		HaeinsaPut put = new HaeinsaPut(Bytes.toBytes("row-put-a"));
+		put.add(Bytes.toBytes("data"), Bytes.toBytes("col-put-a"), Bytes.toBytes("value-put-a"));
+		testTable.put(tx, put);
+		put = new HaeinsaPut(Bytes.toBytes("row-put-b"));
+		put.add(Bytes.toBytes("data"), Bytes.toBytes("col-put-b"), Bytes.toBytes("value-put-b"));
+		testTable.put(tx, put);
+		tx.commit();
 		
 		//	getWithoutTx
-		HaeinsaTransaction tx = tm.begin();
-		
-		
+		tx = tm.begin();
+		byte[] row = Bytes.toBytes("row-put-a");
+		byte[] oldLockGet = getLock(hTestTable, row);
+		HaeinsaGet get = new HaeinsaGet(row);
+		get.addFamily(Bytes.toBytes("data"));
+		testTable.get(null, get);	//	getWithoutTx
+
+		row = Bytes.toBytes("row-put-b");
+		byte[] oldLockPut = getLock(hTestTable, row);
+		put = new HaeinsaPut(row);
+		put.add(Bytes.toBytes("data"), Bytes.toBytes("col-put-b"), Bytes.toBytes("value-put-b-new"));
+		testTable.put(tx, put);	//	getWithoutTx 
 		
 		tx.commit();
+		
+		//	checkLock
+		row = Bytes.toBytes("row-put-a");
+		assertFalse(checkLockChanged(hTestTable, row, oldLockGet));
+		row = Bytes.toBytes("row-put-b");
+		assertTrue(checkLockChanged(hTestTable, row, oldLockPut));
+		
 		
 		//	getScannerWithoutTx ( HaeinsaScan )
 		tx = tm.begin();
-		
-		
-		
+		row = Bytes.toBytes("row-put-a");
+		byte[] oldLockScan1 = getLock(hTestTable, row);
+		row = Bytes.toBytes("row-put-b");
+		byte[] oldLockScan2 = getLock(hTestTable, row);
+		HaeinsaScan scan = new HaeinsaScan();
+		scan.setStartRow(Bytes.toBytes("row-put-a"));
+		scan.setStopRow(Bytes.toBytes("row-put-c"));
+		HaeinsaResultScanner resultScanner = testTable.getScanner(null, scan);
+		resultScanner.next();
+		resultScanner.next();
+		resultScanner.close();
+
+		row = Bytes.toBytes("row-put-c");
+		oldLockPut = getLock(hTestTable, row);
+		put = new HaeinsaPut(Bytes.toBytes("row-put-c"));
+		put.add(Bytes.toBytes("data"), Bytes.toBytes("col-put-c"), Bytes.toBytes("value-put-c"));
+		testTable.put(tx, put);
 		tx.commit();
+		
+		//	lock not changed
+		row = Bytes.toBytes("row-put-a");
+		assertFalse(checkLockChanged(hTestTable, row, oldLockScan1));
+		//	lock not changed
+		row = Bytes.toBytes("row-put-b");
+		assertFalse(checkLockChanged(hTestTable, row, oldLockScan2));
+		//	lock changed
+		row = Bytes.toBytes("row-put-c");
+		assertTrue(checkLockChanged(hTestTable, row, oldLockPut));
 		
 		
 		//	getScannerWithoutTx ( HaeinsaIntrascan )
 		tx = tm.begin();
-		
-		
-		
+		row = Bytes.toBytes("row-put-d");
+		put = new HaeinsaPut(row);
+		put.add(Bytes.toBytes("data"), Bytes.toBytes("col-put-a"), Bytes.toBytes("value-put-a"));
+		put.add(Bytes.toBytes("data"), Bytes.toBytes("col-put-b"), Bytes.toBytes("value-put-b"));
+		put.add(Bytes.toBytes("data"), Bytes.toBytes("col-put-c"), Bytes.toBytes("value-put-c"));
 		tx.commit();
+		
+		
+		tx = tm.begin();
+		row = Bytes.toBytes("row-put-d");
+		byte[] oldLockIntraScan = getLock(hTestTable, row);
+		HaeinsaIntraScan intraScan = new HaeinsaIntraScan(
+				row, Bytes.toBytes("col-put-a"), true, Bytes.toBytes("col-put-d"), true);
+		resultScanner = testTable.getScanner(null, intraScan);
+		resultScanner.next();
+		resultScanner.next();
+		resultScanner.next();
+		resultScanner.close();
+		row = Bytes.toBytes("row-put-e");
+		oldLockPut = getLock(hTestTable, row);
+		testTable.put(tx, 
+				new HaeinsaPut(row).
+				add(Bytes.toBytes("data"), Bytes.toBytes("col-put-e"), Bytes.toBytes("value-put-e")));
+		tx.commit();
+		
+		//	lock not changed
+		row = Bytes.toBytes("row-put-d");
+		assertFalse(checkLockChanged(hTestTable, row, oldLockIntraScan));
+		//	lock changed
+		row = Bytes.toBytes("row-put-e");
+		assertTrue(checkLockChanged(hTestTable, row, oldLockPut));
 		
 		
 		testTable.close();
 		tablePool.close();
+		hTestTable.close();
+		hbasePool.close();
 	}
 	
 	/**
