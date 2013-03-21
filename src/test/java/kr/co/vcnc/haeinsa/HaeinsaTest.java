@@ -805,6 +805,10 @@ public class HaeinsaTest {
 		hbasePool.close();
 	}
 
+	/**
+	 * 여러 개의 mutation 이 하나의 transaction 에 걸쳐서 들어왔을 때 정상적으로 동작하는 지 테스트 하기 위한 unit test 이다.
+	 * @throws Exception
+	 */
 	@Test
 	public void testMultipleMutations() throws Exception {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
@@ -834,51 +838,79 @@ public class HaeinsaTest {
 		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
 		HaeinsaTableInterface testTable = tablePool.getTable("test");
 		
-		//	put, put, put
+		/**
+		 * 일단 row-abc 라는 row 에 2개의 값과 row-d 라는 row 에 1개의 값을 put 한다.
+		 * 
+		 * 1. put { row-abc, data, column-a }
+		 * 2. put { row-abc, data, column-b }
+		 * 3. put { row-d, meta, column-d }
+		 */
 		HaeinsaTransaction tx = tm.begin();
 		HaeinsaPut put = new HaeinsaPut(Bytes.toBytes("row-abc"));
 		put.add(Bytes.toBytes("data"), Bytes.toBytes("column-a"), Bytes.toBytes("value-a"));
 		testTable.put(tx, put);
+		
 		put = new HaeinsaPut(Bytes.toBytes("row-abc"));
 		put.add(Bytes.toBytes("data"), Bytes.toBytes("column-b"), Bytes.toBytes("value-b"));
 		testTable.put(tx, put);
+		
 		put = new HaeinsaPut(Bytes.toBytes("row-d"));
 		put.add(Bytes.toBytes("meta"), Bytes.toBytes("column-d"), Bytes.toBytes("value-d"));
 		testTable.put(tx, put);
+		
 		tx.commit();
 		
-		//	put, deleteFamily, put
+		/**
+		 * 4. put { row-abc, data, column-c }
+		 * 5. put { row-e, meta, column-e } 
+		 * 6. deleteFamily { row-abc, data }
+		 * 7. put { row-abc, data, col-after }
+		 */
 		tx = tm.begin();
 		put = new HaeinsaPut(Bytes.toBytes("row-abc"));
 		put.add(Bytes.toBytes("data"), Bytes.toBytes("column-c"), Bytes.toBytes("value-c"));
 		testTable.put(tx, put);
+		
 		put = new HaeinsaPut(Bytes.toBytes("row-e"));
 		put.add(Bytes.toBytes("meta"), Bytes.toBytes("column-e"), Bytes.toBytes("value-e"));
 		testTable.put(tx, put);
+		
 		HaeinsaDelete delete = new HaeinsaDelete(Bytes.toBytes("row-abc"));
 		delete.deleteFamily(Bytes.toBytes("data"));
 		testTable.delete(tx, delete);
+		
 		put = new HaeinsaPut(Bytes.toBytes("row-abc"));
 		put.add(Bytes.toBytes("data"), Bytes.toBytes("col-after"), Bytes.toBytes("value-after"));
 		testTable.put(tx, put);
+		
 		tx.commit();
 		
-		
-		//	check result
+		/**
+		 * 결과를 확인하기 위한 단계이다.
+		 * 3, 5, 7 번의 put만 남아 있어야 한다.
+		 * 
+		 * 3. put { row-d, meta, column-d }
+		 * 5. put { row-e, meta, column-e } 
+		 * 7. put { row-abc, data, col-after } ( row-abc 의 column 이 유일해야 한다. )
+		 */
 		tx = tm.begin();
-		HaeinsaGet get = new HaeinsaGet(Bytes.toBytes("row-abc"));
-		HaeinsaResult result = testTable.get(tx, get);
-		//		there should be only 1 HaeinsaKeyValue on row-abc
-		assertTrue(result.list().size() == 1);
-		get = new HaeinsaGet(Bytes.toBytes("row-d"));
+		HaeinsaGet get = new HaeinsaGet(Bytes.toBytes("row-d"));
 		get.addColumn(Bytes.toBytes("meta"), Bytes.toBytes("column-d"));
 		assertArrayEquals(testTable.get(tx,get).getValue(Bytes.toBytes("meta"), Bytes.toBytes("column-d")), 
 				Bytes.toBytes("value-d"));
+		
 		get = new HaeinsaGet(Bytes.toBytes("row-e"));
 		get.addColumn(Bytes.toBytes("meta"), Bytes.toBytes("column-e"));
 		assertArrayEquals(testTable.get(tx,get).getValue(Bytes.toBytes("meta"), Bytes.toBytes("column-e")), 
 				Bytes.toBytes("value-e"));
-		tx.commit();
+		
+		get = new HaeinsaGet(Bytes.toBytes("row-abc"));				
+		HaeinsaResult result = testTable.get(tx, get);
+		assertTrue(result.list().size() == 1);
+		assertArrayEquals(testTable.get(tx,get).getValue(Bytes.toBytes("data"), Bytes.toBytes("col-after")), 
+				Bytes.toBytes("value-after"));
+		
+		tx.rollback();
 		
 		
 		testTable.close();
