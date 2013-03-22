@@ -982,7 +982,10 @@ public class HaeinsaTest {
 		tablePool.close();
 	}
 	
-
+	/**
+	 * Haeinsa 에서 GetWithtoutTx / ScanWithtoutTx / IntraScanWithtoutTx 이 lock 을 바꾸지 않고 정상적인 동작을 하는지 확인하기 위한 unit test 이다. 
+	 * @throws Exception
+	 */
 	@Test
 	public void testHaeinsaTableWithoutTx() throws Exception {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
@@ -1014,6 +1017,18 @@ public class HaeinsaTest {
 		HTablePool hbasePool = new HTablePool(CONF,128,PoolType.Reusable);
 		HTableInterface hTestTable = hbasePool.getTable("test");
 		
+		
+		/**
+		 * row-put-a 와 row-put-b 에 데이터를 쓴 후에 Transaction 을 commit 하고 새로운 Transaction 을 만들어서 
+		 * row-put-a 에는 GetWithoutTx, row-put-b 에는 Put 을 한 후에 commit 한다. 
+		 * row-put-a 의 lock 은 바뀌지 않아야 하며, row-put-b 의 lock 은 바뀌어야 한다.
+		 * 
+		 * 	1. Put { row-put-a, data, col-put-a } 
+		 * 	2. Put { row-put-b, data, col-put-b }
+		 * 
+		 * 	3. GetWithoutTx { row-put-a, data } 
+		 *	4. Put { row-put-b, data, col-put-b } 
+		 */
 		//	put initial data
 		HaeinsaTransaction tx = tm.begin();
 		HaeinsaPut put = new HaeinsaPut(Bytes.toBytes("row-put-a"));
@@ -1040,13 +1055,23 @@ public class HaeinsaTest {
 		
 		tx.commit();
 		
-		//	checkLock
+		//	lock at { row-put-a } not changed
 		row = Bytes.toBytes("row-put-a");
 		assertFalse(checkLockChanged(hTestTable, row, oldLockGet));
+		//	lock at { row-put-b } changed
 		row = Bytes.toBytes("row-put-b");
 		assertTrue(checkLockChanged(hTestTable, row, oldLockPut));
 		
 		
+		/**
+		 * row-put-a 와 row-put-b 에 있는 데이터를 ScanWithoutTx 를 통해서 읽은 후에 
+		 * row-put-c 에 새로운 값을 put 하고 Transaction 을 commit 한다.
+		 * row-put-a 와 row-put-b 의 lock 은 바뀌지 않고, row-put-c 의 lock 은 바뀌어야 한다. 
+		 * 이 unit test 에서는 바로 위의 unit test 에서 put 한 데이터를 사용한다. 
+		 * 
+		 * 	1. ScanWithtoutTx { row-put-a ~ row-put-c } 
+		 * 	2. Put { row-put-c, data, col-put-c } 
+		 */
 		//	getScannerWithoutTx ( HaeinsaScan )
 		tx = tm.begin();
 		row = Bytes.toBytes("row-put-a");
@@ -1068,17 +1093,28 @@ public class HaeinsaTest {
 		testTable.put(tx, put);
 		tx.commit();
 		
-		//	lock not changed
+		//	lock at { row-put-a } not changed
 		row = Bytes.toBytes("row-put-a");
 		assertFalse(checkLockChanged(hTestTable, row, oldLockScan1));
-		//	lock not changed
+		//	lock at { row-put-b } not changed
 		row = Bytes.toBytes("row-put-b");
 		assertFalse(checkLockChanged(hTestTable, row, oldLockScan2));
-		//	lock changed
+		//	lock at { row-put-c } changed
 		row = Bytes.toBytes("row-put-c");
 		assertTrue(checkLockChanged(hTestTable, row, oldLockPut));
 		
 		
+		/**
+		 * row-put-d 의 column col-put-a, col-put-b, col-put-c 에 put 을 한 후에 Transaction 을 commit 한다.
+		 * 새로운 Transaction 을 시작한 후 row-put-d 에 있는 데이터를 IntraScanWithoutTx 를 통해서 읽은 후에
+		 * row-put-e 에 새로운 값을 쓰고 Transaction 을 commit 한다. 
+		 * row-put-d 의 lock 은 변하지 않고, row-put-e 의 lock 은 변해야 한다.  
+		 * 
+		 * 	1. Put { row-put-d, data, [ col-put-a, col-put-b, col-put-c ] } 
+		 * 
+		 * 	2. IntraScanWithoutTx { row-put-d, data, [ col-put-a ~ col-put-d ] } 
+		 * 	3. Put { row-put-e, data, col-put-e } 
+		 */
 		//	getScannerWithoutTx ( HaeinsaIntrascan )
 		tx = tm.begin();
 		row = Bytes.toBytes("row-put-d");
@@ -1094,6 +1130,7 @@ public class HaeinsaTest {
 		byte[] oldLockIntraScan = getLock(hTestTable, row);
 		HaeinsaIntraScan intraScan = new HaeinsaIntraScan(
 				row, Bytes.toBytes("col-put-a"), true, Bytes.toBytes("col-put-d"), true);
+		intraScan.addFamily(Bytes.toBytes("data"));
 		resultScanner = testTable.getScanner(null, intraScan);
 		resultScanner.next();
 		resultScanner.next();
@@ -1106,14 +1143,15 @@ public class HaeinsaTest {
 				add(Bytes.toBytes("data"), Bytes.toBytes("col-put-e"), Bytes.toBytes("value-put-e")));
 		tx.commit();
 		
-		//	lock not changed
+		//	lock at { row-put-d } not changed
 		row = Bytes.toBytes("row-put-d");
 		assertFalse(checkLockChanged(hTestTable, row, oldLockIntraScan));
-		//	lock changed
+		//	lock at { row-put-e } changed
 		row = Bytes.toBytes("row-put-e");
 		assertTrue(checkLockChanged(hTestTable, row, oldLockPut));
 		
 		
+		//	release resources
 		testTable.close();
 		tablePool.close();
 		hTestTable.close();
