@@ -594,7 +594,10 @@ public class HaeinsaTest {
 		
 	}
 	
-
+	/**
+	 * Haeinsa 를 쓰지 않던 only-HBase 상태에서 lock 정보를 적으면서 Haeinsa 로 넘어가는 migration 을 위한 unit test 이다. 
+	 * @throws Exception
+	 */
 	@Test
 	public void testHBaseHaeinsaMigration() throws Exception {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
@@ -622,18 +625,31 @@ public class HaeinsaTest {
 			}
 		});
 		
-		
-		//	test HBase put -> Haeinsa Get ( w\ multiRowCommit() ) Migration
 		HTablePool hbasePool = new HTablePool(CONF,128,PoolType.Reusable);
 		HTableInterface hTestTable = hbasePool.getTable("test");
+		
+
+		/**
+		 * HBase 의 row1 에 바로 put 을 한 후에 row1 에 Haeinsa Get 을 하고 다른 row2 에 Haeinsa put 을 한 후에 transaction 을 commit 한다.
+		 * row1 과 row2 가 모두 lock 정보가 적힌 Haeinsa 로 migration 되어야 한다. ( multiRowCommit() 을 사용하게 되므로 )
+		 * 
+		 *  1. HBase put { row1, data, col1 } 
+		 *  
+		 *  2. Get { row1, data, col1 }
+		 *  3. Put { row2, data, col2 }
+		 *  
+		 *  4. Get { row1, data, col1 }
+		 *  5. Get { row2, data, col2 } 
+		 */
 		Put hPut = new Put(Bytes.toBytes("row1"));
 		hPut.add(Bytes.toBytes("data"), Bytes.toBytes("col1"), Bytes.toBytes("value1"));
 		hTestTable.put(hPut);
-		//	no lock
+		//	no lock at { row1 } 
 		assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row1")));
 		
 		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
 		HaeinsaTableInterface testTable = tablePool.getTable("test");
+		
 		
 		HaeinsaTransaction tx = tm.begin();
 		HaeinsaGet get = new HaeinsaGet(Bytes.toBytes("row1"));
@@ -646,6 +662,7 @@ public class HaeinsaTest {
 		tx.commit();
 		
 		tx = tm.begin();
+		//	check data on row1, row2
 		get = new HaeinsaGet(Bytes.toBytes("row1"));
 		get.addColumn(Bytes.toBytes("data"), Bytes.toBytes("col1"));
 		result = testTable.get(tx, get);
@@ -655,15 +672,22 @@ public class HaeinsaTest {
 		result = testTable.get(tx, get);
 		assertTrue(Bytes.equals(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("col2")), Bytes.toBytes("value2")));
 		tx.rollback();
-		//	now have lock
+		//	now have lock at { row1 }
 		assertTrue(checkLockExist(hTestTable, Bytes.toBytes("row1")));
 
 		
-		//	test HBase put -> Haeinsa Put ( w\ multiRowCommit() ) Migration
+		/**
+		 * HBase 의 row3 에 바로 put 을 한 후에 row3 에 Haeinsa Put 을 하고 transaction 을 commit 한다.
+		 * row3 는 lock 정보가 적힌 Haeinsa 로 migration 되어야 한다.
+		 * 
+		 *  1. HBase put { row3, data, col4 }
+		 *   
+		 *  2. Put { row3, data, col3 }
+		 */
 		hPut = new Put(Bytes.toBytes("row3"));
 		hPut.add(Bytes.toBytes("data"), Bytes.toBytes("col3"), Bytes.toBytes("value3"));
 		hTestTable.put(hPut);
-		//	no lock
+		//	no lock at { row3 }
 		assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row3")));
 		
 		tx = tm.begin();
@@ -678,15 +702,22 @@ public class HaeinsaTest {
 		result = testTable.get(tx, get);
 		assertTrue(Bytes.equals(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("col3")), Bytes.toBytes("value3-2.0")));
 		tx.rollback();
-		//	now have lock
+		//	now have lock at { row3 } 
 		assertTrue(checkLockExist(hTestTable, Bytes.toBytes("row3")));
 		
 		
-		//	test HBase put -> Haeinsa Delete ( w\ multiRowCommit() ) Migration
+		/**
+		 * HBase 의 row4에 바로 put 을 한 후에 row4 에 Haeinsa Delete 를 하고 transaction 을 commit 한다.
+		 * row4 는 lock 정보가 적힌 Haeinsa 로 migration 하고 데이터는 비어 있어야 한다.
+		 * 
+		 * 	1. HBase put { row4, data, col4 }
+		 * 
+		 * 	2. Delete { row4, data, col4 }
+		 */
 		hPut = new Put(Bytes.toBytes("row4"));
 		hPut.add(Bytes.toBytes("data"), Bytes.toBytes("col4"), Bytes.toBytes("value4"));
 		hTestTable.put(hPut);
-		//	no lock
+		//	no lock at { row4 }
 		assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row4")));
 		
 		tx = tm.begin();
@@ -699,27 +730,38 @@ public class HaeinsaTest {
 		result = testTable.get(tx, get);
 		assertTrue(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("col4")) == null);
 		tx.rollback();
-		//	now have lock
+		//	now have lock at { row4 }
 		assertTrue(checkLockExist(hTestTable, Bytes.toBytes("row4")));
 		
 
+		/**
+		 * HBase 의 row5, row6, row7 에 바로 put 을 한 후에 row5 ~ row8 에 Haeinsa Scan 을 하고 
+		 * row8 에 Haeinsa put 을 한 후에 Transaction 을 commit 한다. 
+		 * 
+		 * 	1. HBase put { row5, data, col5 } 
+		 * 	2. HBase put { row6, data, col6 } 
+		 * 	3. HBase put { row7, data, col7 }
+		 * 
+		 * 	4. Scan { [ row5 ~ row8 ] } 
+		 * 	5. Put { row8, data, col8 } 
+		 */
 		//	test HBase put -> Haeinsa Scan ( w\ multiRowCommit() ) Migration
 		hPut = new Put(Bytes.toBytes("row5"));
 		hPut.add(Bytes.toBytes("data"), Bytes.toBytes("col5"), Bytes.toBytes("value5"));
 		hTestTable.put(hPut);
-		//	no lock
+		//	no lock at { row5 } 
 		assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row5")));
 		
 		hPut = new Put(Bytes.toBytes("row6"));
 		hPut.add(Bytes.toBytes("data"), Bytes.toBytes("col6"), Bytes.toBytes("value6"));
 		hTestTable.put(hPut);
-		//	no lock
+		//	no lock at { row6 } 
 		assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row6")));
 		
 		hPut = new Put(Bytes.toBytes("row7"));
 		hPut.add(Bytes.toBytes("data"), Bytes.toBytes("col7"), Bytes.toBytes("value7"));
 		hTestTable.put(hPut);
-		//	no lock
+		//	no lock at { row7 } 
 		assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row7")));
 		
 		tx = tm.begin();
@@ -748,13 +790,22 @@ public class HaeinsaTest {
 		assertArrayEquals(testTable.get(tx, new HaeinsaGet(Bytes.toBytes("row8"))).getValue(Bytes.toBytes("data"), Bytes.toBytes("col8")), Bytes.toBytes("value8"));
 		tx.rollback();
 		
-		//	test HBase put -> Haeinsa intraScan ( w\ multiRowCommit() ) Migration
+		
+		/**
+		 * HBase 의 row9 에 바로 여러 column 을 미리 put 한 후에 row9 에 intraScan 을 하고 row10 에 put 을 한 후에 Transaction 을 commit 한다. 
+		 * row10 과 row11 이 모두 lock 정보가 적힌 Haeinsa 로 migration 되어야 한다. ( multiRowCommit() 을 사용하게 되므로 )  
+		 * 
+		 * 	1. HBase put { row9, data, [col9-ver1, col9-ver2, col9-ver3] }
+		 * 
+		 * 	2. IntraScan { row9, data, col9 ~ col9-ver3 }
+		 * 	3. Put { row10, data, col10 }
+		 */
 		hPut = new Put(Bytes.toBytes("row9"));
 		hPut.add(Bytes.toBytes("data"), Bytes.toBytes("col9-ver1"), Bytes.toBytes("value9-ver1"));
 		hPut.add(Bytes.toBytes("data"), Bytes.toBytes("col9-ver2"), Bytes.toBytes("value9-ver2"));
 		hPut.add(Bytes.toBytes("data"), Bytes.toBytes("col9-ver3"), Bytes.toBytes("value9-ver3"));
 		hTestTable.put(hPut);
-		//	no lock
+		//	no lock at { row9 } 
 		assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row9")));
 		
 		tx = tm.begin();
@@ -774,17 +825,29 @@ public class HaeinsaTest {
 		put.add(Bytes.toBytes("data"), Bytes.toBytes("col10"), Bytes.toBytes("value10"));
 		testTable.put(tx, put);
 		tx.commit();
-		//	now have lock
+		//	now have lock at { row9, row10 } 
 		assertTrue(checkLockExist(hTestTable, Bytes.toBytes("row9")));
 		assertTrue(checkLockExist(hTestTable, Bytes.toBytes("row10")));
 		
 		
-		//	access to Empty row
+		/**
+		 * 비어 있는 row11 에 intraScan 을 통해 read 를 시도한 후에 row10 에 HaeinsaPut 을 하고 Transaction 을 commit 한다. 
+		 * row10 과 row11 은 모두 Haeinsa 로 migration 되고 lock 을 보유해야 한다.
+		 * 
+		 * 1. intraScan { row11, data, col11 ~ col11-ver3 } -> empty
+		 * 2. Put { row10, data, col10 } 
+		 */
+		byte[] row = Bytes.toBytes("row10");
+		byte[] oldPutLock = getLock(hTestTable, row);
+		//	no lock at { row11 } 
+		assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row11")));
+		
 		tx = tm.begin();
 		intraScan = new HaeinsaIntraScan(
 				Bytes.toBytes("row11"), 
 				Bytes.toBytes("col11"), true, 
 				Bytes.toBytes("col11-ver3"), true);
+		intraScan.addFamily(Bytes.toBytes("data"));
 		intraScan.setBatch(1);
 		resultScanner = testTable.getScanner(tx, intraScan);
 		iter = resultScanner.iterator();
@@ -794,11 +857,13 @@ public class HaeinsaTest {
 		put.add(Bytes.toBytes("data"), Bytes.toBytes("col10"), Bytes.toBytes("value10"));
 		testTable.put(tx, put);
 		tx.commit();
-		//	now have lock
+		//	lock at { row10 } changed
+		assertTrue(checkLockChanged(hTestTable, row, oldPutLock));
+		//	now have lock at { row11 }
 		assertTrue(checkLockExist(hTestTable, Bytes.toBytes("row11")));
-		assertTrue(checkLockExist(hTestTable, Bytes.toBytes("row10")));
 		
 		
+		//	release all resources
 		hTestTable.close();
 		testTable.close();
 		tablePool.close();
@@ -806,7 +871,7 @@ public class HaeinsaTest {
 	}
 
 	/**
-	 * 여러 개의 mutation 이 하나의 transaction 에 걸쳐서 들어왔을 때 정상적으로 동작하는 지 테스트 하기 위한 unit test 이다.
+	 * 여러 개의 mutation 이 하나의 transaction 에 걸쳐서 들어왔을 때 정상적으로 동작하는 지 확인하기 위한 unit test 이다.
 	 * @throws Exception
 	 */
 	@Test
