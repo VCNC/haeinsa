@@ -1,7 +1,5 @@
 package kr.co.vcnc.haeinsa;
 
-import java.util.Calendar;
-import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.hadoop.hbase.util.Bytes;
@@ -13,25 +11,13 @@ import org.apache.hadoop.hbase.util.Bytes;
  */
 public final class HaeinsaConstants {
 	private HaeinsaConstants(){}
-	
-	static {
-		Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-		calendar.set(2100, 0, 1);
-		ROW_LOCK_MIN_TIMESTAMP = calendar.getTimeInMillis();
-	}
-	
+		
 	/**
 	 * 향후에 Haeinsa 의 버젼이 올라갈 경우 하위 호완을 지원하기 위해서 TRowLock 에 버젼 정보를 포함해야 한다.
 	 * 현재 존재하는 Haeinsa 의 버젼은 1로 유일하다. 
 	 */
 	public static final int ROW_LOCK_VERSION = 1;
-	
-	/**
-	 * 기존에 TRowLock 정보가 없는 Row 로부터 haeinsa 가 관리함으로써 Transaction 을 support 하는 Row 로의 lazy-migration 을 위해서 
-	 * 해당 시점보다 항상 더 늦을 것으로 보이는 임의의 시점을 지정한다. 기본적으로 2100년 1월 1일 0시로 설정되어 있다. ms 단위이다. 
-	 */
-	public static final long ROW_LOCK_MIN_TIMESTAMP;
-	
+		
 	/**
 	 * TRowLock 은 5초보다 길게 유지될 수 없다. 
 	 * 만약 이 시간 이후에도 TRowLockState 가 Stable 이 되지 않는다면 다른 Transaction 이 해당 TRowLock 을 Abort 시킬 수 있다.

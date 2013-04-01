@@ -1,14 +1,13 @@
 package kr.co.vcnc.haeinsa;
 
-import static kr.co.vcnc.haeinsa.HaeinsaConstants.ROW_LOCK_MIN_TIMESTAMP;
-
 import java.io.IOException;
 import java.util.Map.Entry;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.NavigableMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import kr.co.vcnc.haeinsa.exception.ConflictException;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowKey;
+import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
 
 import org.apache.hadoop.hbase.util.Bytes;
@@ -225,8 +224,8 @@ public class HaeinsaTransaction {
 		}
 		// determine commitTimestamp & determine primary row
 		TRowKey primaryRowKey = null;
-		long commitTimestamp = ROW_LOCK_MIN_TIMESTAMP;
-		long prewriteTimestamp = ROW_LOCK_MIN_TIMESTAMP;
+		long maxCurrentCommitTimestamp = System.currentTimeMillis();
+		long maxIterationCount = Long.MIN_VALUE;
 		for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : tableStates.entrySet()){
 			for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()){
 				//	TODO primaryRowKey 를 여러 개의 (table, row) 중에서 하나를 random 하게 고르는 방식으로 바꾸는 것이 좋음.
@@ -241,16 +240,15 @@ public class HaeinsaTransaction {
 					primaryRowKey.setRow(rowStateEntry.getKey());
 				}
 				HaeinsaRowTransaction rowState = rowStateEntry.getValue();
-				commitTimestamp = Math.max(commitTimestamp, 
-						Math.max(ROW_LOCK_MIN_TIMESTAMP, rowState.getCurrent().getCommitTimestamp()) + rowState.getIterationCount());
-				prewriteTimestamp = Math.max(prewriteTimestamp, 
-						Math.max(ROW_LOCK_MIN_TIMESTAMP, rowState.getCurrent().getCommitTimestamp()) + 1);
+				maxIterationCount = Math.max(maxIterationCount, rowState.getIterationCount());
+				maxCurrentCommitTimestamp = Math.max(maxCurrentCommitTimestamp, rowState.getCurrent().getCommitTimestamp());				
 			}
 		}
-		commitTimestamp = Math.max(commitTimestamp, prewriteTimestamp);
 		setPrimary(primaryRowKey);
-		setCommitTimestamp(commitTimestamp);
-		setPrewriteTimestamp(prewriteTimestamp);
+		
+		setPrewriteTimestamp(maxCurrentCommitTimestamp + 1);
+		setCommitTimestamp(Math.max(getPrewriteTimestamp(), maxCurrentCommitTimestamp + maxIterationCount));
+		
 		
 		CommitMethod method = determineCommitMethod();
 		switch (method) {
