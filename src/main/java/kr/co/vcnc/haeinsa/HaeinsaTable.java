@@ -52,7 +52,7 @@ import com.google.common.collect.Sets;
 /**
  * Implementation of {@link HaeinsaTableInterface}. 
  * It works with {@link HaeinsaTransaction} to provide transaction on HBase. 
- * @author Youngmok Kim
+ * @author Youngmok Kim, Myungbo Kim
  *
  */
 public class HaeinsaTable implements HaeinsaTableInterface {
@@ -391,7 +391,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		HaeinsaTableTransaction tableState = tx.createOrGetTableState(this.table.getTableName());
 		HaeinsaRowTransaction rowState = tableState.getRowStates().get(row);
 		if (rowState == null) {
-			// TODO commit 시점에 lock을 가져오도록 바꾸는 것도 고민해봐야 함.
+			// TODO(Brad):commit 시점에 lock을 가져오도록 바꾸는 것도 고민해봐야 함.
 			rowState = checkOrRecoverLock(tx, row, tableState, rowState);
 		}
 		rowState.addMutation(put);
@@ -454,7 +454,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		HaeinsaTableTransaction tableState = tx.createOrGetTableState(this.table.getTableName());
 		HaeinsaRowTransaction rowState = tableState.getRowStates().get(row);
 		if (rowState == null) {
-			// TODO put 과 마찬가지로 commit 시점에 lock을 가져오도록 바꾸는 것도 고민해봐야 함.
+			// TODO(Brad):put 과 마찬가지로 commit 시점에 lock을 가져오도록 바꾸는 것도 고민해봐야 함.
 			rowState = checkOrRecoverLock(tx, row, tableState, rowState);
 		}
 		rowState.addMutation(delete);
@@ -505,7 +505,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 		}
 	}
 	
-	/**
+	/** 
 	 * Commit single row read only Transaction. 
 	 * Read {@link TRowLock} from HBase and compare that lock with saved one which have retrieved when start transaction.
 	 * If TRowLock is changed, it means transaction is failed, so throw {@link ConflictException}. 
@@ -515,10 +515,22 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	 */
 	protected void commitSingleRowReadOnly(HaeinsaRowTransaction rowState, byte[] row) throws IOException{
 		TRowLock prevRowLock = rowState.getCurrent();
+		checkSingleRowLock(prevRowLock, row);
+	}
+	
+	/**
+	 * Read {@link TRowLock} from HBase and compare that lock with prevRowLock.
+	 * If TRowLock is changed, it means transaction is failed, so throw {@link ConflictException}. 
+	 * @param prevRowLock
+	 * @param row
+	 * @throws IOException ConflictException, HBase IOException.
+	 * @throws NullPointException if oldLock is null (haven't read lock from HBase) 
+	 */
+	protected void checkSingleRowLock(TRowLock prevRowLock, byte[] row) throws IOException{
 		TRowLock currentRowLock = getRowLock(row);
 		if (!prevRowLock.equals(currentRowLock)){
 			throw new ConflictException("this row is modified, commitSingleRowReadOnly failed");
-		}
+		}		
 	}
 
 	/**
@@ -563,15 +575,15 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 				.setCurrentTimestmap(tx.getPrewriteTimestamp());
 		if (isPrimary) {
 			//	for primary row
-			for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : tx.getTableStates().entrySet()) {
-				for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()) {
-					if ((Bytes.equals(tableStateEntry.getKey(), getTableName()) 
-							&& Bytes.equals(rowStateEntry.getKey(), row))) {
-						//	if this is primaryRow
-						continue;
-					}
-					newRowLock.addToSecondaries(new TRowKey().setTableName(tableStateEntry.getKey()).setRow(rowStateEntry.getKey()));
+			for(Entry<TRowKey, HaeinsaRowTransaction> rowStateEntry : tx.getMutationRowStates().entrySet()){
+				TRowKey rowKey = rowStateEntry.getKey();
+				if ((Bytes.equals(rowKey.getTableName(), getTableName()) 
+						&& Bytes.equals(rowKey.getRow(), row))) {
+					//	if this is primaryRow
+					continue;
 				}
+				newRowLock.addToSecondaries(
+						new TRowKey().setTableName(rowKey.getTableName()).setRow(rowKey.getRow()));
 			}
 		} else {
 			//	for secondary rows
