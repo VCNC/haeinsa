@@ -22,7 +22,7 @@ import org.apache.hadoop.hbase.client.Scan;
  * @author Youngmok Kim
  *
  */
-public interface HaeinsaTableInterface extends Closeable{
+public interface HaeinsaTableIface extends Closeable{
 	  /**
 	   * Gets the name of this table.
 	   *
@@ -95,7 +95,7 @@ public interface HaeinsaTableInterface extends Closeable{
 
 	  /**
 	   * Gets a scanner on the current table for the given family. 
-	   * Similar with {@link HaeinsaTableInterface#getScanner(HaeinsaTransaction, HaeinsaScan)}
+	   * Similar with {@link HaeinsaTableIface#getScanner(HaeinsaTransaction, HaeinsaScan)}
 	   *
 	   * @param family The column family to scan.
 	   * @return A scanner.
@@ -106,7 +106,7 @@ public interface HaeinsaTableInterface extends Closeable{
 
 	  /**
 	   * Gets a scanner on the current table for the given family and qualifier.
-	   * Similar with {@link HaeinsaTableInterface#getScanner(HaeinsaTransaction, HaeinsaScan)}
+	   * Similar with {@link HaeinsaTableIface#getScanner(HaeinsaTransaction, HaeinsaScan)}
 	   *
 	   * @param family The column family to scan.
 	   * @param qualifier The column qualifier to scan.
