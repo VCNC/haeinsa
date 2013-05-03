@@ -100,7 +100,7 @@ public class HaeinsaComplexTest {
 		});
 
 		final HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
-		HaeinsaTableInterface testTable = tablePool.getTable("test");
+		HaeinsaTableIface testTable = tablePool.getTable("test");
 		HaeinsaTransaction tx;
 
 		final AtomicLong count = new AtomicLong(0);
@@ -186,7 +186,7 @@ public class HaeinsaComplexTest {
 		});
 
 		final HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
-		final HaeinsaTableInterface testTable = tablePool.getTable("test");
+		final HaeinsaTableIface testTable = tablePool.getTable("test");
 		HaeinsaTransaction tx;
 
 		final AtomicLong count = new AtomicLong(0);
@@ -317,7 +317,7 @@ public class HaeinsaComplexTest {
 		});
 
 		final HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
-		final HaeinsaTableInterface testTable = tablePool.getTable("test");
+		final HaeinsaTableIface testTable = tablePool.getTable("test");
 		HaeinsaTransaction tx;
 		
 		//	some random initial value
@@ -381,13 +381,13 @@ public class HaeinsaComplexTest {
 							assertTrue(value1.compareAndSet(oldValue1, newValue1));
 							assertTrue(value2.compareAndSet(oldValue2, newValue2));
 						}
-						System.out.println("iteration : " + iteration 
-								+ " on Thread : " + Thread.currentThread().getName());
 					} catch (Exception e) {
 						//	fail
 						failCount.getAndIncrement();
 					}
 				}
+				System.out.println("iteration : " + iteration 
+						+ " on Thread : " + Thread.currentThread().getName());
 				return null;
 			}
 		};

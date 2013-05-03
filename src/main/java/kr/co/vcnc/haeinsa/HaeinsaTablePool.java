@@ -22,9 +22,9 @@ import org.apache.hadoop.hbase.util.PoolMap.PoolType;
  * @author Youngmok Kim
  *
  */
-public class HaeinsaTablePool implements Closeable{
+public class HaeinsaTablePool implements Closeable {
 	//	{ tableName -> HaeinsaTable }
-	private final PoolMap<String, HaeinsaTable> tables;
+	private final PoolMap<String, HaeinsaTableIfaceInternal> tables;
 	private final int maxSize;
 	private final PoolType poolType;
 	private final Configuration config;
@@ -122,7 +122,7 @@ public class HaeinsaTablePool implements Closeable{
 				break;
 			}
 		}
-		this.tables = new PoolMap<String, HaeinsaTable>(
+		this.tables = new PoolMap<String, HaeinsaTableIfaceInternal>(
 				this.poolType, this.maxSize);
 	}
 
@@ -137,9 +137,32 @@ public class HaeinsaTablePool implements Closeable{
 	 * @throws RuntimeException
 	 *             if there is a problem instantiating the HTable
 	 */
-	public HaeinsaTableInterface getTable(String tableName) {
+	public HaeinsaTableIface getTable(String tableName) {
 		// call the old getTable implementation renamed to findOrCreateTable
-		HaeinsaTable table = findOrCreateTable(tableName);
+		HaeinsaTableIfaceInternal table = findOrCreateTable(tableName);
+		// return a proxy table so when user closes the proxy, the actual table
+		// will be returned to the pool
+		try {
+			return new PooledHaeinsaTable(table);
+		} catch (IOException ioe) {
+			throw new RuntimeException(ioe);
+		}
+	}
+	
+	/**
+	 * Get a reference to the specified internal table interface from the pool.
+	 * <p>
+	 * <p/>
+	 * 
+	 * @param tableName
+	 *            table name
+	 * @return a reference to the specified table
+	 * @throws RuntimeException
+	 *             if there is a problem instantiating the HTable
+	 */
+	HaeinsaTableIfaceInternal getTableInternal(String tableName) {
+		// call the old getTable implementation renamed to findOrCreateTable
+		HaeinsaTableIfaceInternal table = findOrCreateTable(tableName);
 		// return a proxy table so when user closes the proxy, the actual table
 		// will be returned to the pool
 		try {
@@ -161,8 +184,8 @@ public class HaeinsaTablePool implements Closeable{
 	 * @throws RuntimeException
 	 *             if there is a problem instantiating the HTable
 	 */
-	private HaeinsaTable findOrCreateTable(String tableName) {
-		HaeinsaTable table = tables.get(tableName);
+	private HaeinsaTableIfaceInternal findOrCreateTable(String tableName) {
+		HaeinsaTableIfaceInternal table = tables.get(tableName);
 		if (table == null) {
 			table = createHTable(tableName);
 		}
@@ -181,9 +204,26 @@ public class HaeinsaTablePool implements Closeable{
 	 * @throws RuntimeException
 	 *             if there is a problem instantiating the HTable
 	 */
-	public HaeinsaTableInterface getTable(byte[] tableName) {
+	public HaeinsaTableIface getTable(byte[] tableName) {
 		return getTable(Bytes.toString(tableName));
 	}
+	
+	/**
+	 * Get a reference to the specified internal table interface from the pool.
+	 * <p>
+	 * 
+	 * Create a new one if one is not available.
+	 * 
+	 * @param tableName
+	 *            table name
+	 * @return a reference to the specified table
+	 * @throws RuntimeException
+	 *             if there is a problem instantiating the HTable
+	 */
+	HaeinsaTableIfaceInternal getTableInternal(byte[] tableName) {
+		return getTableInternal(Bytes.toString(tableName));
+	}
+
 
 	/**
 	 * Puts the specified HTable back into the pool.
@@ -195,7 +235,7 @@ public class HaeinsaTablePool implements Closeable{
 	 * @param table
 	 *            table
 	 */
-	private void returnTable(HaeinsaTable table)
+	private void returnTable(HaeinsaTableIfaceInternal table)
 			throws IOException {
 		// this is the old putTable method renamed and made private
 		String tableName = Bytes.toString(table.getTableName());
@@ -213,7 +253,7 @@ public class HaeinsaTablePool implements Closeable{
 				Bytes.toBytes(tableName)));
 	}
 
-	private void release(HaeinsaTableInterface table) throws IOException {
+	private void release(HaeinsaTableIface table) throws IOException {
 		if (table instanceof HaeinsaTable) {
 			HaeinsaTable privateTable = (HaeinsaTable) table;
 			this.tableFactory.releaseHTableInterface(privateTable.getHTable());
@@ -233,9 +273,9 @@ public class HaeinsaTablePool implements Closeable{
 	 * @param tableName
 	 */
 	public void closeTablePool(final String tableName) throws IOException {
-		Collection<HaeinsaTable> tables = this.tables.values(tableName);
+		Collection<HaeinsaTableIfaceInternal> tables = this.tables.values(tableName);
 		if (tables != null) {
-			for (HaeinsaTableInterface table : tables) {
+			for (HaeinsaTableIface table : tables) {
 				release(table);
 			}
 		}
@@ -269,12 +309,11 @@ public class HaeinsaTablePool implements Closeable{
 		return tables.size(tableName);
 	}
 
-	class PooledHaeinsaTable extends HaeinsaTable {
-		private HaeinsaTable table;
+	class PooledHaeinsaTable implements HaeinsaTableIfaceInternal {
+		private HaeinsaTableIfaceInternal table;
 
-		public PooledHaeinsaTable(HaeinsaTable table)
+		public PooledHaeinsaTable(HaeinsaTableIfaceInternal table)
 				throws IOException {
-			super(null);
 			this.table = table;
 		}
 
@@ -353,65 +392,67 @@ public class HaeinsaTablePool implements Closeable{
 			returnTable(table);
 		}
 
-		HaeinsaTable getWrappedTable() {
+		HaeinsaTableIfaceInternal getWrappedTable() {
 			return table;
 		}
 		
 		@Override
-		protected void commitSingleRowReadOnly(HaeinsaRowTransaction rowState,
+		public void commitSingleRowReadOnly(HaeinsaRowTransaction rowState,
 				byte[] row) throws IOException {
 			table.commitSingleRowReadOnly(rowState, row);
 		}
 		
-		protected void commitSingleRowPutOnly(HaeinsaRowTransaction rowState, byte[] row) 
+		@Override
+		public void checkSingleRowLock(HaeinsaRowTransaction rowState,
+				byte[] row) throws IOException {
+			table.checkSingleRowLock(rowState, row);
+		}
+		
+		@Override
+		public void commitSingleRowPutOnly(HaeinsaRowTransaction rowState, byte[] row) 
 				throws IOException {
 			table.commitSingleRowPutOnly(rowState, row);
 		}
 		
 		@Override
-		protected void prewrite(HaeinsaRowTransaction rowTxState, byte[] row,
+		public void prewrite(HaeinsaRowTransaction rowTxState, byte[] row,
 				boolean isPrimary) throws IOException {
 			table.prewrite(rowTxState, row, isPrimary);
 		}
 
 		@Override
-		protected void applyMutations(HaeinsaRowTransaction rowTxState, byte[] row)
+		public void applyMutations(HaeinsaRowTransaction rowTxState, byte[] row)
 				throws IOException {
 			table.applyMutations(rowTxState, row);
 		}
 
 		@Override
-		protected void makeStable(HaeinsaRowTransaction rowTxState, byte[] row)
+		public void makeStable(HaeinsaRowTransaction rowTxState, byte[] row)
 				throws IOException {
 			table.makeStable(rowTxState, row);
 		}
 
 		@Override
-		protected void commitPrimary(HaeinsaRowTransaction rowTxState, byte[] row)
+		public void commitPrimary(HaeinsaRowTransaction rowTxState, byte[] row)
 				throws IOException {
 			table.commitPrimary(rowTxState, row);
 		}
 
 		@Override
-		protected TRowLock getRowLock(byte[] row) throws IOException {
+		public TRowLock getRowLock(byte[] row) throws IOException {
 			return table.getRowLock(row);
 		}
 
 		@Override
-		protected void abortPrimary(HaeinsaRowTransaction rowTxState, byte[] row)
+		public void abortPrimary(HaeinsaRowTransaction rowTxState, byte[] row)
 				throws IOException {
 			table.abortPrimary(rowTxState, row);
 		}
 
 		@Override
-		protected void deletePrewritten(HaeinsaRowTransaction rowTxState, byte[] row)
+		public void deletePrewritten(HaeinsaRowTransaction rowTxState, byte[] row)
 				throws IOException {
 			table.deletePrewritten(rowTxState, row);
-		}
-
-		@Override
-		public HTableInterface getHTable() {
-			return table.getHTable();
 		}
 
 	}
