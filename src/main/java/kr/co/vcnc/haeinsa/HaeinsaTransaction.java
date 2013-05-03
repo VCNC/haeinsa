@@ -113,7 +113,6 @@ public class HaeinsaTransaction {
 	}
 	
 	/**
-	 * TODO(Andrew):Merge single_row_read_only with multi_row_read_only
 	 * Determine commitMethod among {@link CommitMethod#SINGLE_ROW_READ_ONLY}, {@link CommitMethod#SINGLE_ROW_PUT_ONLY}, 
 	 * {@link CommitMethod#MULTI_ROW_READ_ONLY} and {@link CommitMethod#MULTI_ROW_MUTATIONS}.
 	 * <p> Transaction of single row with at least one of {@link HaeinsaDelete} will be considered as 
@@ -201,7 +200,7 @@ public class HaeinsaTransaction {
 			{
 				HaeinsaTable table = (HaeinsaTable) tablePool.getTable(rowKey.getTableName());
 				try{
-					table.checkSingleRowLock(rowTx.getCurrent(), rowKey.getRow());
+					table.checkSingleRowLock(rowTx, rowKey.getRow());
 				} finally {
 					table.close();
 				}
@@ -234,7 +233,7 @@ public class HaeinsaTransaction {
 				{
 					HaeinsaTable table = (HaeinsaTable) tablePool.getTable(tableStateEntry.getKey());
 					try{
-						table.checkSingleRowLock(rowStateEntry.getValue().getCurrent(), rowStateEntry.getKey());
+						table.checkSingleRowLock(rowStateEntry.getValue(), rowStateEntry.getKey());
 					} finally {
 						table.close();
 					}
@@ -248,7 +247,7 @@ public class HaeinsaTransaction {
 		{
 			HaeinsaTable table = (HaeinsaTable) tablePool.getTable(primary.getTableName());
 			try{
-				table.checkSingleRowLock(primaryRowState.getCurrent(), primary.getRow());
+				table.checkSingleRowLock(primaryRowState, primary.getRow());
 			} finally {
 				table.close();
 			}
@@ -313,11 +312,7 @@ public class HaeinsaTransaction {
 		//	fill mutationRowStates & readOnlyRowStates from rowStates
 		for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : txStates.getTableStates().entrySet()){
 			for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()){
-				//	TODO primaryRowKey 를 여러 개의 (table, row) 중에서 하나를 random 하게 고르는 방식으로 바꾸는 것이 좋음.
-				//	현재와 같이 첫번째 row 를 primaryRowKey 로 설정하는 방식은 Byte array 로 정렬했을 때 가장 앞에 오는 table / region 에 대해서 
-				//	hot table / hot region 문제를 일으킬 수 있음
-				//
-				//	Random 하게 primaryRowKey 를 고를 때 이왕이면 mutations 중에 HaeinsaPut 이 
+				//	TODO(Andrew): Random 하게 primaryRowKey 를 고를 때 이왕이면 mutations 중에 HaeinsaPut 이 
 				//	가장 처음에 있는 Row 를 골라서 applyMutations 에 걸리는 시간을 줄이면 좋겠다.
 				
 				HaeinsaRowTransaction rowState = rowStateEntry.getValue();
@@ -456,7 +451,7 @@ public class HaeinsaTransaction {
 		}
 
 		case COMMITTED: {
-			//	Already success Transaction
+			//	Transaction is already succeeded.
 			makeStable();
 			break;
 		}
@@ -537,7 +532,6 @@ public class HaeinsaTransaction {
 	 */
 	private static class HaeinsaTransactionState{
 		private final NavigableMap<byte[], HaeinsaTableTransaction> tableStates = Maps.newTreeMap(Bytes.BYTES_COMPARATOR);
-		//private final Comparator<TRowKey> comparator = new BasicComparator();
 		private final Comparator<TRowKey> comparator = new HashComparator();
 		
 		public NavigableMap<byte[], HaeinsaTableTransaction> getTableStates(){
@@ -580,11 +574,11 @@ public class HaeinsaTransaction {
 	}
 	
 	/**
-	 * Basic comparator which use lexicographical ordering of (byte[] table, byte[] row)
+	 * Basic comparator which use lexicographical ordering of (byte[] table, byte[] row).
+	 * Thread-safe & stateless
 	 * @author Myungbo Kim
 	 * 
 	 */
-	@SuppressWarnings("unused")
 	private static class BasicComparator implements Comparator<TRowKey>{
 
 		@Override
@@ -604,17 +598,19 @@ public class HaeinsaTransaction {
 	 *
 	 */
 	private static class HashComparator implements Comparator<TRowKey>{
-		HashFunction hash = Hashing.murmur3_32();
+		private static HashFunction hash = Hashing.murmur3_32();
+		private static Comparator<TRowKey> basicComp = new BasicComparator();
 		
 		@Override
 		public int compare(TRowKey o1, TRowKey o2) {
 			
-			int hash1 = hash.hashBytes(Bytes.add(o1.getTableName(), o1.getRow())).asInt(); 
-			int hash2 = hash.hashBytes(Bytes.add(o2.getTableName(), o2.getRow())).asInt();
+			int hash1 = hash.newHasher().putBytes(o1.getTableName()).putBytes(o1.getRow()).hash().asInt();
+			int hash2 = hash.newHasher().putBytes(o1.getTableName()).putBytes(o1.getRow()).hash().asInt();
 			if(hash1>hash2)
 				return 1;
-			else if(hash1==hash2)
-				return 0;
+			else if(hash1==hash2){
+				return basicComp.compare(o1, o2);
+			}
 			else
 				return -1;
 		}

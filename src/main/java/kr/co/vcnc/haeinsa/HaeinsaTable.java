@@ -514,8 +514,7 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	 * @throws IOException  ConflictException, HBase IOException.
 	 */
 	protected void commitSingleRowReadOnly(HaeinsaRowTransaction rowState, byte[] row) throws IOException{
-		TRowLock prevRowLock = rowState.getCurrent();
-		checkSingleRowLock(prevRowLock, row);
+		checkSingleRowLock(rowState, row);
 	}
 	
 	/**
@@ -526,9 +525,9 @@ public class HaeinsaTable implements HaeinsaTableInterface {
 	 * @throws IOException ConflictException, HBase IOException.
 	 * @throws NullPointException if oldLock is null (haven't read lock from HBase) 
 	 */
-	protected void checkSingleRowLock(TRowLock prevRowLock, byte[] row) throws IOException{
+	protected void checkSingleRowLock(HaeinsaRowTransaction rowState, byte[] row) throws IOException{
 		TRowLock currentRowLock = getRowLock(row);
-		if (!prevRowLock.equals(currentRowLock)){
+		if (!rowState.getCurrent().equals(currentRowLock)){
 			throw new ConflictException("this row is modified, commitSingleRowReadOnly failed");
 		}		
 	}

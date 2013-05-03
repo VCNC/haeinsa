@@ -354,12 +354,6 @@ public class HaeinsaComplexTest {
 		 * tx.write(newValue2)
 		 * tx.commit();
 		 */
-		//Callable<Void> serialTestJob = 
-		
-
-		ExecutorService service = Executors.newFixedThreadPool(numberOfJob, 
-				new ThreadFactoryBuilder().setNameFormat("Serializability-job-thread-%d").build());
-		
 		Callable<Void> serialJob = new Callable<Void>(){
 			@Override
 			public Void call() throws Exception {
@@ -377,28 +371,29 @@ public class HaeinsaComplexTest {
 						
 						testTable.put(tx, new HaeinsaPut(row1).add(CF, CQ1, Bytes.toBytes(newValue1)));
 						testTable.put(tx, new HaeinsaPut(row2).add(CF, CQ2, Bytes.toBytes(newValue2)));
+						
 						tx.commit();
+						
+						//	success
 						iteration++;
 						successCount.incrementAndGet();
-						//	success
 						synchronized(lock){
 							assertTrue(value1.compareAndSet(oldValue1, newValue1));
 							assertTrue(value2.compareAndSet(oldValue2, newValue2));
 						}
-					}
-					catch(IOException e){
+						System.out.println("iteration : " + iteration 
+								+ " on Thread : " + Thread.currentThread().getName());
+					} catch (Exception e) {
 						//	fail
 						failCount.getAndIncrement();
 					}
-					finally{
-						//System.out.println("iteration : " + iteration);
-					}
 				}
-				System.out.println("iteration : " + iteration 
-						+ " on Thread : " + Thread.currentThread().getName());
 				return null;
 			}
 		};
+
+		ExecutorService service = Executors.newFixedThreadPool(numberOfJob, 
+				new ThreadFactoryBuilder().setNameFormat("Serializability-job-thread-%d").build());
 
 		
 		ArrayList<Future<Void>> futures = Lists.newArrayList();
