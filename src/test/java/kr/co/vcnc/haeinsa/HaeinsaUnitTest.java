@@ -106,7 +106,7 @@ public class HaeinsaUnitTest {
 		});
 		
 		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
-		HaeinsaTableInterface testTable = tablePool.getTable("test");
+		HaeinsaTableIface testTable = tablePool.getTable("test");
 		
 		//	Test 2 puts tx
 		HaeinsaTransaction tx = tm.begin();
@@ -270,7 +270,7 @@ public class HaeinsaUnitTest {
 		
 		//	test Table-cross transaction & multi-Column transaction
 		tx = tm.begin();
-		HaeinsaTableInterface logTable = tablePool.getTable("log");
+		HaeinsaTableIface logTable = tablePool.getTable("log");
 		put = new HaeinsaPut(Bytes.toBytes("previousTime"));
 		put.add(Bytes.toBytes("raw"), Bytes.toBytes("time-0"), Bytes.toBytes("log-value-1"));
 		logTable.put(tx, put);
@@ -385,7 +385,7 @@ public class HaeinsaUnitTest {
 		});
 		
 		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
-		HaeinsaTableInterface testTable = tablePool.getTable("test");
+		HaeinsaTableIface testTable = tablePool.getTable("test");
 		HaeinsaTransaction tx = tm.begin();
 		HaeinsaTransaction tx2 = tm.begin();
 		
@@ -488,7 +488,7 @@ public class HaeinsaUnitTest {
 		});
 		
 		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
-		HaeinsaTable testTable = (HaeinsaTable) tablePool.getTable("test");
+		HaeinsaTableIfaceInternal testTable = (HaeinsaTableIfaceInternal) tablePool.getTable("test");
 		HaeinsaTransaction tx = tm.begin();
 		HaeinsaTransaction tx2 = tm.begin();
 		
@@ -648,7 +648,7 @@ public class HaeinsaUnitTest {
 		assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row1")));
 		
 		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
-		HaeinsaTableInterface testTable = tablePool.getTable("test");
+		HaeinsaTableIface testTable = tablePool.getTable("test");
 		
 		
 		HaeinsaTransaction tx = tm.begin();
@@ -901,7 +901,7 @@ public class HaeinsaUnitTest {
 			}
 		});		
 		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
-		HaeinsaTableInterface testTable = tablePool.getTable("test");
+		HaeinsaTableIface testTable = tablePool.getTable("test");
 		
 		/**
 		 * 일단 row-abc 라는 row 에 2개의 값과 row-d 라는 row 에 1개의 값을 put 한다.
@@ -1013,7 +1013,7 @@ public class HaeinsaUnitTest {
 			}
 		});		
 		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
-		HaeinsaTableInterface testTable = tablePool.getTable("test");
+		HaeinsaTableIface testTable = tablePool.getTable("test");
 		HTablePool hbasePool = new HTablePool(CONF,128,PoolType.Reusable);
 		HTableInterface hTestTable = hbasePool.getTable("test");
 		
