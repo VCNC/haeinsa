@@ -73,5 +73,9 @@
 		<module name="MethodParamPad" />
 		<module name="ParenPad" />
 		<module name="TypecastParenPad"/>
+		
+		<module name="JavadocStyle">
+			<property name="checkFirstSentence" value="false" />
+		</module>
 	</module>
 </module>

@@ -22,7 +22,7 @@ public interface HaeinsaResultScanner extends Closeable, Iterable<HaeinsaResult>
 
 	/**
 	 * @param nbRows number of rows to return
-	 * @return Between zero and <param>nbRows</param> Results
+	 * @return Between zero and nbRows Results
 	 * @throws IOException e
 	 */
 	HaeinsaResult [] next(int nbRows) throws IOException;
