@@ -152,8 +152,8 @@ public class HaeinsaTransaction {
 		// prewrite secondaries
 		for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : tableStates.entrySet()) {
 			for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()) {
-				if ((Bytes.equals(tableStateEntry.getKey(), primary.getTableName()) 
-						&& Bytes.equals(rowStateEntry.getKey(), primary.getRow()))) {
+				if (Bytes.equals(tableStateEntry.getKey(), primary.getTableName()) 
+						&& Bytes.equals(rowStateEntry.getKey(), primary.getRow())) {
 					//	if this is primaryRow
 					continue;
 				}
@@ -305,8 +305,8 @@ public class HaeinsaTransaction {
 				try {
 					table.applyMutations(rowStateEntry.getValue(), rowStateEntry.getKey());
 					
-					if ((Bytes.equals(tableStateEntry.getKey(), primary.getTableName()) 
-							&& Bytes.equals(rowStateEntry.getKey(), primary.getRow()))) {
+					if (Bytes.equals(tableStateEntry.getKey(), primary.getTableName()) 
+							&& Bytes.equals(rowStateEntry.getKey(), primary.getRow())) {
 						//	primary row 일 때 
 						continue;
 					}
@@ -399,8 +399,8 @@ public class HaeinsaTransaction {
 				try {
 					table.deletePrewritten(rowStateEntry.getValue(), rowStateEntry.getKey());
 					
-					if ((Bytes.equals(tableStateEntry.getKey(), primary.getTableName()) 
-							&& Bytes.equals(rowStateEntry.getKey(), primary.getRow()))) {
+					if (Bytes.equals(tableStateEntry.getKey(), primary.getTableName()) 
+							&& Bytes.equals(rowStateEntry.getKey(), primary.getRow())) {
 						continue;
 					}
 					// make secondary rows from prewritten to stable

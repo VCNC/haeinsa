@@ -534,8 +534,8 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 			//	for primary row
 			for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : tx.getTableStates().entrySet()) {
 				for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()) {
-					if ((Bytes.equals(tableStateEntry.getKey(), getTableName()) 
-							&& Bytes.equals(rowStateEntry.getKey(), row))) {
+					if (Bytes.equals(tableStateEntry.getKey(), getTableName()) 
+							&& Bytes.equals(rowStateEntry.getKey(), row)) {
 						//	if this is primaryRow
 						continue;
 					}
@@ -813,7 +813,7 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 	private class ClientScanner implements HaeinsaResultScanner { 
 		private final HaeinsaTransaction tx;
 		private final HaeinsaTableTransaction tableState;
-		private boolean initialized = false;
+		private boolean initialized;
 		private final NavigableSet<HaeinsaKeyValueScanner> scanners = Sets
 				.newTreeSet(HaeinsaKeyValueScanner.COMPARATOR);
 		private final List<HaeinsaKeyValueScanner> scannerList = Lists
@@ -831,7 +831,7 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 		 */
 		private final int batch;
 		private final Map<byte[], NavigableSet<byte[]>> familyMap; 
-		private HaeinsaKeyValue prevKV = null;
+		private HaeinsaKeyValue prevKV;
 		private long maxSeqID = Long.MAX_VALUE;
 		
 		/**
@@ -912,7 +912,7 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 			return new Iterator<HaeinsaResult>() {
 				//	if current is null, whether scan is not started or next() was called.
 				//	if hasNext() is called, next data will be ready on current.
-				private HaeinsaResult current = null;
+				private HaeinsaResult current;
 
 				@Override
 				public void remove() {

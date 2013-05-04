@@ -15,7 +15,7 @@ import org.apache.hadoop.hbase.util.Bytes;
  *
  */
 public class HaeinsaGet {
-	private byte[] row = null;
+	private byte[] row;
 	private Map<byte[], NavigableSet<byte[]>> familyMap = new TreeMap<byte[], NavigableSet<byte[]>>(
 			Bytes.BYTES_COMPARATOR);
 

@@ -18,7 +18,7 @@ import com.google.common.collect.Lists;
  */
 public class HaeinsaResult {
 	private final List<HaeinsaKeyValue> sortedKVs;
-	private byte[] row = null;
+	private byte[] row;
 	
 	/**
 	 * Construct HaeinsaResult from Result

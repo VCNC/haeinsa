@@ -37,7 +37,20 @@
 			<property name="allowLineBreaks" value="true" />
 			<property name="severity" value="error" />
 		</module>
-		
+
+		<module name="SimplifyBooleanExpression" />
+		<module name="SimplifyBooleanReturn" />
+		<module name="NoFinalizer" />
+		<module name="SuperFinalize" />
+		<module name="PackageDeclaration" />
+		<module name="ExplicitInitialization" />
+		<module name="DefaultComesLast" />
+		<module name="UnnecessaryParentheses" />
+		<module name="AvoidStarImport">
+			<property name="allowStaticMemberImports" value="true" />
+		</module>
+		<module name="RedundantImport" />
+    
 		<module name="UpperEll" />
 		<module name="ArrayTypeStyle" />
 		<module name="OuterTypeFilename" />
