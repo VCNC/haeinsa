@@ -103,12 +103,12 @@ public class HaeinsaComplexTest {
 		
 		//	initial value
 		byte[] row = Bytes.toBytes("count");
-		byte[] CF = Bytes.toBytes("data");
-		byte[] CQ = Bytes.toBytes("value");
+		byte[] cf = Bytes.toBytes("data");
+		byte[] cq = Bytes.toBytes("value");
 		
 		tx = tm.begin();
 		HaeinsaPut put = new HaeinsaPut(row);
-		put.add(CF, CQ, Bytes.toBytes(0L));
+		put.add(cf, cq, Bytes.toBytes(0L));
 		testTable.put(tx, put);
 		tx.commit();
 		
@@ -116,10 +116,10 @@ public class HaeinsaComplexTest {
 			try {
 				tx = tm.begin();
 				HaeinsaGet get = new HaeinsaGet(row);
-				get.addColumn(CF, CQ);
-				long countOnDB = Bytes.toLong(testTable.get(tx, get).getValue(CF, CQ)); put = new HaeinsaPut(row);
+				get.addColumn(cf, cq);
+				long countOnDB = Bytes.toLong(testTable.get(tx, get).getValue(cf, cq)); put = new HaeinsaPut(row);
 				countOnDB += 1;
-				put.add(CF, CQ, Bytes.toBytes(countOnDB));
+				put.add(cf, cq, Bytes.toBytes(countOnDB));
 				testTable.put(tx, put);
 				tx.commit();
 				count.addAndGet(1L);
@@ -133,8 +133,8 @@ public class HaeinsaComplexTest {
 		//	check result
 		tx = tm.begin();
 		HaeinsaGet get = new HaeinsaGet(row);
-		get.addColumn(CF, CQ);
-		long countOnDB = Bytes.toLong(testTable.get(tx, get).getValue(CF, CQ));
+		get.addColumn(cf, cq);
+		long countOnDB = Bytes.toLong(testTable.get(tx, get).getValue(cf, cq));
 		tx.rollback();
 		
 		assertEquals(countOnDB, maxIter);
