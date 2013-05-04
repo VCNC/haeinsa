@@ -19,7 +19,7 @@ import com.google.common.collect.Lists;
 public class HaeinsaResult {
 	private final List<HaeinsaKeyValue> sortedKVs;
 	private byte[] row;
-	
+
 	/**
 	 * Construct HaeinsaResult from Result
 	 * @param result HBase's result
@@ -41,7 +41,7 @@ public class HaeinsaResult {
 
 	/**
 	 * Construct HaeinsaResultImpl from sorted list of HaeinsaKeyValue
-	 * @param sortedKVs 
+	 * @param sortedKVs
 	 * 					- Assumed that {@link HaeinsaKeyValue}s in sortedKVs have same row with first element and
 	 * 						sorted in ascending order.
 	 */

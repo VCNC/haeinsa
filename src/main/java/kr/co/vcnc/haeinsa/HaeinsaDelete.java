@@ -17,15 +17,15 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 
 /**
- * Implementation of {@link HaeinsaMuation} which only contains HaeinsaKeyValue with 
+ * Implementation of {@link HaeinsaMuation} which only contains HaeinsaKeyValue with
  * {@link Type#DeleteFamily} and {@link Type#DeleteColumn} identifier.
- * HaeinsaPut can be analogous to {@link Delete} class in HBase. 
+ * HaeinsaPut can be analogous to {@link Delete} class in HBase.
  * <p>HaeinsaDelete only contains data of single row.
  * @author Youngmok Kim
  *
  */
 public class HaeinsaDelete extends HaeinsaMutation {
-	
+
 	public HaeinsaDelete(byte[] row) {
 		this.row = row;
 	}
@@ -44,7 +44,7 @@ public class HaeinsaDelete extends HaeinsaMutation {
 	 * <p>
 	 * Overrides previous calls to deleteColumn and deleteColumns for the
 	 * specified family.
-	 * 
+	 *
 	 * @param family
 	 *            family name
 	 * @return this for invocation chaining
@@ -64,7 +64,7 @@ public class HaeinsaDelete extends HaeinsaMutation {
 
 	/**
 	 * Delete all versions of the specified column.
-	 * 
+	 *
 	 * @param family
 	 *            family name
 	 * @param qualifier
@@ -96,9 +96,9 @@ public class HaeinsaDelete extends HaeinsaMutation {
 				deleteColumns(newKV.getFamily(), newKV.getQualifier());
 			}
 		}
-		
+
 	}
-		
+
 	@Override
 	public TMutation toTMutation() {
 		TMutation newTMutation = new TMutation(TMutationType.REMOVE);

@@ -13,13 +13,13 @@ import org.apache.hadoop.hbase.util.Bytes;
 
 /**
  * HaeinsaScan is analogous to {@link Scan} class in HBase.
- * HaeinsaScan can be used to retrieve range of row with specific family or (family, qualifier) pairs. 
- * 
+ * HaeinsaScan can be used to retrieve range of row with specific family or (family, qualifier) pairs.
+ *
  * <p>HaeinsaScan do not support to set batch value, but only support caching.
- * So if user only specify column family and retrieve data from HBase, 
+ * So if user only specify column family and retrieve data from HBase,
  * {@link HaeinsaResultScanner} will return whole column family of the row at one time.
- *  
- * <p>Setting batch size will be supported in future....(?) 
+ *
+ * <p>Setting batch size will be supported in future....(?)
  * @author Youngmok Kim
  *
  */
@@ -29,10 +29,10 @@ public class HaeinsaScan {
 	private int caching = -1;
 	private boolean cacheBlocks = true;
 
-	//	{ family -> qualifier } 
+	//	{ family -> qualifier }
 	private Map<byte[], NavigableSet<byte[]>> familyMap = new TreeMap<byte[], NavigableSet<byte[]>>(
 			Bytes.BYTES_COMPARATOR);
-	
+
 	/**
 	 * Create a HaeinsaScan instance.
 	 * <p>If row is not specified for HaeinsaScan, the Scanner will start from the beginning of the table.
@@ -45,7 +45,7 @@ public class HaeinsaScan {
 	 * <p>
 	 * If the specified row does not exist, the Scanner will start from the next
 	 * closest row after the specified row.
-	 * 
+	 *
 	 * @param startRow
 	 *            row to start scanner at or after
 	 */
@@ -55,7 +55,7 @@ public class HaeinsaScan {
 
 	/**
 	 * Create a Scan operation for the range of rows specified.
-	 * 
+	 *
 	 * @param startRow
 	 *            row to start scanner at or after (inclusive)
 	 * @param stopRow
@@ -68,7 +68,7 @@ public class HaeinsaScan {
 
 	/**
 	 * Creates a new instance of this class while copying all values.
-	 * 
+	 *
 	 * @param scan
 	 *            The scan instance to copy from.
 	 * @throws IOException
@@ -97,7 +97,7 @@ public class HaeinsaScan {
 	 * Get all columns from the specified family.
 	 * <p>
 	 * Overrides previous calls to addColumn for this family.
-	 * 
+	 *
 	 * @param family
 	 *            family name
 	 * @return this
@@ -112,7 +112,7 @@ public class HaeinsaScan {
 	 * Get the column from the specified family with the specified qualifier.
 	 * <p>
 	 * Overrides previous calls to addFamily for this family.
-	 * 
+	 *
 	 * @param family
 	 *            family name
 	 * @param qualifier
@@ -132,7 +132,7 @@ public class HaeinsaScan {
 
 	/**
 	 * Set the start row of the scan.
-	 * 
+	 *
 	 * @param startRow
 	 *            row to start scan on, inclusive
 	 * @return this
@@ -144,7 +144,7 @@ public class HaeinsaScan {
 
 	/**
 	 * Set the stop row.
-	 * 
+	 *
 	 * @param stopRow
 	 *            row to end at (exclusive)
 	 * @return this
@@ -159,7 +159,7 @@ public class HaeinsaScan {
 	 * not set, the default setting from {@link HTable#getScannerCaching()} will
 	 * apply. Higher caching values will enable faster scanners but will use
 	 * more memory.
-	 * 
+	 *
 	 * @param caching
 	 *            the number of rows for caching
 	 */
@@ -169,7 +169,7 @@ public class HaeinsaScan {
 
 	/**
 	 * Setting the familyMap
-	 * 
+	 *
 	 * @param familyMap
 	 *            map of family to qualifier
 	 * @return this
@@ -181,7 +181,7 @@ public class HaeinsaScan {
 
 	/**
 	 * Getting the familyMap
-	 * 
+	 *
 	 * @return familyMap
 	 */
 	public Map<byte[], NavigableSet<byte[]>> getFamilyMap() {
@@ -245,7 +245,7 @@ public class HaeinsaScan {
 	 * This is true by default. When true, default settings of the table and
 	 * family are used (this will never override caching blocks if the block
 	 * cache is disabled for that family or entirely).
-	 * 
+	 *
 	 * @param cacheBlocks
 	 *            if false, default settings are overridden and blocks will not
 	 *            be cached
@@ -256,7 +256,7 @@ public class HaeinsaScan {
 
 	/**
 	 * Get whether blocks should be cached for this Scan.
-	 * 
+	 *
 	 * @return true if default setting of block caching should be used, false if blocks should
 	 *         not be cached
 	 */

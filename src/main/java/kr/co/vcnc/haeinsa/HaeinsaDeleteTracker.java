@@ -12,15 +12,15 @@ import com.google.common.collect.Maps;
  *
  */
 public class HaeinsaDeleteTracker {
-	//	{ family -> sequenceId } 
+	//	{ family -> sequenceId }
 	private final NavigableMap<byte[], Long> families = Maps.newTreeMap(Bytes.BYTES_COMPARATOR);
-	//	{ family -> { column -> sequenceId } }  
+	//	{ family -> { column -> sequenceId } }
 	private final NavigableMap<byte[], NavigableMap<byte[], Long>> cells = Maps.newTreeMap(Bytes.BYTES_COMPARATOR);
 
 	/**
-	 * Update family map or column map if kv is not exist in map or sequenceId is lower. 
+	 * Update family map or column map if kv is not exist in map or sequenceId is lower.
 	 * @param kv - HaeinsaKeyValue to track
-	 * @param sequenceID - sequence ID, lower is newer. 
+	 * @param sequenceID - sequence ID, lower is newer.
 	 */
 	public void add(HaeinsaKeyValue kv, long sequenceID) {
 		switch (kv.getType()) {
@@ -32,7 +32,7 @@ public class HaeinsaDeleteTracker {
 			}
 			break;
 		}
-		
+
 		case DeleteColumn: {
 			NavigableMap<byte[], Long> cellMap = cells.get(kv.getFamily());
 			if (cellMap == null) {
@@ -46,14 +46,14 @@ public class HaeinsaDeleteTracker {
 			}
 			break;
 		}
-		
+
 		default:
 			break;
-		} 
+		}
 	}
 
 	/**
-	 * 
+	 *
 	 * @param kv
 	 * @param sequenceID
 	 * @return Return true if kv is deleted after sequenceID ( lower sequenceID ), return false otherwise.
@@ -64,7 +64,7 @@ public class HaeinsaDeleteTracker {
 		if (deletedSequenceID != null && deletedSequenceID.compareTo(sequenceID) < 0) {
 			return true;
 		}
-		
+
 		// check cell
 		NavigableMap<byte[], Long> cellMap = cells.get(kv.getFamily());
 		if (cellMap != null) {
@@ -83,5 +83,5 @@ public class HaeinsaDeleteTracker {
 		families.clear();
 		cells.clear();
 	}
-	
+
 }

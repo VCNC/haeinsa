@@ -17,7 +17,7 @@ import org.apache.hadoop.hbase.client.Scan;
 /**
  * Wrapper of HTableInterface for Haeinsa.
  * Some of methods in {@link HTableInterface} are dropped because of implementing complexity.
- * Most of methods which directly access to DB now need {@link HaeinsaTransaction} as an argument which supervises transaction.    
+ * Most of methods which directly access to DB now need {@link HaeinsaTransaction} as an argument which supervises transaction.
  * <p>Implemented by {@link HaeinsaTable}.
  * @author Youngmok Kim
  *
@@ -43,7 +43,7 @@ public interface HaeinsaTableIface extends Closeable {
 	   * @throws IOException if a remote or network exception occurs.
 	   */
 	  HTableDescriptor getTableDescriptor() throws IOException;
-	  
+
 	  /**
 	   * Extracts certain cells from a given row.
 	   * @param get The object that specifies what data to fetch and from which row.
@@ -81,7 +81,7 @@ public interface HaeinsaTableIface extends Closeable {
 	   * @since 0.20.0
 	   */
 	  HaeinsaResultScanner getScanner(@Nullable HaeinsaTransaction tx, HaeinsaScan scan) throws IOException;
-	  
+
 	  /**
 	   * Returns a scanner on the current table as specified by the {@link Scan}
 	   * object.
@@ -94,7 +94,7 @@ public interface HaeinsaTableIface extends Closeable {
 	  HaeinsaResultScanner getScanner(@Nullable HaeinsaTransaction tx, HaeinsaIntraScan intraScan) throws IOException;
 
 	  /**
-	   * Gets a scanner on the current table for the given family. 
+	   * Gets a scanner on the current table for the given family.
 	   * Similar with {@link HaeinsaTableIface#getScanner(HaeinsaTransaction, HaeinsaScan)}
 	   *
 	   * @param family The column family to scan.
@@ -174,5 +174,5 @@ public interface HaeinsaTableIface extends Closeable {
 	   */
 	  @Override
 	  void close() throws IOException;
-	  
+
 }

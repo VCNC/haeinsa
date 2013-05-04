@@ -11,10 +11,10 @@ import java.io.IOException;
  *
  */
 public interface HaeinsaResultScanner extends Closeable, Iterable<HaeinsaResult> {
-	
+
 	/**
 	 * Grab the next row's worth of values. The scanner will return a Result.
-	 * 
+	 *
 	 * @return Result object if there is another row, null if the scanner is exhausted.
 	 * @throws IOException e
 	 */
@@ -30,6 +30,7 @@ public interface HaeinsaResultScanner extends Closeable, Iterable<HaeinsaResult>
 	/**
 	 * Closes the scanner and releases any resources it has allocated
 	 */
+	@Override
 	void close();
 
 }

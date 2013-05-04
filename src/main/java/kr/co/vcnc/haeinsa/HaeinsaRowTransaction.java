@@ -11,19 +11,19 @@ import com.google.common.collect.Lists;
  * This information is only saved in client memory until {@link HaeinsaTransaction#commit()} called.
  * @author Youngmok Kim
  *
- */	
+ */
 class HaeinsaRowTransaction {
 	//	current RowLock saved in HBase. null if there is no lock at all.
 	private TRowLock current;
-	//	mutations will be saved in order of executions. 
+	//	mutations will be saved in order of executions.
 	//	만약 이 rowTransaction 이 transaction 의 복원 과정에서 생성되었다면, 아래 mutations 은 비어 있는 상태이다.
 	private final List<HaeinsaMutation> mutations = Lists.newArrayList();
 	private final HaeinsaTableTransaction tableTransaction;
-	
+
 	HaeinsaRowTransaction(HaeinsaTableTransaction tableTransaction) {
 		this.tableTransaction = tableTransaction;
 	}
-	
+
 	public TRowLock getCurrent() {
 		return current;
 	}
@@ -35,7 +35,7 @@ class HaeinsaRowTransaction {
 	public List<HaeinsaMutation> getMutations() {
 		return mutations;
 	}
-	
+
 	public int getIterationCount() {
 		if (mutations.size() > 0) {
 			if (mutations.get(0) instanceof HaeinsaPut) {
@@ -46,7 +46,7 @@ class HaeinsaRowTransaction {
 		}
 		return 1;
 	}
-	
+
 	public void addMutation(HaeinsaMutation mutation) {
 		if (mutations.size() <= 0) {
 			mutations.add(mutation);
@@ -59,14 +59,14 @@ class HaeinsaRowTransaction {
 			}
 		}
 	}
-	
+
 	public HaeinsaTableTransaction getTableTransaction() {
 		return tableTransaction;
 	}
-	
+
 	/**
 	 * Return list of {@link HaeinsaKeyValueScanner}s which wrap mutations - (Put & Delete) contained inside instance.
-	 * Also assign sequenceID to every {@link HaeinsaMutation#MutationScanner}. 
+	 * Also assign sequenceID to every {@link HaeinsaMutation#MutationScanner}.
 	 * @return
 	 */
 	public List<HaeinsaKeyValueScanner> getScanners() {

@@ -14,11 +14,11 @@ import com.google.common.collect.ComparisonChain;
 /**
  * Modified POJO container of {@link KeyValue} class in HBase.
  * Like {@link KeyValue}, contains only one Key-Value data.
- * 
+ *
  * <p>HaeinsaKeyValue contains row, family, qualifier, value information and Type information, but not timestamp.
- * Because haeinsa use timestamp for version control, user cannot manually control timestamp of HaeinsaKeyValue. 
+ * Because haeinsa use timestamp for version control, user cannot manually control timestamp of HaeinsaKeyValue.
  * Type is same Enum with {@link org.apache.hadoop.hbase.KeyValue.Type}.
- * 
+ *
  * <p>HaeinsaKeyValue has public static comparator which can be used in navigableMap.
  * This comparator is ComparisionChain of {@link NullableCompator} wrapped {@link org.apache.hadoop.hbase.util.Bytes#BYTES_COMPARATOR}.
  * The order of comparisonChain is row, family, qualifier, value and type.
@@ -33,24 +33,24 @@ public class HaeinsaKeyValue {
 					.compare(o1.getRow(), o2.getRow(), new NullableComparator<byte[]>(Bytes.BYTES_COMPARATOR))
 					.compare(o1.getFamily(), o2.getFamily(), new NullableComparator<byte[]>(Bytes.BYTES_COMPARATOR))
 					.compare(o1.getQualifier(), o2.getQualifier(), new NullableComparator<byte[]>(Bytes.BYTES_COMPARATOR))
-					.compare((int) (o2.getType().getCode() & 0xFF), (int) (o1.getType().getCode() & 0xFF))
+					.compare((o2.getType().getCode() & 0xFF), (o1.getType().getCode() & 0xFF))
 					.result();
 		}
 	};
-	
+
 	private byte[] row;
 	private byte[] family;
 	private byte[] qualifier;
 	private byte[] value;
 	private Type type;
-	
+
 	public HaeinsaKeyValue() {
 	}
-	
+
 	public HaeinsaKeyValue(KeyValue keyValue) {
 		this(keyValue.getRow(), keyValue.getFamily(), keyValue.getQualifier(), keyValue.getValue(), KeyValue.Type.codeToType(keyValue.getType()));
 	}
-	
+
 	public HaeinsaKeyValue(byte[] row, byte[] family, byte[] qualifier, byte[] value, Type type) {
 		this.row = row;
 		this.family = family;
@@ -58,11 +58,11 @@ public class HaeinsaKeyValue {
 		this.value = value;
 		this.type = type;
 	}
-	
+
 	public byte[] getRow() {
 		return row;
 	}
-	
+
 	public void setRow(byte[] row) {
 		this.row = row;
 	}
@@ -98,11 +98,11 @@ public class HaeinsaKeyValue {
 	public void setType(Type type) {
 		this.type = type;
 	}
-	
+
 	public boolean matchingColumn(byte[] family, byte[] qualifier) {
 		return Bytes.equals(this.family, family) && Bytes.equals(this.qualifier, qualifier);
 	}
-	
+
 	/**
 	 * for debugging
 	 */

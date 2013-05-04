@@ -3,14 +3,14 @@ package kr.co.vcnc.haeinsa.exception;
 import java.io.IOException;
 
 /**
- * 
+ *
  * @author Youngmok Kim
  *
  */
 public class ConflictException extends IOException {
 
 	/**
-	 * 
+	 *
 	 */
 	private static final long serialVersionUID = -6181950952954013762L;
 
