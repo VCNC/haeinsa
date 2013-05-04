@@ -248,7 +248,6 @@ public class HaeinsaTransaction {
 		setPrewriteTimestamp(maxCurrentCommitTimestamp + 1);
 		setCommitTimestamp(Math.max(getPrewriteTimestamp(), maxCurrentCommitTimestamp + maxIterationCount));
 
-
 		CommitMethod method = determineCommitMethod();
 		switch (method) {
 		case MULTI_ROW: {
@@ -269,7 +268,6 @@ public class HaeinsaTransaction {
 		default:
 			break;
 		}
-
 	}
 
 	/**
@@ -341,7 +339,6 @@ public class HaeinsaTransaction {
 		if (primaryRowTx.getCurrent().getState() == TRowLockState.PREWRITTEN) {
 			// prewritten 상태에서는 timeout 보다 primary이 시간이 더 지났으면 abort 시켜야 함.
 			if (primaryRowTx.getCurrent().getExpiry() < System.currentTimeMillis()) {
-
 			} else {
 				// expiry 가 지나지 않았다면, recover 를 실패시켜야 함.
 				throw new ConflictException();
@@ -405,7 +402,6 @@ public class HaeinsaTransaction {
 					}
 					// make secondary rows from prewritten to stable
 					table.makeStable(rowStateEntry.getValue(), rowStateEntry.getKey());
-
 				} finally {
 					table.close();
 				}

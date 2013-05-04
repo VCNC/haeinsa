@@ -146,7 +146,6 @@ public abstract class HaeinsaMutation {
 
 		@Override
 		public void close() {
-
 		}
 	}
 }

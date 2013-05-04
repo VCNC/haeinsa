@@ -96,7 +96,6 @@ public class HaeinsaDelete extends HaeinsaMutation {
 				deleteColumns(newKV.getFamily(), newKV.getQualifier());
 			}
 		}
-
 	}
 
 	@Override

@@ -146,7 +146,6 @@ public class HaeinsaUnitTest {
 		assertArrayEquals(result2.getValue(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber")), Bytes.toBytes("010-1234-5678"));
 		assertArrayEquals(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber")), Bytes.toBytes("010-9876-5432"));
 
-
 		tx = tm.begin();
 		HaeinsaScan scan = new HaeinsaScan();
 		HaeinsaResultScanner scanner = testTable.getScanner(tx, scan);
@@ -159,7 +158,6 @@ public class HaeinsaUnitTest {
 		assertArrayEquals(result2.getValue(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber")), Bytes.toBytes("010-9876-5432"));
 		scanner.close();
 		tx.rollback();
-
 
 		tx = tm.begin();
 		put = new HaeinsaPut(Bytes.toBytes("ymkim"));
@@ -179,7 +177,6 @@ public class HaeinsaUnitTest {
 		assertArrayEquals(result2.getValue(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber")), Bytes.toBytes("010-1234-5678"));
 		scanner.close();
 		tx.rollback();
-
 
 		tx = tm.begin();
 		put = new HaeinsaPut(Bytes.toBytes("ymkim"));
@@ -223,7 +220,6 @@ public class HaeinsaUnitTest {
 		scanner.close();
 
 		tx.commit();
-
 
 		tx = tm.begin();
 		get = new HaeinsaGet(Bytes.toBytes("ymkim"));
@@ -293,7 +289,6 @@ public class HaeinsaUnitTest {
 		assertArrayEquals(testTable.get(tx, get).getValue(Bytes.toBytes("meta"), Bytes.toBytes("time-0")), Bytes.toBytes("meta-value-1"));
 		tx.rollback();
 
-
 		//	clear test - table
 		tx = tm.begin();
 		scan = new HaeinsaScan();
@@ -309,7 +304,6 @@ public class HaeinsaUnitTest {
 				assertFalse(Bytes.equals(kv.getFamily(), HaeinsaConstants.LOCK_FAMILY));
 				delete.deleteColumns(kv.getFamily(), kv.getQualifier());
 				testTable.delete(tx, delete);
-
 			}
 		}
 		tx.commit();
@@ -351,7 +345,6 @@ public class HaeinsaUnitTest {
 		assertFalse(iter.hasNext());
 		tx.rollback();
 		scanner.close();
-
 
 		testTable.close();
 		logTable.close();
@@ -411,7 +404,6 @@ public class HaeinsaUnitTest {
 		HaeinsaResult result = scanner.next();
 		HaeinsaResult result2 = scanner.next();
 
-
 		assertNull(result2);
 		assertArrayEquals(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber")), Bytes.toBytes("010-9876-5432"));
 		assertArrayEquals(result.getRow(), Bytes.toBytes("ymkim"));
@@ -457,7 +449,6 @@ public class HaeinsaUnitTest {
 
 		testTable.close();
 		tablePool.close();
-
 	}
 
 	@Test
@@ -591,7 +582,6 @@ public class HaeinsaUnitTest {
 
 		testTable.close();
 		tablePool.close();
-
 	}
 
 	/**
@@ -628,7 +618,6 @@ public class HaeinsaUnitTest {
 		HTablePool hbasePool = new HTablePool(CONF, 128, PoolType.Reusable);
 		HTableInterface hTestTable = hbasePool.getTable("test");
 
-
 		/**
 		 * HBase 의 row1 에 바로 put 을 한 후에 row1 에 Haeinsa Get 을 하고 다른 row2 에 Haeinsa put 을 한 후에 transaction 을 commit 한다.
 		 * row1 과 row2 가 모두 lock 정보가 적힌 Haeinsa 로 migration 되어야 한다. ( multiRowCommit() 을 사용하게 되므로 )
@@ -649,7 +638,6 @@ public class HaeinsaUnitTest {
 
 		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
 		HaeinsaTableIface testTable = tablePool.getTable("test");
-
 
 		HaeinsaTransaction tx = tm.begin();
 		HaeinsaGet get = new HaeinsaGet(Bytes.toBytes("row1"));
@@ -674,7 +662,6 @@ public class HaeinsaUnitTest {
 		tx.rollback();
 		//	now have lock at { row1 }
 		assertTrue(checkLockExist(hTestTable, Bytes.toBytes("row1")));
-
 
 		/**
 		 * HBase 의 row3 에 바로 put 을 한 후에 row3 에 Haeinsa Put 을 하고 transaction 을 commit 한다.
@@ -705,7 +692,6 @@ public class HaeinsaUnitTest {
 		//	now have lock at { row3 }
 		assertTrue(checkLockExist(hTestTable, Bytes.toBytes("row3")));
 
-
 		/**
 		 * HBase 의 row4에 바로 put 을 한 후에 row4 에 Haeinsa Delete 를 하고 transaction 을 commit 한다.
 		 * row4 는 lock 정보가 적힌 Haeinsa 로 migration 하고 데이터는 비어 있어야 한다.
@@ -732,7 +718,6 @@ public class HaeinsaUnitTest {
 		tx.rollback();
 		//	now have lock at { row4 }
 		assertTrue(checkLockExist(hTestTable, Bytes.toBytes("row4")));
-
 
 		/**
 		 * HBase 의 row5, row6, row7 에 바로 put 을 한 후에 row5 ~ row8 에 Haeinsa Scan 을 하고
@@ -790,7 +775,6 @@ public class HaeinsaUnitTest {
 		assertArrayEquals(testTable.get(tx, new HaeinsaGet(Bytes.toBytes("row8"))).getValue(Bytes.toBytes("data"), Bytes.toBytes("col8")), Bytes.toBytes("value8"));
 		tx.rollback();
 
-
 		/**
 		 * HBase 의 row9 에 바로 여러 column 을 미리 put 한 후에 row9 에 intraScan 을 하고 row10 에 put 을 한 후에 Transaction 을 commit 한다.
 		 * row10 과 row11 이 모두 lock 정보가 적힌 Haeinsa 로 migration 되어야 한다. ( multiRowCommit() 을 사용하게 되므로 )
@@ -829,7 +813,6 @@ public class HaeinsaUnitTest {
 		assertTrue(checkLockExist(hTestTable, Bytes.toBytes("row9")));
 		assertTrue(checkLockExist(hTestTable, Bytes.toBytes("row10")));
 
-
 		/**
 		 * 비어 있는 row11 에 intraScan 을 통해 read 를 시도한 후에 row10 에 HaeinsaPut 을 하고 Transaction 을 commit 한다.
 		 * row10 과 row11 은 모두 Haeinsa 로 migration 되고 lock 을 보유해야 한다.
@@ -861,7 +844,6 @@ public class HaeinsaUnitTest {
 			assertTrue(checkLockChanged(hTestTable, row, oldPutLock));
 			//	now have lock at { row11 }
 		assertTrue(checkLockExist(hTestTable, Bytes.toBytes("row11")));
-
 
 		//	release all resources
 		hTestTable.close();
@@ -977,7 +959,6 @@ public class HaeinsaUnitTest {
 
 		tx.rollback();
 
-
 		testTable.close();
 		tablePool.close();
 	}
@@ -1016,7 +997,6 @@ public class HaeinsaUnitTest {
 		HaeinsaTableIface testTable = tablePool.getTable("test");
 		HTablePool hbasePool = new HTablePool(CONF, 128, PoolType.Reusable);
 		HTableInterface hTestTable = hbasePool.getTable("test");
-
 
 		/**
 		 * row-put-a 와 row-put-b 에 데이터를 쓴 후에 Transaction 을 commit 하고 새로운 Transaction 을 만들어서
@@ -1062,7 +1042,6 @@ public class HaeinsaUnitTest {
 		row = Bytes.toBytes("row-put-b");
 		assertTrue(checkLockChanged(hTestTable, row, oldLockPut));
 
-
 		/**
 		 * row-put-a 와 row-put-b 에 있는 데이터를 ScanWithoutTx 를 통해서 읽은 후에
 		 * row-put-c 에 새로운 값을 put 하고 Transaction 을 commit 한다.
@@ -1103,7 +1082,6 @@ public class HaeinsaUnitTest {
 		row = Bytes.toBytes("row-put-c");
 		assertTrue(checkLockChanged(hTestTable, row, oldLockPut));
 
-
 		/**
 		 * row-put-d 의 column col-put-a, col-put-b, col-put-c 에 put 을 한 후에 Transaction 을 commit 한다.
 		 * 새로운 Transaction 을 시작한 후 row-put-d 에 있는 데이터를 IntraScanWithoutTx 를 통해서 읽은 후에
@@ -1123,7 +1101,6 @@ public class HaeinsaUnitTest {
 		put.add(Bytes.toBytes("data"), Bytes.toBytes("col-put-b"), Bytes.toBytes("value-put-b"));
 		put.add(Bytes.toBytes("data"), Bytes.toBytes("col-put-c"), Bytes.toBytes("value-put-c"));
 		tx.commit();
-
 
 		tx = tm.begin();
 		row = Bytes.toBytes("row-put-d");
@@ -1149,7 +1126,6 @@ public class HaeinsaUnitTest {
 		//	lock at { row-put-e } changed
 		row = Bytes.toBytes("row-put-e");
 		assertTrue(checkLockChanged(hTestTable, row, oldLockPut));
-
 
 		//	release resources
 		testTable.close();

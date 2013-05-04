@@ -124,9 +124,7 @@ public class HaeinsaComplexTest {
 				tx.commit();
 				count.addAndGet(1L);
 			} catch (IOException e) {
-
 			} finally {
-
 			}
 		}
 
@@ -144,7 +142,6 @@ public class HaeinsaComplexTest {
 		tablePool.close();
 		threadPool.shutdown();
 	}
-
 
 	/**
 	 * 동시에 numberOfJob 개의 Thread 가 동일한 row 에 접근해서 random 하게 값을 증가시키는 transaction 을 시도한다.
@@ -225,7 +222,6 @@ public class HaeinsaComplexTest {
 					} catch (IOException e) {
 						failCount.getAndIncrement();
 					} finally {
-
 					}
 				}
 				System.out.println("iteration : " + iteration
@@ -261,7 +257,6 @@ public class HaeinsaComplexTest {
 		threadPool.shutdown();
 		service.shutdown();
 	}
-
 
 	/**
 	 * Serializability 를 테스트한다.
@@ -374,14 +369,12 @@ public class HaeinsaComplexTest {
 						//	fail
 						failCount.getAndIncrement();
 					} finally {
-
 					}
 				}
 				System.out.println("iteration : " + iteration
 						+ " on Thread : " + Thread.currentThread().getName());
 			}
 		};
-
 
 		ExecutorService service = Executors.newFixedThreadPool(numberOfJob,
 				new ThreadFactoryBuilder().setNameFormat("Serializability-job-thread-%d").build());
@@ -402,7 +395,6 @@ public class HaeinsaComplexTest {
 		System.out.println("Number of Failed Transactions : " + failCount.get());
 		System.out.println("Conflict rate : " + failCount.get() /
 				((double) failCount.get() + (double) successCount.get()) * 100.0);
-
 
 		//	release resources
 		testTable.close();

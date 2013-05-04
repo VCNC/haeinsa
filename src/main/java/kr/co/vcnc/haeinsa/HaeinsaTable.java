@@ -749,7 +749,6 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 		return table;
 	}
 
-
 	/**
 	 * Transaction 없이 Scan 할 때 사용하는 {@link HaeinsaResultScanner}.
 	 * @author Youngmok Kim
@@ -1301,7 +1300,6 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 
 		@Override
 		public void close() {
-
 		}
 	}
 }
