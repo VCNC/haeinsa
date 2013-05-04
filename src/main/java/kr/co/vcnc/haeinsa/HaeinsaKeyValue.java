@@ -33,7 +33,7 @@ public class HaeinsaKeyValue {
 					.compare(o1.getRow(), o2.getRow(), new NullableComparator<byte[]>(Bytes.BYTES_COMPARATOR))
 					.compare(o1.getFamily(), o2.getFamily(), new NullableComparator<byte[]>(Bytes.BYTES_COMPARATOR))
 					.compare(o1.getQualifier(), o2.getQualifier(), new NullableComparator<byte[]>(Bytes.BYTES_COMPARATOR))
-					.compare((o2.getType().getCode() & 0xFF), (o1.getType().getCode() & 0xFF))
+					.compare(o2.getType().getCode() & 0xFF, o1.getType().getCode() & 0xFF)
 					.result();
 		}
 	};
