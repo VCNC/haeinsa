@@ -30,7 +30,6 @@ public abstract class HaeinsaMutation {
 	protected Map<byte[], NavigableSet<HaeinsaKeyValue>> familyMap = new TreeMap<byte[], NavigableSet<HaeinsaKeyValue>>(
 			Bytes.BYTES_COMPARATOR);
 
-
 	/**
 	 * Method for retrieving the put's familyMap
 	 * 

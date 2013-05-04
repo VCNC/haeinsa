@@ -116,7 +116,6 @@ public interface HaeinsaTableIface extends Closeable{
 	   */
 	  HaeinsaResultScanner getScanner(@Nullable HaeinsaTransaction tx, byte[] family, byte[] qualifier) throws IOException;
 
-
 	  /**
 	   * Puts some data in the table.
 	   * <p>

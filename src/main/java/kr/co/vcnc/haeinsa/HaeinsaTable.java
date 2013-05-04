@@ -561,7 +561,6 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 		} else {
 			rowState.setCurrent(newRowLock);
 		}
-
 	}
 
 	@Override
@@ -1128,7 +1127,6 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 				scanner.close();
 			}
 		}
-
 	}
 	
 	/**
@@ -1304,8 +1302,7 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 
 		@Override
 		public void close() {
-
+			
 		}
 	}
-
 }

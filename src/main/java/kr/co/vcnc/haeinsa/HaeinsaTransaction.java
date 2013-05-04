@@ -40,7 +40,6 @@ public class HaeinsaTransaction {
 		SINGLE_ROW_READ_ONLY,	//	rowTx 가 하나만 존재하고, muations 가 없을 때 
 		MULTI_ROW				//	rowTx 가 여러 개 존재하거나, rowTx 가 하나만 존재하면서 종류가 HaeinsaDelete 이거나 
 								//	rowTx 가 하나만 존재하면서 여러 개의 HaeinsaPut / HeainsaDelete 가 섞여 있을 때
-
 	}
 	
 	public HaeinsaTransaction(HaeinsaTransactionManager manager){
@@ -427,6 +426,5 @@ public class HaeinsaTransaction {
 				table.close();				
 			}
 		}
-
 	}
 }

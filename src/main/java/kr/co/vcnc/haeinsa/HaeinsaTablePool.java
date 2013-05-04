@@ -224,7 +224,6 @@ public class HaeinsaTablePool implements Closeable {
 		return getTableInternal(Bytes.toString(tableName));
 	}
 
-
 	/**
 	 * Puts the specified HTable back into the pool.
 	 * <p>
@@ -370,21 +369,18 @@ public class HaeinsaTablePool implements Closeable {
 		public void put(HaeinsaTransaction tx, List<HaeinsaPut> puts)
 				throws IOException {
 			table.put(tx, puts);
-
 		}
 
 		@Override
 		public void delete(HaeinsaTransaction tx, HaeinsaDelete delete)
 				throws IOException {
 			table.delete(tx, delete);
-
 		}
 
 		@Override
 		public void delete(HaeinsaTransaction tx, List<HaeinsaDelete> deletes)
 				throws IOException {
 			table.delete(tx, deletes);
-
 		}
 
 		@Override
