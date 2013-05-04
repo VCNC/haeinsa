@@ -33,6 +33,8 @@ public final class TRowLocks {
 		return new TDeserializer(PROTOCOL_FACTORY);
 	}
 
+	private TRowLocks() {}
+	
 	public static TRowLock deserialize(byte[] rowLockBytes) throws IOException {
 		if (rowLockBytes == null) {
 			return new TRowLock(ROW_LOCK_VERSION, TRowLockState.STABLE, Long.MIN_VALUE);

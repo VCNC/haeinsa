@@ -122,11 +122,9 @@ public class HaeinsaComplexTest {
 				testTable.put(tx, put);
 				tx.commit();
 				count.addAndGet(1L);
-			}
-			catch (IOException e) {
+			} catch (IOException e) {
 				
-			}
-			finally {
+			} finally {
 				
 			}
 		}
@@ -223,11 +221,9 @@ public class HaeinsaComplexTest {
 						count.addAndGet(newIncrement);
 						iteration++;
 						successCount.getAndIncrement();
-					}
-					catch (IOException e) {
+					} catch (IOException e) {
 						failCount.getAndIncrement();
-					}
-					finally {
+					} finally {
 						
 					}
 				}
@@ -373,12 +369,10 @@ public class HaeinsaComplexTest {
 							assertTrue(value1.compareAndSet(oldValue1, newValue1));
 							assertTrue(value2.compareAndSet(oldValue2, newValue2));
 						}
-					}
-					catch (IOException e) {
+					} catch (IOException e) {
 						//	fail
 						failCount.getAndIncrement();
-					}
-					finally {
+					} finally {
 						
 					}
 				}

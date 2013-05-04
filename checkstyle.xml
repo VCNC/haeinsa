@@ -38,6 +38,17 @@
 			<property name="severity" value="error" />
 		</module>
 
+		<module name="MissingOverride" />
+		<module name="PackageAnnotation" />
+		<module name="LeftCurly" />
+		<module name="RightCurly" />
+		<module name="NeedBraces" />
+		<module name="FinalClass" />
+		<module name="HideUtilityClassConstructor" />
+		<module name="CovariantEquals" />
+		<module name="EmptyStatement" />
+		<module name="EqualsHashCode" />
+    
 		<module name="SimplifyBooleanExpression" />
 		<module name="SimplifyBooleanReturn" />
 		<module name="NoFinalizer" />
