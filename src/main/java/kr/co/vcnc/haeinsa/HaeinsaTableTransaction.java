@@ -18,7 +18,7 @@ class HaeinsaTableTransaction {
 	private final NavigableMap<byte[], HaeinsaRowTransaction> rowStates = Maps.newTreeMap(Bytes.BYTES_COMPARATOR);
 	private final HaeinsaTransaction transaction;
 	
-	HaeinsaTableTransaction(HaeinsaTransaction transaction){
+	HaeinsaTableTransaction(HaeinsaTransaction transaction) {
 		this.transaction = transaction;
 	}
 	
@@ -49,7 +49,7 @@ class HaeinsaTableTransaction {
 	 */
 	public HaeinsaRowTransaction createOrGetRowState(byte[] row) {
 		HaeinsaRowTransaction rowState = rowStates.get(row);
-		if (rowState == null){
+		if (rowState == null) {
 			rowState = new HaeinsaRowTransaction(this);
 			rowStates.put(row, rowState);
 		}

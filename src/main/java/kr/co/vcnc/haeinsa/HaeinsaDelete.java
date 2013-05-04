@@ -89,10 +89,10 @@ public class HaeinsaDelete extends HaeinsaMutation {
 	@Override
 	public void add(HaeinsaMutation newMutation) {
 		Preconditions.checkState(newMutation instanceof HaeinsaDelete);
-		for (HaeinsaKeyValue newKV : Iterables.concat(newMutation.getFamilyMap().values())){
-			if (newKV.getType() == KeyValue.Type.DeleteFamily){
+		for (HaeinsaKeyValue newKV : Iterables.concat(newMutation.getFamilyMap().values())) {
+			if (newKV.getType() == KeyValue.Type.DeleteFamily) {
 				deleteFamily(newKV.getFamily());
-			}else{
+			} else {
 				deleteColumns(newKV.getFamily(), newKV.getQualifier());
 			}
 		}
@@ -103,18 +103,16 @@ public class HaeinsaDelete extends HaeinsaMutation {
 	public TMutation toTMutation() {
 		TMutation newTMutation = new TMutation(TMutationType.REMOVE);
 		TRemove newTRemove = new TRemove();
-		for (HaeinsaKeyValue kv : Iterables.concat(familyMap.values())){
+		for (HaeinsaKeyValue kv : Iterables.concat(familyMap.values())) {
 			switch (kv.getType()) {
-			case DeleteColumn:{
+			case DeleteColumn: {
 				newTRemove.addToRemoveCells(new TCellKey().setFamily(kv.getFamily()).setQualifier(kv.getQualifier()));
 				break;
 			}
-			
-			case DeleteFamily:{
+			case DeleteFamily: {
 				newTRemove.addToRemoveFamilies(ByteBuffer.wrap(kv.getFamily()));
 				break;
 			}
-
 			default:
 				break;
 			}

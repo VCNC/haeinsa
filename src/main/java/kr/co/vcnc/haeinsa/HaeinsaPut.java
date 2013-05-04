@@ -102,7 +102,7 @@ public class HaeinsaPut extends HaeinsaMutation {
 	@Override
 	public void add(HaeinsaMutation newMutation) {
 		Preconditions.checkState(newMutation instanceof HaeinsaPut);
-		for (HaeinsaKeyValue newKV : Iterables.concat(newMutation.getFamilyMap().values())){
+		for (HaeinsaKeyValue newKV : Iterables.concat(newMutation.getFamilyMap().values())) {
 			add(newKV.getFamily(), newKV.getQualifier(), newKV.getValue());
 		}
 	}
@@ -112,7 +112,7 @@ public class HaeinsaPut extends HaeinsaMutation {
 		TMutation newTMutation = new TMutation();
 		newTMutation.setType(TMutationType.PUT);
 		TPut newTPut = new TPut();
-		for (HaeinsaKeyValue kv : Iterables.concat(familyMap.values())){
+		for (HaeinsaKeyValue kv : Iterables.concat(familyMap.values())) {
 			TKeyValue newTKV = new TKeyValue();
 			newTKV.setKey(new TCellKey().setFamily(kv.getFamily()).setQualifier(kv.getQualifier()));
 			newTKV.setValue(kv.getValue());

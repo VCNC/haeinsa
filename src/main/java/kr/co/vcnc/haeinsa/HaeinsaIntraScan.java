@@ -59,7 +59,7 @@ public class HaeinsaIntraScan {
 		return maxColumnInclusive;
 	}
 	
-	public HaeinsaIntraScan addFamily(byte[] family){
+	public HaeinsaIntraScan addFamily(byte[] family) {
 		families.add(family);
 		return this;
 	}

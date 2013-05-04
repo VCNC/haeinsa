@@ -37,7 +37,7 @@ public class HaeinsaScan {
 	 * Create a HaeinsaScan instance.
 	 * <p>If row is not specified for HaeinsaScan, the Scanner will start from the beginning of the table.
 	 */
-	public HaeinsaScan(){
+	public HaeinsaScan() {
 	}
 
 	/**

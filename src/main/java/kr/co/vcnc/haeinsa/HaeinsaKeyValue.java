@@ -26,14 +26,14 @@ import com.google.common.collect.ComparisonChain;
  *
  */
 public class HaeinsaKeyValue {
-	public static final Comparator<HaeinsaKeyValue> COMPARATOR =new Comparator<HaeinsaKeyValue>() {
+	public static final Comparator<HaeinsaKeyValue> COMPARATOR = new Comparator<HaeinsaKeyValue>() {
 		@Override
 		public int compare(HaeinsaKeyValue o1, HaeinsaKeyValue o2) {
 			return ComparisonChain.start()
 					.compare(o1.getRow(), o2.getRow(), new NullableComparator<byte[]>(Bytes.BYTES_COMPARATOR))
 					.compare(o1.getFamily(), o2.getFamily(), new NullableComparator<byte[]>(Bytes.BYTES_COMPARATOR))
 					.compare(o1.getQualifier(), o2.getQualifier(), new NullableComparator<byte[]>(Bytes.BYTES_COMPARATOR))
-					.compare((int)(o2.getType().getCode() & 0xFF), (int)(o1.getType().getCode() & 0xFF))
+					.compare((int) (o2.getType().getCode() & 0xFF), (int) (o1.getType().getCode() & 0xFF))
 					.result();
 		}
 	};
@@ -44,14 +44,14 @@ public class HaeinsaKeyValue {
 	private byte[] value;
 	private Type type;
 	
-	public HaeinsaKeyValue(){
+	public HaeinsaKeyValue() {
 	}
 	
-	public HaeinsaKeyValue(KeyValue keyValue){
+	public HaeinsaKeyValue(KeyValue keyValue) {
 		this(keyValue.getRow(), keyValue.getFamily(), keyValue.getQualifier(), keyValue.getValue(), KeyValue.Type.codeToType(keyValue.getType()));
 	}
 	
-	public HaeinsaKeyValue(byte[] row, byte[] family, byte[] qualifier, byte[] value, Type type){
+	public HaeinsaKeyValue(byte[] row, byte[] family, byte[] qualifier, byte[] value, Type type) {
 		this.row = row;
 		this.family = family;
 		this.qualifier = qualifier;
@@ -99,7 +99,7 @@ public class HaeinsaKeyValue {
 		this.type = type;
 	}
 	
-	public boolean matchingColumn(byte[] family, byte[] qualifier){
+	public boolean matchingColumn(byte[] family, byte[] qualifier) {
 		return Bytes.equals(this.family, family) && Bytes.equals(this.qualifier, qualifier);
 	}
 	
@@ -107,7 +107,7 @@ public class HaeinsaKeyValue {
 	 * for debugging
 	 */
 	@Override
-	public String toString(){
+	public String toString() {
 		return Objects.toStringHelper(this.getClass())
 				.add("row", Bytes.toStringBinary(row))
 	            .add("family", Bytes.toStringBinary(family))

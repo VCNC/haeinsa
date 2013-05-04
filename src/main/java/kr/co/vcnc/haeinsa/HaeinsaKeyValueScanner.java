@@ -17,7 +17,7 @@ import com.google.common.collect.ComparisonChain;
  *
  */
 public interface HaeinsaKeyValueScanner {
-	public static final Comparator<HaeinsaKeyValueScanner> COMPARATOR = new Comparator<HaeinsaKeyValueScanner>() {
+	Comparator<HaeinsaKeyValueScanner> COMPARATOR = new Comparator<HaeinsaKeyValueScanner>() {
 		
 		@Override
 		public int compare(HaeinsaKeyValueScanner o1, HaeinsaKeyValueScanner o2) {
@@ -33,21 +33,21 @@ public interface HaeinsaKeyValueScanner {
 	 * 
 	 * @return the next KeyValue
 	 */
-	public HaeinsaKeyValue peek();
+	HaeinsaKeyValue peek();
 
 	/**
 	 * Return the next KeyValue in this scanner, iterating the scanner
 	 * 
 	 * @return the next KeyValue
 	 */
-	public HaeinsaKeyValue next() throws IOException;
+	HaeinsaKeyValue next() throws IOException;
 	
 	/**
 	 * 
 	 * @return Return TRowLock if exist in HaeinsaKeyValue. Otherwise, return null
 	 * @throws IOException
 	 */
-	public TRowLock peekLock() throws IOException;
+	TRowLock peekLock() throws IOException;
 
 	/**
 	 * Get the sequence id associated with this KeyValueScanner. This is
@@ -55,10 +55,10 @@ public interface HaeinsaKeyValueScanner {
 	 * latest data. The default implementation for this would be to return 0. 
 	 * A KeyValueScanner having lower sequence id will be considered to be the newer one.
 	 */
-	public long getSequenceID();
+	long getSequenceID();
 
 	/**
 	 * Close the KeyValue scanner.
 	 */
-	public void close();
+	void close();
 }

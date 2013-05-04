@@ -67,7 +67,7 @@ public class HaeinsaComplexTest {
 	 * @throws Exception
 	 */
 	@Test
-	public void testSimepleIncrement() throws Exception{
+	public void testSimepleIncrement() throws Exception {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
 		HaeinsaTablePool tablePool = new HaeinsaTablePool(CONF, 128, new HTableInterfaceFactory() {
 			
@@ -111,22 +111,22 @@ public class HaeinsaComplexTest {
 		testTable.put(tx, put);
 		tx.commit();
 		
-		for(int i=0; i<maxIter; i++){
-			try{
+		for (int i = 0; i < maxIter; i++) {
+			try {
 				tx = tm.begin();
 				HaeinsaGet get = new HaeinsaGet(row);
 				get.addColumn(CF, CQ);
-				long countOnDB = Bytes.toLong(testTable.get(tx, get).getValue(CF, CQ));put = new HaeinsaPut(row);
+				long countOnDB = Bytes.toLong(testTable.get(tx, get).getValue(CF, CQ)); put = new HaeinsaPut(row);
 				countOnDB += 1;
 				put.add(CF, CQ, Bytes.toBytes(countOnDB));
 				testTable.put(tx, put);
 				tx.commit();
 				count.addAndGet(1L);
 			}
-			catch(IOException e){
+			catch (IOException e) {
 				
 			}
-			finally{
+			finally {
 				
 			}
 		}
@@ -153,7 +153,7 @@ public class HaeinsaComplexTest {
 	 * @throws Exception
 	 */
 	@Test
-	public void testConcurrentRandomIncrement() throws Exception{
+	public void testConcurrentRandomIncrement() throws Exception {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
 		HaeinsaTablePool tablePool = new HaeinsaTablePool(CONF, 128, new HTableInterfaceFactory() {
 			
@@ -201,13 +201,13 @@ public class HaeinsaComplexTest {
 		testTable.put(tx, put);
 		tx.commit();
 		
-		Runnable singleIncrementJob = new Runnable(){
+		Runnable singleIncrementJob = new Runnable() {
 
 			@Override
 			public void run() {
 				int iteration = 0;
-				while(iteration < maxIter){
-					try{
+				while (iteration < maxIter) {
+					try {
 						HaeinsaTransaction tx = tm.begin();
 						HaeinsaGet get = new HaeinsaGet(row);
 						get.addColumn(CF, CQ);
@@ -224,10 +224,10 @@ public class HaeinsaComplexTest {
 						iteration++;
 						successCount.getAndIncrement();
 					}
-					catch(IOException e){
+					catch (IOException e) {
 						failCount.getAndIncrement();
 					}
-					finally{
+					finally {
 						
 					}
 				}
@@ -239,7 +239,7 @@ public class HaeinsaComplexTest {
 		ExecutorService service = Executors.newFixedThreadPool(numberOfJob, 
 				new ThreadFactoryBuilder().setNameFormat("IncrementJobThread-%d").build());
 		
-		for(int i=0;i<numberOfJob;i++){
+		for (int i = 0; i < numberOfJob; i++) {
 			service.execute(singleIncrementJob);
 		}
 		
@@ -255,8 +255,8 @@ public class HaeinsaComplexTest {
 		assertEquals(countOnDB, count.get());
 		System.out.println("Number of Success Transactions : " + successCount.get());
 		System.out.println("Number of Failed Transactions : " + failCount.get());
-		System.out.println("Conflict rate : " + (double)failCount.get() / 
-				((double)failCount.get() + (double)successCount.get()) * 100.0);
+		System.out.println("Conflict rate : " + (double) failCount.get() / 
+				((double) failCount.get() + (double) successCount.get()) * 100.0);
 		
 		//	release resources
 		testTable.close();
@@ -285,7 +285,7 @@ public class HaeinsaComplexTest {
 	 * @throws Exception
 	 */
 	@Test
-	public void testSerializability() throws Exception{
+	public void testSerializability() throws Exception {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
 		HaeinsaTablePool tablePool = new HaeinsaTablePool(CONF, 128, new HTableInterfaceFactory() {
 			
@@ -347,13 +347,13 @@ public class HaeinsaComplexTest {
 		 * tx.write(newValue2)
 		 * tx.commit();
 		 */
-		Runnable job = new Runnable(){
+		Runnable job = new Runnable() {
 
 			@Override
 			public void run() {
 				int iteration = 0;
-				while(iteration < maxIter){
-					try{
+				while (iteration < maxIter) {
+					try {
 						HaeinsaTransaction tx = tm.begin();
 						int oldValue1 = 
 								Bytes.toInt(testTable.get(tx, new HaeinsaGet(row1).addColumn(CF, CQ1)).getValue(CF, CQ1));
@@ -369,16 +369,16 @@ public class HaeinsaComplexTest {
 						iteration++;
 						successCount.incrementAndGet();
 						//	success
-						synchronized(lock){
+						synchronized (lock) {
 							assertTrue(value1.compareAndSet(oldValue1, newValue1));
 							assertTrue(value2.compareAndSet(oldValue2, newValue2));
 						}
 					}
-					catch(IOException e){
+					catch (IOException e) {
 						//	fail
 						failCount.getAndIncrement();
 					}
-					finally{
+					finally {
 						
 					}
 				}
@@ -391,7 +391,7 @@ public class HaeinsaComplexTest {
 		ExecutorService service = Executors.newFixedThreadPool(numberOfJob, 
 				new ThreadFactoryBuilder().setNameFormat("Serializability-job-thread-%d").build());
 		
-		for(int i=0;i<numberOfJob;i++){
+		for (int i = 0; i < numberOfJob; i++) {
 			service.execute(job);
 		}
 		
@@ -405,8 +405,8 @@ public class HaeinsaComplexTest {
 		assertEquals(dbValue2, value2.get());
 		System.out.println("Number of Success Transactions : " + successCount.get());
 		System.out.println("Number of Failed Transactions : " + failCount.get());
-		System.out.println("Conflict rate : " + (double)failCount.get() / 
-				((double)failCount.get() + (double)successCount.get()) * 100.0);
+		System.out.println("Conflict rate : " + (double) failCount.get() / 
+				((double) failCount.get() + (double) successCount.get()) * 100.0);
 		
 		
 		//	release resources
@@ -420,7 +420,7 @@ public class HaeinsaComplexTest {
 	 * @param oldValue
 	 * @return
 	 */
-	public int nextHashedValue(int oldValue){
+	public int nextHashedValue(int oldValue) {
 		String result = "";
 		result += oldValue;
 		result += new Random().nextInt();

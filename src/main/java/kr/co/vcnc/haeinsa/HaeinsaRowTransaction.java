@@ -36,11 +36,11 @@ class HaeinsaRowTransaction {
 		return mutations;
 	}
 	
-	public int getIterationCount(){
-		if (mutations.size() > 0){
-			if (mutations.get(0) instanceof HaeinsaPut){
+	public int getIterationCount() {
+		if (mutations.size() > 0) {
+			if (mutations.get(0) instanceof HaeinsaPut) {
 				return mutations.size();
-			}else{
+			} else {
 				return mutations.size() + 1;
 			}
 		}
@@ -48,13 +48,13 @@ class HaeinsaRowTransaction {
 	}
 	
 	public void addMutation(HaeinsaMutation mutation) {
-		if (mutations.size() <= 0){
+		if (mutations.size() <= 0) {
 			mutations.add(mutation);
 		} else {
 			HaeinsaMutation lastMutation = mutations.get(mutations.size() - 1);
-			if (lastMutation.getClass() != mutation.getClass()){
+			if (lastMutation.getClass() != mutation.getClass()) {
 				mutations.add(mutation);
-			}else{
+			} else {
 				lastMutation.add(mutation);
 			}
 		}
@@ -71,11 +71,10 @@ class HaeinsaRowTransaction {
 	 */
 	public List<HaeinsaKeyValueScanner> getScanners() {
 		List<HaeinsaKeyValueScanner> result = Lists.newArrayList();
-		for (int i=0;i<mutations.size();i++){
+		for (int i = 0; i < mutations.size(); i++) {
 			HaeinsaMutation mutation = mutations.get(i);
 			result.add(mutation.getScanner(mutations.size() - i));
 		}
-		
 		return result;
 	}
 }

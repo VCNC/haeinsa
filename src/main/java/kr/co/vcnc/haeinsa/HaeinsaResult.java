@@ -20,20 +20,18 @@ public class HaeinsaResult {
 	private final List<HaeinsaKeyValue> sortedKVs;
 	private byte[] row = null;
 	
-	
 	/**
 	 * Construct HaeinsaResult from Result
 	 * @param result HBase's result
 	 */
-	public HaeinsaResult(Result result){
-		if (result.isEmpty()){
+	public HaeinsaResult(Result result) {
+		if (result.isEmpty()) {
 			List<HaeinsaKeyValue> emptyList = Collections.emptyList();
 			this.sortedKVs = emptyList;
-		}else{
+		} else {
 			List<HaeinsaKeyValue> transformed = Lists.transform(result.list(), new Function<KeyValue, HaeinsaKeyValue>() {
-				
 				@Override
-				public HaeinsaKeyValue apply(KeyValue kv){
+				public HaeinsaKeyValue apply(KeyValue kv) {
 					return new HaeinsaKeyValue(kv);
 				}
 			});
@@ -69,14 +67,14 @@ public class HaeinsaResult {
 				HaeinsaKeyValue.COMPARATOR);
 		// never will exact match
 	    if (pos < 0) {
-	    	pos = (pos+1) * -1;
+			pos = (pos + 1) * -1;
 	    	// pos is now insertion point
 	    }
 	    if (pos == sortedKVs.size()) {
 	    	return null;
 	    }
 	    HaeinsaKeyValue kv = sortedKVs.get(pos);
-	    if (kv.matchingColumn(family, qualifier)){
+	    if (kv.matchingColumn(family, qualifier)) {
 	    	return kv.getValue();
 	    }
 		return null;

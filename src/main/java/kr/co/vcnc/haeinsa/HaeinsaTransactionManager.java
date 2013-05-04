@@ -27,7 +27,7 @@ public class HaeinsaTransactionManager {
 	 * Constructor for TransactionManager
 	 * @param tablePool HaeinsaTablePool to access HBase.
 	 */
-	public HaeinsaTransactionManager(HaeinsaTablePool tablePool){
+	public HaeinsaTransactionManager(HaeinsaTablePool tablePool) {
 		this.tablePool = tablePool;
 	}
 	
@@ -36,7 +36,7 @@ public class HaeinsaTransactionManager {
 	 * <p>This method is thread-safe. 
 	 * @return new Transaction instance have reference to this manager instance.
 	 */
-	public HaeinsaTransaction begin(){
+	public HaeinsaTransaction begin() {
 		return new HaeinsaTransaction(this);
 	}
 	
@@ -49,25 +49,26 @@ public class HaeinsaTransactionManager {
 	 * @return Transaction instance if there is any ongoing Transaction on row, return null otherwise. 
 	 * @throws IOException
 	 */
-	protected @Nullable HaeinsaTransaction getTransaction(byte[] tableName, byte[] row) throws IOException {
+	@Nullable
+	protected HaeinsaTransaction getTransaction(byte[] tableName, byte[] row) throws IOException {
 		TRowLock startUnstableRowLock = getUnstableRowLock(tableName, row);
 		
-		if (startUnstableRowLock == null){
+		if (startUnstableRowLock == null) {
 			//	There is no on-going transaction on row.
 			return null;
 		}
 		
 		TRowLock primaryRowLock = null;
 		TRowKey primaryRowKey = null;
-		if (!startUnstableRowLock.isSetPrimary()){
+		if (!startUnstableRowLock.isSetPrimary()) {
 			// 이 Row가 Primary Row
 			primaryRowKey = new TRowKey(ByteBuffer.wrap(tableName), ByteBuffer.wrap(row));
 			primaryRowLock = startUnstableRowLock;
-		}else {
+		} else {
 			primaryRowKey = startUnstableRowLock.getPrimary();
 			primaryRowLock = getUnstableRowLock(primaryRowKey.getTableName(), primaryRowKey.getRow());
 		}
-		if (primaryRowLock == null){
+		if (primaryRowLock == null) {
 			return null;
 		}
 		return getTransactionFromPrimary(primaryRowKey, primaryRowLock);
@@ -82,15 +83,15 @@ public class HaeinsaTransactionManager {
 	private TRowLock getUnstableRowLock(byte[] tableName, byte[] row) throws IOException {
 		HaeinsaTableIfaceInternal table = tablePool.getTableInternal(tableName);
 		TRowLock rowLock = null;
-		try{
+		try {
 			//	access to HBase
 			 rowLock = table.getRowLock(row);
 		} finally {
 			table.close();
 		}
-		if (rowLock.getState() == TRowLockState.STABLE){
+		if (rowLock.getState() == TRowLockState.STABLE) {
 			return null;
-		}else{
+		} else {
 			return rowLock;
 		}
 	}
@@ -112,8 +113,8 @@ public class HaeinsaTransactionManager {
 		HaeinsaTableTransaction primaryTableTxState = transaction.createOrGetTableState(rowKey.getTableName());
 		HaeinsaRowTransaction primaryRowTxState = primaryTableTxState.createOrGetRowState(rowKey.getRow());
 		primaryRowTxState.setCurrent(primaryRowLock);
-		if (primaryRowLock.getSecondariesSize() > 0){
-			for (TRowKey secondaryRow : primaryRowLock.getSecondaries()){
+		if (primaryRowLock.getSecondariesSize() > 0) {
+			for (TRowKey secondaryRow : primaryRowLock.getSecondaries()) {
 				addSecondaryRowLock(transaction, secondaryRow);
 			}
 		}
@@ -135,11 +136,11 @@ public class HaeinsaTransactionManager {
 	 */
 	private void addSecondaryRowLock(HaeinsaTransaction transaction, TRowKey rowKey) throws IOException {
 		TRowLock unstableRowLock = getUnstableRowLock(rowKey.getTableName(),	rowKey.getRow());
-		if (unstableRowLock == null){
+		if (unstableRowLock == null) {
 			return;
 		}
 		// commitTimestamp가 다르면, 다른 Transaction 이므로 추가하면 안됨  
-		if (unstableRowLock.getCommitTimestamp() != transaction.getCommitTimestamp()){
+		if (unstableRowLock.getCommitTimestamp() != transaction.getCommitTimestamp()) {
 			return;
 		}
 		HaeinsaTableTransaction tableState = transaction.createOrGetTableState(rowKey.getTableName());

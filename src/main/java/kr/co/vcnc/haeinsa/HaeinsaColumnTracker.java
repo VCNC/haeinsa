@@ -64,26 +64,26 @@ public class HaeinsaColumnTracker {
 	 */
 	public boolean isColumnInclusive(HaeinsaKeyValue kv) {
 		int cmpMin = 1;
-		if (this.minColumn != null){
+		if (this.minColumn != null) {
 			cmpMin = Bytes.compareTo(kv.getQualifier(), minColumn);
 		}
 		
-		if (cmpMin < 0){
+		if (cmpMin < 0) {
 			return false;
 		}
 		
-		if (!this.minColumnInclusive && cmpMin == 0){
+		if (!this.minColumnInclusive && cmpMin == 0) {
 			return false;
 		}
 		
 		//	kv 의 column 이 minColumn 값이 정하는 requirement 를 만족시키고 있으면서 maxColumn requirement 는 없을 때
-		if (this.maxColumn == null){
+		if (this.maxColumn == null) {
 			return true;
 		}
 		
 		int cmpMax = Bytes.compareTo(kv.getQualifier(), maxColumn);
 		
-		if (this.maxColumnInclusive && cmpMax <=0 ||
+		if (this.maxColumnInclusive && cmpMax <= 0 ||
 				!this.maxColumnInclusive && cmpMax < 0) {
 			return true;
 		}

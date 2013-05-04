@@ -46,7 +46,7 @@ public abstract class HaeinsaMutation {
 		this.familyMap = map;
 	}
 	
-	public Set<byte[]> getFamilies(){
+	public Set<byte[]> getFamilies() {
 		return familyMap.keySet();
 	}
 
@@ -86,7 +86,7 @@ public abstract class HaeinsaMutation {
 	 * @param sequenceID sequence id represent which Scanner is newer one. Lower id is newer one.
 	 * @return
 	 */
-	public HaeinsaKeyValueScanner getScanner(final long sequenceID){
+	public HaeinsaKeyValueScanner getScanner(final long sequenceID) {
 		return new MutationScanner(sequenceID);
 	}
 	
@@ -111,17 +111,17 @@ public abstract class HaeinsaMutation {
 		 * Otherwise, the way to generate iterator should be changed.
 		 * @param sequenceID sequence id represent which Scanner is newer one. Lower id is newer one.
 		 */
-		public MutationScanner(long sequenceID){
+		public MutationScanner(long sequenceID) {
 			this.sequenceID = sequenceID;
 			this.iterator = Iterables.concat(getFamilyMap().values()).iterator();
 		}
 
 		@Override
 		public HaeinsaKeyValue peek() {
-			if (current != null){
+			if (current != null) {
 				return current;
 			}
-			if (iterator.hasNext()){
+			if (iterator.hasNext()) {
 				current = iterator.next();
 			}
 			return current;

@@ -10,7 +10,7 @@ import org.apache.hadoop.hbase.util.Bytes;
  *
  */
 public final class HaeinsaConstants {
-	private HaeinsaConstants(){}
+	private HaeinsaConstants() { }
 		
 	/**
 	 * 향후에 Haeinsa 의 버젼이 올라갈 경우 하위 호완을 지원하기 위해서 TRowLock 에 버젼 정보를 포함해야 한다.

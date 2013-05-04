@@ -14,45 +14,47 @@ import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 
 /**
- * Static class for TRowLock ( Thrift class ) 
- * Provide static method to serialize / deserialize with TCompactProtocol of Thrift
- * <p>TRowLock(commitTimestamp = Long.MIN_VALUE) <=> byte[] null
+ * Static class for TRowLock ( Thrift class ) Provide static method to serialize
+ * / deserialize with TCompactProtocol of Thrift
+ * <p>
+ * TRowLock(commitTimestamp = Long.MIN_VALUE) <=> byte[] null
+ * 
  * @author Youngmok Kim
- *
+ * 
  */
 public final class TRowLocks {
 	private static final TProtocolFactory PROTOCOL_FACTORY = new TCompactProtocol.Factory();
-	
-	private static TSerializer createSerializer(){
+
+	private static TSerializer createSerializer() {
 		return new TSerializer(PROTOCOL_FACTORY);
 	}
-	
-	private static TDeserializer createDeserializer(){
+
+	private static TDeserializer createDeserializer() {
 		return new TDeserializer(PROTOCOL_FACTORY);
 	}
-	
+
 	public static TRowLock deserialize(byte[] rowLockBytes) throws IOException {
-		if (rowLockBytes == null){
+		if (rowLockBytes == null) {
 			return new TRowLock(ROW_LOCK_VERSION, TRowLockState.STABLE, Long.MIN_VALUE);
 		}
 		TRowLock rowLock = new TRowLock();
 		TDeserializer deserializer = createDeserializer();
-		try{
+		try {
 			deserializer.deserialize(rowLock, rowLockBytes);
 			return rowLock;
-		}catch (TException e) {
+		} catch (TException e) {
 			throw new IOException(e.getMessage(), e);
 		}
 	}
-	
+
 	public static byte[] serialize(TRowLock rowLock) throws IOException {
-		if (rowLock.getCommitTimestamp() == Long.MIN_VALUE){
+		if (rowLock.getCommitTimestamp() == Long.MIN_VALUE) {
 			return null;
 		}
 		TSerializer serializer = createSerializer();
-		try{
+		try {
 			return serializer.serialize(rowLock);
-		}catch (TException e) {
+		} catch (TException e) {
 			throw new IOException(e.getMessage(), e);
 		}
 	}

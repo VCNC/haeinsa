@@ -79,7 +79,7 @@ public class HaeinsaUnitTest {
 	}
 	
 	@Test
-	public void testTransaction() throws Exception{
+	public void testTransaction() throws Exception {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
 		HaeinsaTablePool tablePool = new HaeinsaTablePool(CONF, 128, new HTableInterfaceFactory() {
 			
@@ -299,14 +299,14 @@ public class HaeinsaUnitTest {
 		scan = new HaeinsaScan();
 		scanner = testTable.getScanner(tx, scan);
 		Iterator<HaeinsaResult> iter = scanner.iterator();
-		while(iter.hasNext()){
+		while (iter.hasNext()) {
 			result = iter.next();
-			for(HaeinsaKeyValue kv : result.list()){
+			for (HaeinsaKeyValue kv : result.list()) {
 				kv.getRow();
 				//	delete specific kv - delete only if it's not lock family
 				HaeinsaDelete delete = new HaeinsaDelete(kv.getRow());
 				//	should not return lock by scanner
-				assertFalse(Bytes.equals(kv.getFamily(),HaeinsaConstants.LOCK_FAMILY));
+				assertFalse(Bytes.equals(kv.getFamily(), HaeinsaConstants.LOCK_FAMILY));
 				delete.deleteColumns(kv.getFamily(), kv.getQualifier());
 				testTable.delete(tx, delete);
 				
@@ -320,14 +320,14 @@ public class HaeinsaUnitTest {
 		scan = new HaeinsaScan();
 		scanner = logTable.getScanner(tx, scan);
 		iter = scanner.iterator();
-		while(iter.hasNext()){
+		while (iter.hasNext()) {
 			result = iter.next();
-			for(HaeinsaKeyValue kv : result.list()){
+			for (HaeinsaKeyValue kv : result.list()) {
 				kv.getRow();
 				//	delete specific kv - delete only if it's not lock family
 				HaeinsaDelete delete = new HaeinsaDelete(kv.getRow());
 				//	should not return lock by scanner
-				assertFalse(Bytes.equals(kv.getFamily(),HaeinsaConstants.LOCK_FAMILY));
+				assertFalse(Bytes.equals(kv.getFamily(), HaeinsaConstants.LOCK_FAMILY));
 				delete.deleteColumns(kv.getFamily(), kv.getQualifier());
 				logTable.delete(tx, delete);
 			}
@@ -398,10 +398,10 @@ public class HaeinsaUnitTest {
 		
 		testTable.put(tx2, put);
 		tx2.commit();
-		try{
+		try {
 			tx.commit();
 			assertTrue(false);
-		}catch(Exception e){
+		} catch (Exception e) {
 			assertTrue(e instanceof ConflictException);
 		}
 		
@@ -506,15 +506,15 @@ public class HaeinsaUnitTest {
 		tx2.setCommitTimestamp(rowState.getCurrent().getCommitTimestamp() + 1);
 		testTable.prewrite(rowState, Bytes.toBytes("ymkim"), true);
 		
-		try{
+		try {
 			tx.commit();
 			assertTrue(false);
-		}catch(Exception e){
+		} catch (Exception e) {
 			assertTrue(e instanceof ConflictException);
 		}
 		
 		tx = tm.begin();
-		try{
+		try {
 			HaeinsaScan scan = new HaeinsaScan();
 			HaeinsaResultScanner scanner = testTable.getScanner(tx, scan);
 			HaeinsaResult result = scanner.next();
@@ -526,13 +526,13 @@ public class HaeinsaUnitTest {
 			scanner.close();
 			tx.rollback();
 			assertTrue(false);
-		}catch(Exception e){
+		} catch (Exception e) {
 			assertTrue(e instanceof ConflictException);
 		}
 		
 		Thread.sleep(HaeinsaConstants.ROW_LOCK_TIMEOUT + 100);
 		
-		try{
+		try {
 			tx = tm.begin();
 			HaeinsaScan scan = new HaeinsaScan();
 			HaeinsaResultScanner scanner = testTable.getScanner(tx, scan);
@@ -541,7 +541,7 @@ public class HaeinsaUnitTest {
 			assertNull(result);
 			scanner.close();
 
-		}catch(Exception e) {
+		} catch (Exception e) {
 			assertTrue(false);
 		}
 		
@@ -625,7 +625,7 @@ public class HaeinsaUnitTest {
 			}
 		});
 		
-		HTablePool hbasePool = new HTablePool(CONF,128,PoolType.Reusable);
+		HTablePool hbasePool = new HTablePool(CONF, 128, PoolType.Reusable);
 		HTableInterface hTestTable = hbasePool.getTable("test");
 		
 
@@ -769,7 +769,7 @@ public class HaeinsaUnitTest {
 		scan.setStartRow(Bytes.toBytes("row5"));
 		scan.setStopRow(Bytes.toBytes("row8"));
 		Iterator<HaeinsaResult> iter = testTable.getScanner(tx, scan).iterator();
-		while(iter.hasNext()){
+		while (iter.hasNext()) {
 			iter.next();
 		}		
 		put = new HaeinsaPut(Bytes.toBytes("row8"));
@@ -816,9 +816,9 @@ public class HaeinsaUnitTest {
 		intraScan.setBatch(1);
 		HaeinsaResultScanner resultScanner = testTable.getScanner(tx, intraScan);
 		iter = resultScanner.iterator();
-		assertArrayEquals(iter.next().getValue(Bytes.toBytes("data"),Bytes.toBytes("col9-ver1")), Bytes.toBytes("value9-ver1"));
-		assertArrayEquals(iter.next().getValue(Bytes.toBytes("data"),Bytes.toBytes("col9-ver2")), Bytes.toBytes("value9-ver2"));
-		assertArrayEquals(iter.next().getValue(Bytes.toBytes("data"),Bytes.toBytes("col9-ver3")), Bytes.toBytes("value9-ver3"));
+		assertArrayEquals(iter.next().getValue(Bytes.toBytes("data"), Bytes.toBytes("col9-ver1")), Bytes.toBytes("value9-ver1"));
+		assertArrayEquals(iter.next().getValue(Bytes.toBytes("data"), Bytes.toBytes("col9-ver2")), Bytes.toBytes("value9-ver2"));
+		assertArrayEquals(iter.next().getValue(Bytes.toBytes("data"), Bytes.toBytes("col9-ver3")), Bytes.toBytes("value9-ver3"));
 		resultScanner.close();
 
 		put = new HaeinsaPut(Bytes.toBytes("row10"));
@@ -961,18 +961,18 @@ public class HaeinsaUnitTest {
 		tx = tm.begin();
 		HaeinsaGet get = new HaeinsaGet(Bytes.toBytes("row-d"));
 		get.addColumn(Bytes.toBytes("meta"), Bytes.toBytes("column-d"));
-		assertArrayEquals(testTable.get(tx,get).getValue(Bytes.toBytes("meta"), Bytes.toBytes("column-d")), 
+		assertArrayEquals(testTable.get(tx, get).getValue(Bytes.toBytes("meta"), Bytes.toBytes("column-d")), 
 				Bytes.toBytes("value-d"));
 		
 		get = new HaeinsaGet(Bytes.toBytes("row-e"));
 		get.addColumn(Bytes.toBytes("meta"), Bytes.toBytes("column-e"));
-		assertArrayEquals(testTable.get(tx,get).getValue(Bytes.toBytes("meta"), Bytes.toBytes("column-e")), 
+		assertArrayEquals(testTable.get(tx, get).getValue(Bytes.toBytes("meta"), Bytes.toBytes("column-e")), 
 				Bytes.toBytes("value-e"));
 		
 		get = new HaeinsaGet(Bytes.toBytes("row-abc"));				
 		HaeinsaResult result = testTable.get(tx, get);
 		assertTrue(result.list().size() == 1);
-		assertArrayEquals(testTable.get(tx,get).getValue(Bytes.toBytes("data"), Bytes.toBytes("col-after")), 
+		assertArrayEquals(testTable.get(tx, get).getValue(Bytes.toBytes("data"), Bytes.toBytes("col-after")), 
 				Bytes.toBytes("value-after"));
 		
 		tx.rollback();
@@ -1014,7 +1014,7 @@ public class HaeinsaUnitTest {
 		});		
 		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
 		HaeinsaTableIface testTable = tablePool.getTable("test");
-		HTablePool hbasePool = new HTablePool(CONF,128,PoolType.Reusable);
+		HTablePool hbasePool = new HTablePool(CONF, 128, PoolType.Reusable);
 		HTableInterface hTestTable = hbasePool.getTable("test");
 		
 		
@@ -1165,16 +1165,16 @@ public class HaeinsaUnitTest {
 	 * @return
 	 * @throws Exception
 	 */
-	public boolean checkLockExist(HTableInterface table, byte[] row) throws Exception{
+	public boolean checkLockExist(HTableInterface table, byte[] row) throws Exception {
 		return getLock(table, row) != null; 
 	}
 	
-	public byte[] getLock(HTableInterface table, byte[] row) throws Exception{
+	public byte[] getLock(HTableInterface table, byte[] row) throws Exception {
 		return table.get(new Get(row).addColumn(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER))
 				.getValue(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER);
 	}
 	
-	public boolean checkLockChanged(HTableInterface table, byte[] row, byte[] oldLock) throws Exception{
+	public boolean checkLockChanged(HTableInterface table, byte[] row, byte[] oldLock) throws Exception {
 		return !Bytes.equals(getLock(table, row), oldLock);
 	}
 }

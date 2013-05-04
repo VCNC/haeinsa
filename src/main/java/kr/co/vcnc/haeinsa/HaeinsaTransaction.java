@@ -42,7 +42,7 @@ public class HaeinsaTransaction {
 								//	rowTx 가 하나만 존재하면서 여러 개의 HaeinsaPut / HeainsaDelete 가 섞여 있을 때
 	}
 	
-	public HaeinsaTransaction(HaeinsaTransactionManager manager){
+	public HaeinsaTransaction(HaeinsaTransactionManager manager) {
 		this.manager = manager;
 	}
 	
@@ -85,9 +85,9 @@ public class HaeinsaTransaction {
 	 * @param tableName
 	 * @return
 	 */
-	protected HaeinsaTableTransaction createOrGetTableState(byte[] tableName){
+	protected HaeinsaTableTransaction createOrGetTableState(byte[] tableName) {
 		HaeinsaTableTransaction tableTxState = tableStates.get(tableName);
-		if (tableTxState == null){
+		if (tableTxState == null) {
 			tableTxState = new HaeinsaTableTransaction(this);
 			tableStates.put(tableName, tableTxState);
 		}
@@ -96,7 +96,7 @@ public class HaeinsaTransaction {
 	
 	public void rollback() throws IOException {
 		// check if this transaction is used.
-		if (!used.compareAndSet(false, true)){
+		if (!used.compareAndSet(false, true)) {
 			throw new IllegalStateException("this transaction is already used.");
 		}
 	}
@@ -108,20 +108,20 @@ public class HaeinsaTransaction {
 	 * otherwise considered as {@link CommitMethod#MULTI_ROW}.
 	 * @return
 	 */
-	protected CommitMethod determineCommitMethod(){
+	protected CommitMethod determineCommitMethod() {
 		int count = 0;
 		CommitMethod method = CommitMethod.NOTHING;
-		for (HaeinsaTableTransaction tableState : getTableStates().values()){
-			for (HaeinsaRowTransaction rowState : tableState.getRowStates().values()){
-				count ++;
+		for (HaeinsaTableTransaction tableState : getTableStates().values()) {
+			for (HaeinsaRowTransaction rowState : tableState.getRowStates().values()) {
+				count++;
 				if (count > 1) {
 					return CommitMethod.MULTI_ROW;
 				}
-				if (rowState.getMutations().size() <= 0){
+				if (rowState.getMutations().size() <= 0) {
 					method = CommitMethod.SINGLE_ROW_READ_ONLY;
-				}else if (rowState.getMutations().get(0) instanceof HaeinsaPut && rowState.getMutations().size() == 1) {
+				} else if (rowState.getMutations().get(0) instanceof HaeinsaPut && rowState.getMutations().size() == 1) {
 					method = CommitMethod.SINGLE_ROW_PUT_ONLY;
-				}else {
+				} else {
 					method = CommitMethod.MULTI_ROW;
 				}
 			}
@@ -134,7 +134,7 @@ public class HaeinsaTransaction {
 	 * 
 	 * @throws IOException ConflictException, HBase IOException
 	 */
-	protected void commitMultiRows() throws IOException{		
+	protected void commitMultiRows() throws IOException {		
 		HaeinsaTableTransaction primaryTableState = createOrGetTableState(primary.getTableName());
 		HaeinsaRowTransaction primaryRowState = primaryTableState.createOrGetRowState(primary.getRow());
 		
@@ -142,7 +142,7 @@ public class HaeinsaTransaction {
 		// prewrite primary row
 		{
 			HaeinsaTableIfaceInternal table = tablePool.getTableInternal(primary.getTableName());
-			try{
+			try {
 				table.prewrite(primaryRowState, primary.getRow(), true);
 			} finally {
 				table.close();
@@ -150,16 +150,16 @@ public class HaeinsaTransaction {
 		}
 		
 		// prewrite secondaries
-		for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : tableStates.entrySet()){
-			for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()){
+		for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : tableStates.entrySet()) {
+			for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()) {
 				if ((Bytes.equals(tableStateEntry.getKey(), primary.getTableName()) 
-						&& Bytes.equals(rowStateEntry.getKey(), primary.getRow()))){
+						&& Bytes.equals(rowStateEntry.getKey(), primary.getRow()))) {
 					//	if this is primaryRow
 					continue;
 				}
 				{
 					HaeinsaTableIfaceInternal table = tablePool.getTableInternal(tableStateEntry.getKey());
-					try{
+					try {
 						table.prewrite(rowStateEntry.getValue(), rowStateEntry.getKey(), false);
 					} finally {
 						table.close();
@@ -183,7 +183,7 @@ public class HaeinsaTransaction {
 		// commit primary row
 		{
 			HaeinsaTableIfaceInternal table = tablePool.getTableInternal(primary.getTableName());
-			try{
+			try {
 				table.commitSingleRowPutOnly(primaryRowState, primary.getRow());
 			} finally {
 				table.close();
@@ -203,7 +203,7 @@ public class HaeinsaTransaction {
 		// commit primary row
 		{
 			HaeinsaTableIfaceInternal table = tablePool.getTableInternal(primary.getTableName());
-			try{
+			try {
 				table.commitSingleRowReadOnly(primaryRowState, primary.getRow());
 			} finally {
 				table.close();
@@ -218,22 +218,22 @@ public class HaeinsaTransaction {
 	 */
 	public void commit() throws IOException { 
 		// check if this transaction is used.
-		if (!used.compareAndSet(false, true)){
+		if (!used.compareAndSet(false, true)) {
 			throw new IllegalStateException("this transaction is already used.");
 		}
 		// determine commitTimestamp & determine primary row
 		TRowKey primaryRowKey = null;
 		long maxCurrentCommitTimestamp = System.currentTimeMillis();
 		long maxIterationCount = Long.MIN_VALUE;
-		for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : tableStates.entrySet()){
-			for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()){
+		for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : tableStates.entrySet()) {
+			for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()) {
 				//	TODO primaryRowKey 를 여러 개의 (table, row) 중에서 하나를 random 하게 고르는 방식으로 바꾸는 것이 좋음.
 				//	현재와 같이 첫번째 row 를 primaryRowKey 로 설정하는 방식은 Byte array 로 정렬했을 때 가장 앞에 오는 table / region 에 대해서 
 				//	hot table / hot region 문제를 일으킬 수 있음
 				//
 				//	Random 하게 primaryRowKey 를 고를 때 이왕이면 mutations 중에 HaeinsaPut 이 
 				//	가장 처음에 있는 Row 를 골라서 applyMutations 에 걸리는 시간을 줄이면 좋겠다.
-				if (primaryRowKey == null){
+				if (primaryRowKey == null) {
 					primaryRowKey = new TRowKey();
 					primaryRowKey.setTableName(tableStateEntry.getKey());
 					primaryRowKey.setRow(rowStateEntry.getKey());
@@ -251,24 +251,21 @@ public class HaeinsaTransaction {
 		
 		CommitMethod method = determineCommitMethod();
 		switch (method) {
-		case MULTI_ROW:{
+		case MULTI_ROW: {
 			commitMultiRows();
 			break;
 		}
-		case SINGLE_ROW_READ_ONLY:{
+		case SINGLE_ROW_READ_ONLY: {
 			commitSingleRowReadOnly();
 			break;
 		}
-		
-		case SINGLE_ROW_PUT_ONLY:{
+		case SINGLE_ROW_PUT_ONLY: {
 			commitSingleRowPutOnly();
 			break;
 		}
-		
-		case NOTHING:{
+		case NOTHING: {
 			break;
 		}
-
 		default:
 			break;
 		}
@@ -291,7 +288,7 @@ public class HaeinsaTransaction {
 		// commit primary or get more time to commit this.
 		{
 			HaeinsaTableIfaceInternal table = tablePool.getTableInternal(primary.getTableName());
-			try{
+			try {
 				//	
 				//	commit 이 2번 일어날 수 있는데, 복원하는 Client 가 lock 에 대한 권한을 가질려면 expiry 를 추가로 늘려야 하기 때문입니다.
 				table.commitPrimary(primaryRowTx, primary.getRow());
@@ -301,15 +298,15 @@ public class HaeinsaTransaction {
 		}
 		//	이 지점에 도달하면 이 transaction 은 이미 성공한 것으로 취급됩니다. 
 		
-		for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : tableStates.entrySet()){
-			for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()){
+		for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : tableStates.entrySet()) {
+			for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()) {
 				// apply mutations  
 				HaeinsaTableIfaceInternal table = tablePool.getTableInternal(tableStateEntry.getKey());
-				try{
+				try {
 					table.applyMutations(rowStateEntry.getValue(), rowStateEntry.getKey());
 					
 					if ((Bytes.equals(tableStateEntry.getKey(), primary.getTableName()) 
-							&& Bytes.equals(rowStateEntry.getKey(), primary.getRow()))){
+							&& Bytes.equals(rowStateEntry.getKey(), primary.getRow()))) {
 						//	primary row 일 때 
 						continue;
 					}
@@ -324,7 +321,7 @@ public class HaeinsaTransaction {
 		//	make primary row stable
 		{
 			HaeinsaTableIfaceInternal table = tablePool.getTableInternal(primary.getTableName());
-			try{
+			try {
 				table.makeStable(primaryRowTx, primary.getRow());
 			} finally {
 				table.close();
@@ -341,11 +338,11 @@ public class HaeinsaTransaction {
 	 */
 	protected void recover() throws IOException {
 		HaeinsaRowTransaction primaryRowTx = createOrGetTableState(primary.getTableName()).createOrGetRowState(primary.getRow());
-		if (primaryRowTx.getCurrent().getState() == TRowLockState.PREWRITTEN){
+		if (primaryRowTx.getCurrent().getState() == TRowLockState.PREWRITTEN) {
 			// prewritten 상태에서는 timeout 보다 primary이 시간이 더 지났으면 abort 시켜야 함.
-			if (primaryRowTx.getCurrent().getExpiry() < System.currentTimeMillis()){
+			if (primaryRowTx.getCurrent().getExpiry() < System.currentTimeMillis()) {
 				
-			}else{
+			} else {
 				// expiry 가 지나지 않았다면, recover 를 실패시켜야 함.
 				throw new ConflictException();
 			}
@@ -357,13 +354,11 @@ public class HaeinsaTransaction {
 			abort();
 			break;
 		}
-
 		case COMMITTED: {
 			//	이미 성공한 Transaction 이다. 
 			makeStable();
 			break;
 		}
-
 		default:
 			throw new ConflictException();
 		}
@@ -390,22 +385,22 @@ public class HaeinsaTransaction {
 		{
 			// abort primary row
 			HaeinsaTableIfaceInternal table = tablePool.getTableInternal(primary.getTableName());
-			try{
+			try {
 				table.abortPrimary(primaryRowTx, primary.getRow());
 			} finally {
 				table.close();
 			}
 		}
 		
-		for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : tableStates.entrySet()){
-			for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()){
+		for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : tableStates.entrySet()) {
+			for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()) {
 				// delete prewritten, transaction 에 포함된 row 마다 table 이 다를 수 있기 때문에 HaeinsaTable 을 매번 다시 받아야 한다.
 				HaeinsaTableIfaceInternal table = tablePool.getTableInternal(tableStateEntry.getKey());
-				try{
+				try {
 					table.deletePrewritten(rowStateEntry.getValue(), rowStateEntry.getKey());
 					
 					if ((Bytes.equals(tableStateEntry.getKey(), primary.getTableName()) 
-							&& Bytes.equals(rowStateEntry.getKey(), primary.getRow()))){
+							&& Bytes.equals(rowStateEntry.getKey(), primary.getRow()))) {
 						continue;
 					}
 					// make secondary rows from prewritten to stable
@@ -420,7 +415,7 @@ public class HaeinsaTransaction {
 		//	make primary row stable
 		{
 			HaeinsaTableIfaceInternal table = tablePool.getTableInternal(primary.getTableName());
-			try{
+			try {
 				table.makeStable(primaryRowTx, primary.getRow());
 			} finally {
 				table.close();				
