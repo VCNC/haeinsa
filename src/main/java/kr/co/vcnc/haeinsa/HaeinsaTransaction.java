@@ -339,8 +339,9 @@ public class HaeinsaTransaction {
 		if (primaryRowTx.getCurrent().getState() == TRowLockState.PREWRITTEN) {
 			// prewritten 상태에서는 timeout 보다 primary이 시간이 더 지났으면 abort 시켜야 함.
 			if (primaryRowTx.getCurrent().getExpiry() < System.currentTimeMillis()) {
+				// expiry가 지난 경우, recover를 진행함.
 			} else {
-				// expiry 가 지나지 않았다면, recover 를 실패시켜야 함.
+				// expiry가 지나지 않았다면, recover 를 실패시켜야 함.
 				throw new ConflictException();
 			}
 		}

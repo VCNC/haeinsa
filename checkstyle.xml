@@ -31,6 +31,9 @@
 		<module name="LeftCurly" />
 		<module name="RightCurly" />
 		<module name="NeedBraces" />
+		<module name="EmptyBlock">
+			<property name="option" value="text" />
+		</module>
 		<!-- configure class design -->
 		<module name="FinalClass" />
 		<module name="HideUtilityClassConstructor" />

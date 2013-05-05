@@ -124,7 +124,7 @@ public class HaeinsaComplexTest {
 				tx.commit();
 				count.addAndGet(1L);
 			} catch (IOException e) {
-			} finally {
+				// IOException on HBase operation
 			}
 		}
 
@@ -221,7 +221,6 @@ public class HaeinsaComplexTest {
 						successCount.getAndIncrement();
 					} catch (IOException e) {
 						failCount.getAndIncrement();
-					} finally {
 					}
 				}
 				System.out.println("iteration : " + iteration
@@ -368,7 +367,6 @@ public class HaeinsaComplexTest {
 					} catch (IOException e) {
 						//	fail
 						failCount.getAndIncrement();
-					} finally {
 					}
 				}
 				System.out.println("iteration : " + iteration
