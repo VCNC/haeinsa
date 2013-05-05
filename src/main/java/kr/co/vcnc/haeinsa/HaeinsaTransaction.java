@@ -600,18 +600,18 @@ public class HaeinsaTransaction {
 	 *
 	 */
 	private static class HashComparator implements Comparator<TRowKey>{
-		private static HashFunction hash = Hashing.murmur3_32();
-		private static Comparator<TRowKey> basicComp = new BasicComparator();
+		private static HashFunction HASH = Hashing.murmur3_32();
+		private static Comparator<TRowKey> BASIC_COMP = new BasicComparator();
 		
 		@Override
 		public int compare(TRowKey o1, TRowKey o2) {
 			
-			int hash1 = hash.newHasher().putBytes(o1.getTableName()).putBytes(o1.getRow()).hash().asInt();
-			int hash2 = hash.newHasher().putBytes(o1.getTableName()).putBytes(o1.getRow()).hash().asInt();
+			int hash1 = HASH.newHasher().putBytes(o1.getTableName()).putBytes(o1.getRow()).hash().asInt();
+			int hash2 = HASH.newHasher().putBytes(o1.getTableName()).putBytes(o1.getRow()).hash().asInt();
 			if(hash1>hash2)
 				return 1;
 			else if(hash1==hash2){
-				return basicComp.compare(o1, o2);
+				return BASIC_COMP.compare(o1, o2);
 			}
 			else
 				return -1;
