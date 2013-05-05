@@ -9,8 +9,6 @@ import com.google.common.collect.Lists;
 /**
  * Contains Transaction information of single row.
  * This information is only saved in client memory until {@link HaeinsaTransaction#commit()} called.
- * @author Youngmok Kim
- *
  */
 class HaeinsaRowTransaction {
 	//	current RowLock saved in HBase. null if there is no lock at all.

@@ -15,8 +15,6 @@ import org.apache.hadoop.hbase.util.Bytes;
  * whether start column and last column are included.
  *
  * <p>Default batch size is 32.
- * @author Youngmok Kim
- *
  */
 public class HaeinsaIntraScan {
 	private final byte[] row;

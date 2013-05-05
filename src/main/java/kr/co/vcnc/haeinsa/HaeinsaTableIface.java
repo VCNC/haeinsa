@@ -19,8 +19,6 @@ import org.apache.hadoop.hbase.client.Scan;
  * Some of methods in {@link HTableInterface} are dropped because of implementing complexity.
  * Most of methods which directly access to DB now need {@link HaeinsaTransaction} as an argument which supervises transaction.
  * <p>Implemented by {@link HaeinsaTable}.
- * @author Youngmok Kim
- *
  */
 public interface HaeinsaTableIface extends Closeable {
 	  /**

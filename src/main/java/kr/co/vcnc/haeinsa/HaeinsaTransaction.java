@@ -24,8 +24,6 @@ import com.google.common.collect.Maps;
  * 전자는 새로운 Transaction 을 시작하는 경우에 사용되고, 후자는 실패한 Transaction 을 rollback 하거나 재시도 시킬 때에 사용된다.
  *
  * <p>하나의 {@link HaeinsaTransaction} 은 {@link #commit()} 이나 {@link #rollback()} 이 되고 나면 더 이상 사용할 수 없다.
- * @author Youngmok Kim
- *
  */
 public class HaeinsaTransaction {
 	private final NavigableMap<byte[], HaeinsaTableTransaction> tableStates = Maps.newTreeMap(Bytes.BYTES_COMPARATOR);

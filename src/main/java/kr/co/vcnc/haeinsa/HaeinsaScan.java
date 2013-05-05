@@ -20,8 +20,6 @@ import org.apache.hadoop.hbase.util.Bytes;
  * {@link HaeinsaResultScanner} will return whole column family of the row at one time.
  *
  * <p>Setting batch size will be supported in future....(?)
- * @author Youngmok Kim
- *
  */
 public class HaeinsaScan {
 	private byte[] startRow = HConstants.EMPTY_START_ROW;

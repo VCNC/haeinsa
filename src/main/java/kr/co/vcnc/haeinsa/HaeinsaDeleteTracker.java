@@ -8,8 +8,6 @@ import com.google.common.collect.Maps;
 
 /**
  * Tracking deleted columns and family inside specific row.
- * @author Youngmok Kim
- *
  */
 public class HaeinsaDeleteTracker {
 	//	{ family -> sequenceId }

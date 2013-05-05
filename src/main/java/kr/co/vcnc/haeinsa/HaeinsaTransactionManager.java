@@ -15,10 +15,7 @@ import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
  * 사용자나 {@link HaeinsaTransaction} 이 {@link HaeinsaTable} 을 통해서 HBase 에 접근하여
  * transaction 을 수행할 때 tablePool 을 제공하는 역할을 한다.
  *
- * <p> 또한 실패한 transaction 을 HBase 에 기록되어 있는 TRowLock 으로부터 복원할 수 있는 method 도 제공한다.
- *
- * @author Youngmok Kim
- *
+ * <p>또한 실패한 transaction 을 HBase 에 기록되어 있는 TRowLock 으로부터 복원할 수 있는 method 도 제공한다.
  */
 public class HaeinsaTransactionManager {
 	private final HaeinsaTablePool tablePool;

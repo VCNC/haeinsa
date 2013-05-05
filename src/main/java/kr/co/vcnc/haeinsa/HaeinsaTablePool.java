@@ -19,8 +19,6 @@ import org.apache.hadoop.hbase.util.PoolMap.PoolType;
 
 /**
  * Provide pooling pattern to HaeinsaTable.
- * @author Youngmok Kim
- *
  */
 public class HaeinsaTablePool implements Closeable {
 	//	{ tableName -> HaeinsaTable }

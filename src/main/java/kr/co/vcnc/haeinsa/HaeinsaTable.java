@@ -51,8 +51,6 @@ import com.google.common.collect.Sets;
 /**
  * Implementation of {@link HaeinsaTableIface}.
  * It works with {@link HaeinsaTransaction} to provide transaction on HBase.
- * @author Youngmok Kim
- *
  */
 class HaeinsaTable implements HaeinsaTableIfaceInternal {
 
@@ -751,8 +749,6 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 
 	/**
 	 * Transaction 없이 Scan 할 때 사용하는 {@link HaeinsaResultScanner}.
-	 * @author Youngmok Kim
-	 *
 	 */
 	private class SimpleClientScanner implements HaeinsaResultScanner {
 		private final ResultScanner scanner;
@@ -806,8 +802,6 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 	 * 따라서 R(X) 가 HBase 에서만 데이터를 읽게 되면 W1(x) 에서 쓴 데이터를 R2(x) 에서 읽지 못하게 된다.
 	 * 이를 방지하기 위해서 W1(x) 에서 쓰인 데이터를 Client 쪽에서 모아서 R2(x) 작업이 일어날 때 projection 을 해줄 필요가 있다.
 	 * <p> {@link ClientScanner} 는 이 projection 작업을 위한 class 로, 하나의 {@link HaeinsaTable} 에 대한 Scanner 들만 모아 놓게 된다.
-	 * @author Myungbo Kim
-	 *
 	 */
 	private class ClientScanner implements HaeinsaResultScanner {
 		private final HaeinsaTransaction tx;
@@ -1136,8 +1130,6 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 	 * {@link HBaseGetScanner} 를 사용해서 다시 읽어와서 더 낮은 sequenceID 로 override 하기 때문에
 	 * HBaseScanScanner 는 sequenceID control 이 필요하지 않다.
 	 * 따라서 {@link #getSequenceID()} 는 언제나 Long.MAX_VALUE 를 return 한다.
-	 * @author Myungbo Kim
-	 *
 	 */
 	private static class HBaseScanScanner implements
 			HaeinsaKeyValueScanner {
@@ -1237,8 +1229,6 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 	 * 이 경우에는 항상 Long.MAX_VALUE 의 sequenceID 를 가지게 된다. 두 번째는 {@link ClientScanner} 내부에서 사용되는 경우이다.
 	 * 이 때는 Lock 을 Recover 한 후에 해당 값을 다시 읽어 오는데 사용하게 된다.
 	 * 따라서 {@link #sequenceID} 는 ClientScanner 에서 지금까지 사용했던 sequenceId 보다 작은 값이어야 한다. ( 더 최근의 값이므로 )
-	 * @author Myungbo Kim
-	 *
 	 */
 	private static class HBaseGetScanner implements
 			HaeinsaKeyValueScanner {

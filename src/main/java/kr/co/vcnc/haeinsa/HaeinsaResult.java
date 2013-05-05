@@ -13,8 +13,6 @@ import com.google.common.collect.Lists;
  * Modified POJO container of {@link Result} class in HBase.
  * Link {@link Result}, can contain multiple {@link HaeinsaKeyValue}.
  * All HaeinsaKeyValue in HaeinsaResult are from same row.
- * @author Youngmok Kim
- *
  */
 public class HaeinsaResult {
 	private final List<HaeinsaKeyValue> sortedKVs;

@@ -21,8 +21,6 @@ import com.google.common.collect.Sets;
  * {@link Type#DeleteFamily} and {@link Type#DeleteColumn} identifier.
  * HaeinsaPut can be analogous to {@link Delete} class in HBase.
  * <p>HaeinsaDelete only contains data of single row.
- * @author Youngmok Kim
- *
  */
 public class HaeinsaDelete extends HaeinsaMutation {
 

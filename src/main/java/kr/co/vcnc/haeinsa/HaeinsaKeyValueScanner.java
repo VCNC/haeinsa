@@ -13,8 +13,6 @@ import com.google.common.collect.ComparisonChain;
  * <p>HaeinsaKeyValueScanner interface provides additional {@link HaeinsaKeyValueScanner#peek}
  * method to peek element of scanner without moving iterator.
  * <p>Each HaeinsaKeyValueScanner have sequenceId which represent which scanner is newer one.
- * @author Youngmok Kim
- *
  */
 public interface HaeinsaKeyValueScanner {
 	Comparator<HaeinsaKeyValueScanner> COMPARATOR = new Comparator<HaeinsaKeyValueScanner>() {

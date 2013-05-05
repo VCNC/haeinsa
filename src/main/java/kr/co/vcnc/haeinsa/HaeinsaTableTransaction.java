@@ -11,8 +11,6 @@ import com.google.common.collect.Maps;
 /**
  * Contains Transaction information of single Table.
  * <p>It have map of {byte[] row -> {@link HaeinsaRowTransaction}} and reference to {@link HaeinsaTransaction}
- * @author Youngmok Kim
- *
  */
 class HaeinsaTableTransaction {
 	private final NavigableMap<byte[], HaeinsaRowTransaction> rowStates = Maps.newTreeMap(Bytes.BYTES_COMPARATOR);

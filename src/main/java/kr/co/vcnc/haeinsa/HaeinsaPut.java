@@ -23,8 +23,6 @@ import com.google.common.collect.Sets;
  * Implementation of {@link HaeinsaMuation} which only contains HaeinsaKeyValue with {@link Type#Put} identifier.
  * HaeinsaPut can be analogous to {@link Put} class in HBase.
  * <p>HaeinsaPut only contains data of single row.
- * @author Youngmok Kim
- *
  */
 public class HaeinsaPut extends HaeinsaMutation {
 	public HaeinsaPut(byte[] row) {

@@ -21,8 +21,6 @@ import com.google.common.collect.Iterables;
  * {@link HaeinsaPut} 혹은 {@link HaeinsaDelete} 로 구현해서 사용한다.
  *
  * <p>HaeinsaTable 이 put/delete 정보를 get/scan 에 projection 할 때 사용할 수 있도록 {@link HaeinsaKeyValueScanner} 를 return 해준다.
- * @author Youngmok Kim
- *
  */
 public abstract class HaeinsaMutation {
 	protected byte[] row;
@@ -96,8 +94,6 @@ public abstract class HaeinsaMutation {
 	 * <p>MutationScanner 가 제공하는 iterator 는 {@link HaeinsaKeyValue#COMPARATOR} 에 의해서 정렬된
 	 * HaeinsaKeyValue 의 Collection 에 접근하게 된다.
 	 * <p>하나의 MutationScanner 가 제공하는 값들은 동일한 sequenceID 를 가지게 된다.
-	 * @author Myungbo Kim
-	 *
 	 */
 	private class MutationScanner implements HaeinsaKeyValueScanner {
 		private final long sequenceID;

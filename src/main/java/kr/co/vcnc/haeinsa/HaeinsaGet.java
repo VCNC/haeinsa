@@ -11,8 +11,6 @@ import org.apache.hadoop.hbase.util.Bytes;
 /**
  * HaeinsaGet can be analogous to {@link Get} class in HBase.
  * <p>HaeinsaGet only contains data of single row.
- * @author Youngmok Kim
- *
  */
 public class HaeinsaGet {
 	private byte[] row;

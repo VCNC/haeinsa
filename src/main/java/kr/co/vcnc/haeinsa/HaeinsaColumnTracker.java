@@ -12,8 +12,6 @@ import com.google.common.collect.Sets;
 /**
  * Tracking parameters of {@link HaeinsaScan} and {@link HaeinsaIntraScan} inside {@link HaeinsaTable}.
  * <p>Tracker can determine whether specific HaeinsaKeyValue inside scan range.
- * @author Youngmok Kim
- *
  */
 public class HaeinsaColumnTracker {
 	//	{ family -> qualifier }
