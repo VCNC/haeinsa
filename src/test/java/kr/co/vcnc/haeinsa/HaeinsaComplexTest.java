@@ -2,11 +2,12 @@ package kr.co.vcnc.haeinsa;
 
 import static org.junit.Assert.*;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Random;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.hadoop.conf.Configuration;
@@ -26,8 +27,15 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
+/**
+ * Complex multi-thread unit test for Haeinsa. It contains simple-increment test, concurrent random increment test, 
+ * and serializability test.
+ * @author Myungbo Kim
+ *
+ */
 public class HaeinsaComplexTest {
 	private static MiniHBaseCluster CLUSTER;
 	private static Configuration CONF;
@@ -83,10 +91,8 @@ public class HaeinsaComplexTest {
 				try {
 					return new HTable(tableName, HConnectionManager.getConnection(config), threadPool);
 				} catch (ZooKeeperConnectionException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 				return null;
@@ -265,6 +271,7 @@ public class HaeinsaComplexTest {
 		service.shutdown();
 	}
 	
+	
 
 	/**
 	 * Serializability 를 테스트한다. 
@@ -301,10 +308,8 @@ public class HaeinsaComplexTest {
 				try {
 					return new HTable(tableName, HConnectionManager.getConnection(config), threadPool);
 				} catch (ZooKeeperConnectionException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 				return null;
@@ -317,8 +322,8 @@ public class HaeinsaComplexTest {
 		
 		//	some random initial value
 		final Object lock = new Object();
-		final AtomicInteger value1 = new AtomicInteger(new Random().nextInt());
-		final AtomicInteger value2 = new AtomicInteger(new Random().nextInt());
+		final AtomicLong value1 = new AtomicLong(new Random().nextInt());
+		final AtomicLong value2 = new AtomicLong(new Random().nextInt());
 
 		final long maxIter = 100;
 		int numberOfJob = 10;
@@ -332,6 +337,8 @@ public class HaeinsaComplexTest {
 		final byte[] row2 = Bytes.toBytes("row2");
 		final byte[] CQ2 = Bytes.toBytes("col2");
 		
+
+		System.out.println("Start testSerializability test");
 		tx = tm.begin();
 		HaeinsaPut put = new HaeinsaPut(row1).add(CF, CQ1, Bytes.toBytes(value1.get()));
 		testTable.put(tx, put);
@@ -347,60 +354,61 @@ public class HaeinsaComplexTest {
 		 * tx.write(newValue2)
 		 * tx.commit();
 		 */
-		Runnable job = new Runnable(){
-
+		Callable<Void> serialJob = new Callable<Void>(){
 			@Override
-			public void run() {
+			public Void call() throws Exception {
 				int iteration = 0;
 				while(iteration < maxIter){
 					try{
 						HaeinsaTransaction tx = tm.begin();
-						int oldValue1 = 
-								Bytes.toInt(testTable.get(tx, new HaeinsaGet(row1).addColumn(CF, CQ1)).getValue(CF, CQ1));
-						int oldValue2 = 
-								Bytes.toInt(testTable.get(tx, new HaeinsaGet(row2).addColumn(CF, CQ2)).getValue(CF, CQ2));
+						long oldValue1 = 
+								Bytes.toLong(testTable.get(tx, new HaeinsaGet(row1).addColumn(CF, CQ1)).getValue(CF, CQ1));
+						long oldValue2 = 
+								Bytes.toLong(testTable.get(tx, new HaeinsaGet(row2).addColumn(CF, CQ2)).getValue(CF, CQ2));
 						
-						int newValue1 = nextHashedValue(oldValue1);
-						int newValue2 = nextHashedValue(oldValue2);
+						long newValue1 = nextHashedValue(oldValue1);
+						long newValue2 = nextHashedValue(oldValue2);
 						
 						testTable.put(tx, new HaeinsaPut(row1).add(CF, CQ1, Bytes.toBytes(newValue1)));
 						testTable.put(tx, new HaeinsaPut(row2).add(CF, CQ2, Bytes.toBytes(newValue2)));
+						
 						tx.commit();
+						
+						//	success
 						iteration++;
 						successCount.incrementAndGet();
-						//	success
 						synchronized(lock){
 							assertTrue(value1.compareAndSet(oldValue1, newValue1));
 							assertTrue(value2.compareAndSet(oldValue2, newValue2));
 						}
-					}
-					catch(IOException e){
+					} catch (Exception e) {
 						//	fail
 						failCount.getAndIncrement();
-					}
-					finally{
-						
 					}
 				}
 				System.out.println("iteration : " + iteration 
 						+ " on Thread : " + Thread.currentThread().getName());
+				return null;
 			}
 		};
-		
 
 		ExecutorService service = Executors.newFixedThreadPool(numberOfJob, 
 				new ThreadFactoryBuilder().setNameFormat("Serializability-job-thread-%d").build());
+
 		
+		ArrayList<Future<Void>> futures = Lists.newArrayList();
 		for(int i=0;i<numberOfJob;i++){
-			service.execute(job);
+			futures.add(service.submit(serialJob));
+		}
+		for(Future<Void> future : futures){
+			future.get();
 		}
 		
-		Thread.sleep(30000);
 		
-		int dbValue1 = 
-				Bytes.toInt(testTable.get(tx, new HaeinsaGet(row1).addColumn(CF, CQ1)).getValue(CF, CQ1));
-		int dbValue2 = 
-				Bytes.toInt(testTable.get(tx, new HaeinsaGet(row2).addColumn(CF, CQ2)).getValue(CF, CQ2));
+		long dbValue1 = 
+				Bytes.toLong(testTable.get(tx, new HaeinsaGet(row1).addColumn(CF, CQ1)).getValue(CF, CQ1));
+		long dbValue2 = 
+				Bytes.toLong(testTable.get(tx, new HaeinsaGet(row2).addColumn(CF, CQ2)).getValue(CF, CQ2));
 		assertEquals(dbValue1, value1.get());
 		assertEquals(dbValue2, value2.get());
 		System.out.println("Number of Success Transactions : " + successCount.get());
@@ -413,6 +421,7 @@ public class HaeinsaComplexTest {
 		testTable.close();
 		tablePool.close();
 		threadPool.shutdown();
+		service.shutdown();
 	}
 	
 	/**
@@ -420,7 +429,7 @@ public class HaeinsaComplexTest {
 	 * @param oldValue
 	 * @return
 	 */
-	public int nextHashedValue(int oldValue){
+	public long nextHashedValue(long oldValue){
 		String result = "";
 		result += oldValue;
 		result += new Random().nextInt();

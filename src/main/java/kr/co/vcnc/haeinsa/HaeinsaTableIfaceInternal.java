@@ -40,6 +40,16 @@ interface HaeinsaTableIfaceInternal extends HaeinsaTableIface {
 	void commitSingleRowReadOnly(HaeinsaRowTransaction rowState, byte[] row) throws IOException;
 	
 	/**
+	 * Read {@link TRowLock} from HBase and compare that lock with prevRowLock.
+	 * If TRowLock is changed, it means transaction is failed, so throw {@link ConflictException}. 
+	 * @param prevRowLock
+	 * @param row
+	 * @throws IOException ConflictException, HBase IOException.
+	 * @throws NullPointException if oldLock is null (haven't read lock from HBase) 
+	 */
+	void checkSingleRowLock(HaeinsaRowTransaction rowState, byte[] row) throws IOException;
+	
+	/**
 	 * rowState 값을 참조하여 row 에 prewrite 를 한다. 
 	 * {@link TRowLock} 의 version, state, commitTimestamp, currentTimestamp 를 기록한다.
 	 * rowState 의 첫 번째 mutation 이 HaeinsaPut 일 경우 그 put 들도 모아서 lock 을 {@link TRowLockState#PREWRITTEN} 으로 변경할 때

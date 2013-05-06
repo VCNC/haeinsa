@@ -403,6 +403,12 @@ public class HaeinsaTablePool implements Closeable {
 		}
 		
 		@Override
+		public void checkSingleRowLock(HaeinsaRowTransaction rowState,
+				byte[] row) throws IOException {
+			table.checkSingleRowLock(rowState, row);
+		}
+		
+		@Override
 		public void commitSingleRowPutOnly(HaeinsaRowTransaction rowState, byte[] row) 
 				throws IOException {
 			table.commitSingleRowPutOnly(rowState, row);
@@ -448,5 +454,6 @@ public class HaeinsaTablePool implements Closeable {
 				throws IOException {
 			table.deletePrewritten(rowTxState, row);
 		}
+
 	}
 }
