@@ -542,9 +542,8 @@ public class HaeinsaTransaction {
 		
 		public NavigableMap<TRowKey, HaeinsaRowTransaction> getMutationRowStates(){
 			TreeMap<TRowKey, HaeinsaRowTransaction> map = Maps.newTreeMap(comparator);
-			for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : tableStates.entrySet()){
-				for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()){
-
+			for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : tableStates.entrySet()) {
+				for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()) {
 					HaeinsaRowTransaction rowState = rowStateEntry.getValue();
 					TRowKey rowKey = new TRowKey();
 					rowKey.setTableName(tableStateEntry.getKey());
@@ -559,9 +558,8 @@ public class HaeinsaTransaction {
 		
 		public NavigableMap<TRowKey, HaeinsaRowTransaction> getReadOnlyRowStates(){
 			TreeMap<TRowKey, HaeinsaRowTransaction> map = Maps.newTreeMap(comparator);
-			for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : tableStates.entrySet()){
-				for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()){
-
+			for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : tableStates.entrySet()) {
+				for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()) {
 					HaeinsaRowTransaction rowState = rowStateEntry.getValue();
 					TRowKey rowKey = new TRowKey();
 					rowKey.setTableName(tableStateEntry.getKey());

@@ -23,5 +23,4 @@ public class ConflictException extends IOException {
 	public ConflictException(String message, Throwable cause) {
 		super(message, cause);
 	}
-
 }
