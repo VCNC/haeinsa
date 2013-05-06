@@ -395,13 +395,7 @@ public class HaeinsaTablePool implements Closeable {
 		HaeinsaTableIfaceInternal getWrappedTable() {
 			return table;
 		}
-		
-		@Override
-		public void commitSingleRowReadOnly(HaeinsaRowTransaction rowState,
-				byte[] row) throws IOException {
-			table.commitSingleRowReadOnly(rowState, row);
-		}
-		
+				
 		@Override
 		public void checkSingleRowLock(HaeinsaRowTransaction rowState,
 				byte[] row) throws IOException {
@@ -454,6 +448,5 @@ public class HaeinsaTablePool implements Closeable {
 				throws IOException {
 			table.deletePrewritten(rowTxState, row);
 		}
-
 	}
 }

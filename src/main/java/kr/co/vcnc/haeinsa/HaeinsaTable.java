@@ -494,18 +494,6 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 		}
 	}
 	
-	/** 
-	 * Commit single row read only Transaction. 
-	 * Read {@link TRowLock} from HBase and compare that lock with saved one which have retrieved when start transaction.
-	 * If TRowLock is changed, it means transaction is failed, so throw {@link ConflictException}. 
-	 * @param rowState
-	 * @param row
-	 * @throws IOException  ConflictException, HBase IOException.
-	 */
-	public void commitSingleRowReadOnly(HaeinsaRowTransaction rowState, byte[] row) throws IOException{
-		checkSingleRowLock(rowState, row);
-	}
-	
 	/**
 	 * Read {@link TRowLock} from HBase and compare that lock with prevRowLock.
 	 * If TRowLock is changed, it means transaction is failed, so throw {@link ConflictException}. 
@@ -1325,5 +1313,4 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 
 		}
 	}
-
 }
