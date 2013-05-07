@@ -19,6 +19,8 @@ import org.apache.hadoop.hbase.util.PoolMap.PoolType;
 
 /**
  * Provide pooling pattern to HaeinsaTable.
+ * @author Youngmok Kim
+ *
  */
 public class HaeinsaTablePool implements Closeable {
 	//	{ tableName -> HaeinsaTable }
@@ -39,7 +41,7 @@ public class HaeinsaTablePool implements Closeable {
 
 	/**
 	 * Constructor to set maximum versions and use the specified configuration.
-	 *
+	 * 
 	 * @param config
 	 *            configuration
 	 * @param maxSize
@@ -52,7 +54,7 @@ public class HaeinsaTablePool implements Closeable {
 	/**
 	 * Constructor to set maximum versions and use the specified configuration
 	 * and table factory.
-	 *
+	 * 
 	 * @param config
 	 *            configuration
 	 * @param maxSize
@@ -68,7 +70,7 @@ public class HaeinsaTablePool implements Closeable {
 	/**
 	 * Constructor to set maximum versions and use the specified configuration
 	 * and pool type.
-	 *
+	 * 
 	 * @param config
 	 *            configuration
 	 * @param maxSize
@@ -88,7 +90,7 @@ public class HaeinsaTablePool implements Closeable {
 	 * {@link PoolType#Reusable} and {@link PoolType#ThreadLocal}. If the pool
 	 * type is null or not one of those two values, then it will default to
 	 * {@link PoolType#Reusable}.
-	 *
+	 * 
 	 * @param config
 	 *            configuration
 	 * @param maxSize
@@ -128,7 +130,7 @@ public class HaeinsaTablePool implements Closeable {
 	 * Get a reference to the specified table from the pool.
 	 * <p>
 	 * <p/>
-	 *
+	 * 
 	 * @param tableName
 	 *            table name
 	 * @return a reference to the specified table
@@ -146,12 +148,12 @@ public class HaeinsaTablePool implements Closeable {
 			throw new RuntimeException(ioe);
 		}
 	}
-
+	
 	/**
 	 * Get a reference to the specified internal table interface from the pool.
 	 * <p>
 	 * <p/>
-	 *
+	 * 
 	 * @param tableName
 	 *            table name
 	 * @return a reference to the specified table
@@ -173,9 +175,9 @@ public class HaeinsaTablePool implements Closeable {
 	/**
 	 * Get a reference to the specified table from the pool.
 	 * <p>
-	 *
+	 * 
 	 * Create a new one if one is not available.
-	 *
+	 * 
 	 * @param tableName
 	 *            table name
 	 * @return a reference to the specified table
@@ -193,9 +195,9 @@ public class HaeinsaTablePool implements Closeable {
 	/**
 	 * Get a reference to the specified table from the pool.
 	 * <p>
-	 *
+	 * 
 	 * Create a new one if one is not available.
-	 *
+	 * 
 	 * @param tableName
 	 *            table name
 	 * @return a reference to the specified table
@@ -205,13 +207,13 @@ public class HaeinsaTablePool implements Closeable {
 	public HaeinsaTableIface getTable(byte[] tableName) {
 		return getTable(Bytes.toString(tableName));
 	}
-
+	
 	/**
 	 * Get a reference to the specified internal table interface from the pool.
 	 * <p>
-	 *
+	 * 
 	 * Create a new one if one is not available.
-	 *
+	 * 
 	 * @param tableName
 	 *            table name
 	 * @return a reference to the specified table
@@ -222,13 +224,14 @@ public class HaeinsaTablePool implements Closeable {
 		return getTableInternal(Bytes.toString(tableName));
 	}
 
+
 	/**
 	 * Puts the specified HTable back into the pool.
 	 * <p>
-	 *
+	 * 
 	 * If the pool already contains <i>maxSize</i> references to the table, then
 	 * the table instance gets closed after flushing buffered edits.
-	 *
+	 * 
 	 * @param table
 	 *            table
 	 */
@@ -266,7 +269,7 @@ public class HaeinsaTablePool implements Closeable {
 	 * Note: this is a 'shutdown' of the given table pool and different from
 	 * {@link #putTable(HTableInterface)}, that is used to return the table
 	 * instance to the pool for future re-use.
-	 *
+	 * 
 	 * @param tableName
 	 */
 	public void closeTablePool(final String tableName) throws IOException {
@@ -281,7 +284,7 @@ public class HaeinsaTablePool implements Closeable {
 
 	/**
 	 * See {@link #closeTablePool(String)}.
-	 *
+	 * 
 	 * @param tableName
 	 */
 	public void closeTablePool(final byte[] tableName) throws IOException {
@@ -339,7 +342,7 @@ public class HaeinsaTablePool implements Closeable {
 				throws IOException {
 			return table.getScanner(tx, scan);
 		}
-
+		
 		@Override
 		public HaeinsaResultScanner getScanner(HaeinsaTransaction tx,
 				HaeinsaIntraScan intraScan) throws IOException {
@@ -367,18 +370,21 @@ public class HaeinsaTablePool implements Closeable {
 		public void put(HaeinsaTransaction tx, List<HaeinsaPut> puts)
 				throws IOException {
 			table.put(tx, puts);
+
 		}
 
 		@Override
 		public void delete(HaeinsaTransaction tx, HaeinsaDelete delete)
 				throws IOException {
 			table.delete(tx, delete);
+
 		}
 
 		@Override
 		public void delete(HaeinsaTransaction tx, List<HaeinsaDelete> deletes)
 				throws IOException {
 			table.delete(tx, deletes);
+
 		}
 
 		@Override
@@ -389,19 +395,25 @@ public class HaeinsaTablePool implements Closeable {
 		HaeinsaTableIfaceInternal getWrappedTable() {
 			return table;
 		}
-
+		
 		@Override
 		public void commitSingleRowReadOnly(HaeinsaRowTransaction rowState,
 				byte[] row) throws IOException {
 			table.commitSingleRowReadOnly(rowState, row);
 		}
-
+		
 		@Override
-		public void commitSingleRowPutOnly(HaeinsaRowTransaction rowState, byte[] row)
+		public void checkSingleRowLock(HaeinsaRowTransaction rowState,
+				byte[] row) throws IOException {
+			table.checkSingleRowLock(rowState, row);
+		}
+		
+		@Override
+		public void commitSingleRowPutOnly(HaeinsaRowTransaction rowState, byte[] row) 
 				throws IOException {
 			table.commitSingleRowPutOnly(rowState, row);
 		}
-
+		
 		@Override
 		public void prewrite(HaeinsaRowTransaction rowTxState, byte[] row,
 				boolean isPrimary) throws IOException {
@@ -442,5 +454,6 @@ public class HaeinsaTablePool implements Closeable {
 				throws IOException {
 			table.deletePrewritten(rowTxState, row);
 		}
+
 	}
 }
