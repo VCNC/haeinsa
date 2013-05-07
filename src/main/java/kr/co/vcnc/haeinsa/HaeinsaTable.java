@@ -516,8 +516,8 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 	 */
 	public void checkSingleRowLock(HaeinsaRowTransaction rowState, byte[] row) throws IOException{
 		TRowLock currentRowLock = getRowLock(row);
-		if (!rowState.getCurrent().equals(currentRowLock)){
-			throw new ConflictException("this row is modified, commitSingleRowReadOnly failed");
+		if (!rowState.getCurrent().equals(currentRowLock)) {
+			throw new ConflictException("this row is modified, checkSingleRow failed");
 		}
 	}
 
