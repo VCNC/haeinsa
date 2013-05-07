@@ -11,8 +11,6 @@ import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
 
 /**
  * {@link HaeinsaTableIface}의 인터페이스외에 내부적으로 공유되어야할 인터페이스들을 모아둔 인터페이스
- * @author Brad Kim
- *
  */
 interface HaeinsaTableIfaceInternal extends HaeinsaTableIface {
 

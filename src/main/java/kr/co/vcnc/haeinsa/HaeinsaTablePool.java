@@ -19,21 +19,18 @@ import org.apache.hadoop.hbase.util.PoolMap.PoolType;
 
 /**
  * Provide pooling pattern to HaeinsaTable.
- * @author Youngmok Kim
- *
  */
 public class HaeinsaTablePool implements Closeable {
-	//	{ tableName -> HaeinsaTable }
+	// { tableName -> HaeinsaTable }
 	private final PoolMap<String, HaeinsaTableIfaceInternal> tables;
 	private final int maxSize;
 	private final PoolType poolType;
 	private final Configuration config;
-	//	null if use default factory
+	// null if use default factory
 	private final HTableInterfaceFactory tableFactory;
 
 	/**
-	 * Default Constructor. Default HBaseConfiguration and no limit on pool
-	 * size.
+	 * Default Constructor. Default HBaseConfiguration and no limit on pool size.
 	 */
 	public HaeinsaTablePool() {
 		this(HBaseConfiguration.create(), Integer.MAX_VALUE);
@@ -42,73 +39,55 @@ public class HaeinsaTablePool implements Closeable {
 	/**
 	 * Constructor to set maximum versions and use the specified configuration.
 	 *
-	 * @param config
-	 *            configuration
-	 * @param maxSize
-	 *            maximum number of references to keep for each table
+	 * @param config configuration
+	 * @param maxSize maximum number of references to keep for each table
 	 */
 	public HaeinsaTablePool(final Configuration config, final int maxSize) {
 		this(config, maxSize, null, null);
 	}
 
 	/**
-	 * Constructor to set maximum versions and use the specified configuration
-	 * and table factory.
+	 * Constructor to set maximum versions and use the specified configuration and table factory.
 	 *
-	 * @param config
-	 *            configuration
-	 * @param maxSize
-	 *            maximum number of references to keep for each table
-	 * @param tableFactory
-	 *            table factory
+	 * @param config configuration
+	 * @param maxSize maximum number of references to keep for each table
+	 * @param tableFactory table factory
 	 */
-	public HaeinsaTablePool(final Configuration config, final int maxSize,
-			final HTableInterfaceFactory tableFactory) {
+	public HaeinsaTablePool(final Configuration config, final int maxSize, final HTableInterfaceFactory tableFactory) {
 		this(config, maxSize, tableFactory, PoolType.Reusable);
 	}
 
 	/**
-	 * Constructor to set maximum versions and use the specified configuration
-	 * and pool type.
+	 * Constructor to set maximum versions and use the specified configuration and pool type.
 	 *
-	 * @param config
-	 *            configuration
-	 * @param maxSize
-	 *            maximum number of references to keep for each table
-	 * @param poolType
-	 *            pool type which is one of {@link PoolType#Reusable} or
-	 *            {@link PoolType#ThreadLocal}
+	 * @param config configuration
+	 * @param maxSize maximum number of references to keep for each table
+	 * @param poolType pool type which is one of {@link PoolType#Reusable} or
+	 *        {@link PoolType#ThreadLocal}
 	 */
-	public HaeinsaTablePool(final Configuration config, final int maxSize,
-			final PoolType poolType) {
+	public HaeinsaTablePool(final Configuration config, final int maxSize, final PoolType poolType) {
 		this(config, maxSize, null, poolType);
 	}
 
 	/**
-	 * Constructor to set maximum versions and use the specified configuration,
-	 * table factory and pool type. The HTablePool supports the
-	 * {@link PoolType#Reusable} and {@link PoolType#ThreadLocal}. If the pool
-	 * type is null or not one of those two values, then it will default to
-	 * {@link PoolType#Reusable}.
+	 * Constructor to set maximum versions and use the specified configuration, table factory and
+	 * pool type. The HTablePool supports the {@link PoolType#Reusable} and
+	 * {@link PoolType#ThreadLocal}. If the pool type is null or not one of those two values, then
+	 * it will default to {@link PoolType#Reusable}.
 	 *
-	 * @param config
-	 *            configuration
-	 * @param maxSize
-	 *            maximum number of references to keep for each table
-	 * @param tableFactory
-	 *            table factory
-	 * @param poolType
-	 *            pool type which is one of {@link PoolType#Reusable} or
-	 *            {@link PoolType#ThreadLocal}
+	 * @param config configuration
+	 * @param maxSize maximum number of references to keep for each table
+	 * @param tableFactory table factory
+	 * @param poolType pool type which is one of {@link PoolType#Reusable} or
+	 *        {@link PoolType#ThreadLocal}
 	 */
-	public HaeinsaTablePool(final Configuration config, final int maxSize,
-			final HTableInterfaceFactory tableFactory, PoolType poolType) {
+	public HaeinsaTablePool(final Configuration config, final int maxSize, final HTableInterfaceFactory tableFactory,
+			PoolType poolType) {
 		// Make a new configuration instance so I can safely cleanup when
 		// done with the pool.
 		this.config = config == null ? new Configuration() : config;
 		this.maxSize = maxSize;
-		this.tableFactory = tableFactory == null ? new HTableFactory()
-				: tableFactory;
+		this.tableFactory = tableFactory == null ? new HTableFactory() : tableFactory;
 		if (poolType == null) {
 			this.poolType = PoolType.Reusable;
 		} else {
@@ -122,8 +101,7 @@ public class HaeinsaTablePool implements Closeable {
 				break;
 			}
 		}
-		this.tables = new PoolMap<String, HaeinsaTableIfaceInternal>(
-				this.poolType, this.maxSize);
+		this.tables = new PoolMap<String, HaeinsaTableIfaceInternal>(this.poolType, this.maxSize);
 	}
 
 	/**
@@ -131,11 +109,9 @@ public class HaeinsaTablePool implements Closeable {
 	 * <p>
 	 * <p/>
 	 *
-	 * @param tableName
-	 *            table name
+	 * @param tableName table name
 	 * @return a reference to the specified table
-	 * @throws RuntimeException
-	 *             if there is a problem instantiating the HTable
+	 * @throws RuntimeException if there is a problem instantiating the HTable
 	 */
 	public HaeinsaTableIface getTable(String tableName) {
 		// call the old getTable implementation renamed to findOrCreateTable
@@ -154,11 +130,9 @@ public class HaeinsaTablePool implements Closeable {
 	 * <p>
 	 * <p/>
 	 *
-	 * @param tableName
-	 *            table name
+	 * @param tableName table name
 	 * @return a reference to the specified table
-	 * @throws RuntimeException
-	 *             if there is a problem instantiating the HTable
+	 * @throws RuntimeException if there is a problem instantiating the HTable
 	 */
 	HaeinsaTableIfaceInternal getTableInternal(String tableName) {
 		// call the old getTable implementation renamed to findOrCreateTable
@@ -178,11 +152,9 @@ public class HaeinsaTablePool implements Closeable {
 	 *
 	 * Create a new one if one is not available.
 	 *
-	 * @param tableName
-	 *            table name
+	 * @param tableName table name
 	 * @return a reference to the specified table
-	 * @throws RuntimeException
-	 *             if there is a problem instantiating the HTable
+	 * @throws RuntimeException if there is a problem instantiating the HTable
 	 */
 	private HaeinsaTableIfaceInternal findOrCreateTable(String tableName) {
 		HaeinsaTableIfaceInternal table = tables.get(tableName);
@@ -198,11 +170,9 @@ public class HaeinsaTablePool implements Closeable {
 	 *
 	 * Create a new one if one is not available.
 	 *
-	 * @param tableName
-	 *            table name
+	 * @param tableName table name
 	 * @return a reference to the specified table
-	 * @throws RuntimeException
-	 *             if there is a problem instantiating the HTable
+	 * @throws RuntimeException if there is a problem instantiating the HTable
 	 */
 	public HaeinsaTableIface getTable(byte[] tableName) {
 		return getTable(Bytes.toString(tableName));
@@ -214,29 +184,24 @@ public class HaeinsaTablePool implements Closeable {
 	 *
 	 * Create a new one if one is not available.
 	 *
-	 * @param tableName
-	 *            table name
+	 * @param tableName table name
 	 * @return a reference to the specified table
-	 * @throws RuntimeException
-	 *             if there is a problem instantiating the HTable
+	 * @throws RuntimeException if there is a problem instantiating the HTable
 	 */
 	HaeinsaTableIfaceInternal getTableInternal(byte[] tableName) {
 		return getTableInternal(Bytes.toString(tableName));
 	}
 
-
 	/**
 	 * Puts the specified HTable back into the pool.
 	 * <p>
 	 *
-	 * If the pool already contains <i>maxSize</i> references to the table, then
-	 * the table instance gets closed after flushing buffered edits.
+	 * If the pool already contains <i>maxSize</i> references to the table, then the table instance
+	 * gets closed after flushing buffered edits.
 	 *
-	 * @param table
-	 *            table
+	 * @param table table
 	 */
-	private void returnTable(HaeinsaTableIfaceInternal table)
-			throws IOException {
+	private void returnTable(HaeinsaTableIfaceInternal table) throws IOException {
 		// this is the old putTable method renamed and made private
 		String tableName = Bytes.toString(table.getTableName());
 		if (tables.size(tableName) >= maxSize) {
@@ -249,8 +214,7 @@ public class HaeinsaTablePool implements Closeable {
 	}
 
 	protected HaeinsaTable createHTable(String tableName) {
-		return new HaeinsaTable(this.tableFactory.createHTableInterface(config,
-				Bytes.toBytes(tableName)));
+		return new HaeinsaTable(this.tableFactory.createHTableInterface(config, Bytes.toBytes(tableName)));
 	}
 
 	private void release(HaeinsaTableIface table) throws IOException {
@@ -263,12 +227,11 @@ public class HaeinsaTablePool implements Closeable {
 	}
 
 	/**
-	 * Closes all the HTable instances , belonging to the given table, in the
-	 * table pool.
+	 * Closes all the HTable instances , belonging to the given table, in the table pool.
 	 * <p>
 	 * Note: this is a 'shutdown' of the given table pool and different from
-	 * {@link #putTable(HTableInterface)}, that is used to return the table
-	 * instance to the pool for future re-use.
+	 * {@link #putTable(HTableInterface)}, that is used to return the table instance to the pool for
+	 * future re-use.
 	 *
 	 * @param tableName
 	 */
@@ -292,8 +255,7 @@ public class HaeinsaTablePool implements Closeable {
 	}
 
 	/**
-	 * Closes all the HTable instances , belonging to all tables in the table
-	 * pool.
+	 * Closes all the HTable instances , belonging to all tables in the table pool.
 	 * <p>
 	 * Note: this is a 'shutdown' of all the table pools.
 	 */
@@ -312,8 +274,7 @@ public class HaeinsaTablePool implements Closeable {
 	class PooledHaeinsaTable implements HaeinsaTableIfaceInternal {
 		private HaeinsaTableIfaceInternal table;
 
-		public PooledHaeinsaTable(HaeinsaTableIfaceInternal table)
-				throws IOException {
+		public PooledHaeinsaTable(HaeinsaTableIfaceInternal table) throws IOException {
 			this.table = table;
 		}
 
@@ -338,26 +299,23 @@ public class HaeinsaTablePool implements Closeable {
 		}
 
 		@Override
-		public HaeinsaResultScanner getScanner(HaeinsaTransaction tx, HaeinsaScan scan)
-				throws IOException {
+		public HaeinsaResultScanner getScanner(HaeinsaTransaction tx, HaeinsaScan scan) throws IOException {
 			return table.getScanner(tx, scan);
 		}
 
 		@Override
-		public HaeinsaResultScanner getScanner(HaeinsaTransaction tx,
-				HaeinsaIntraScan intraScan) throws IOException {
+		public HaeinsaResultScanner getScanner(HaeinsaTransaction tx, HaeinsaIntraScan intraScan) throws IOException {
 			return table.getScanner(tx, intraScan);
 		}
 
 		@Override
-		public HaeinsaResultScanner getScanner(HaeinsaTransaction tx, byte[] family)
-				throws IOException {
+		public HaeinsaResultScanner getScanner(HaeinsaTransaction tx, byte[] family) throws IOException {
 			return table.getScanner(tx, family);
 		}
 
 		@Override
-		public HaeinsaResultScanner getScanner(HaeinsaTransaction tx, byte[] family,
-				byte[] qualifier) throws IOException {
+		public HaeinsaResultScanner getScanner(HaeinsaTransaction tx, byte[] family, byte[] qualifier)
+				throws IOException {
 			return table.getScanner(tx, family, qualifier);
 		}
 
@@ -367,24 +325,18 @@ public class HaeinsaTablePool implements Closeable {
 		}
 
 		@Override
-		public void put(HaeinsaTransaction tx, List<HaeinsaPut> puts)
-				throws IOException {
+		public void put(HaeinsaTransaction tx, List<HaeinsaPut> puts) throws IOException {
 			table.put(tx, puts);
-
 		}
 
 		@Override
-		public void delete(HaeinsaTransaction tx, HaeinsaDelete delete)
-				throws IOException {
+		public void delete(HaeinsaTransaction tx, HaeinsaDelete delete) throws IOException {
 			table.delete(tx, delete);
-
 		}
 
 		@Override
-		public void delete(HaeinsaTransaction tx, List<HaeinsaDelete> deletes)
-				throws IOException {
+		public void delete(HaeinsaTransaction tx, List<HaeinsaDelete> deletes) throws IOException {
 			table.delete(tx, deletes);
-
 		}
 
 		@Override
@@ -397,44 +349,37 @@ public class HaeinsaTablePool implements Closeable {
 		}
 
 		@Override
-		public void commitSingleRowReadOnly(HaeinsaRowTransaction rowState,
-				byte[] row) throws IOException {
+		public void commitSingleRowReadOnly(HaeinsaRowTransaction rowState, byte[] row) throws IOException {
 			table.commitSingleRowReadOnly(rowState, row);
 		}
 
 		@Override
-		public void checkSingleRowLock(HaeinsaRowTransaction rowState,
-				byte[] row) throws IOException {
+		public void checkSingleRowLock(HaeinsaRowTransaction rowState, byte[] row) throws IOException {
 			table.checkSingleRowLock(rowState, row);
 		}
 
 		@Override
-		public void commitSingleRowPutOnly(HaeinsaRowTransaction rowState, byte[] row)
-				throws IOException {
+		public void commitSingleRowPutOnly(HaeinsaRowTransaction rowState, byte[] row) throws IOException {
 			table.commitSingleRowPutOnly(rowState, row);
 		}
 
 		@Override
-		public void prewrite(HaeinsaRowTransaction rowTxState, byte[] row,
-				boolean isPrimary) throws IOException {
+		public void prewrite(HaeinsaRowTransaction rowTxState, byte[] row, boolean isPrimary) throws IOException {
 			table.prewrite(rowTxState, row, isPrimary);
 		}
 
 		@Override
-		public void applyMutations(HaeinsaRowTransaction rowTxState, byte[] row)
-				throws IOException {
+		public void applyMutations(HaeinsaRowTransaction rowTxState, byte[] row) throws IOException {
 			table.applyMutations(rowTxState, row);
 		}
 
 		@Override
-		public void makeStable(HaeinsaRowTransaction rowTxState, byte[] row)
-				throws IOException {
+		public void makeStable(HaeinsaRowTransaction rowTxState, byte[] row) throws IOException {
 			table.makeStable(rowTxState, row);
 		}
 
 		@Override
-		public void commitPrimary(HaeinsaRowTransaction rowTxState, byte[] row)
-				throws IOException {
+		public void commitPrimary(HaeinsaRowTransaction rowTxState, byte[] row) throws IOException {
 			table.commitPrimary(rowTxState, row);
 		}
 
@@ -444,16 +389,13 @@ public class HaeinsaTablePool implements Closeable {
 		}
 
 		@Override
-		public void abortPrimary(HaeinsaRowTransaction rowTxState, byte[] row)
-				throws IOException {
+		public void abortPrimary(HaeinsaRowTransaction rowTxState, byte[] row) throws IOException {
 			table.abortPrimary(rowTxState, row);
 		}
 
 		@Override
-		public void deletePrewritten(HaeinsaRowTransaction rowTxState, byte[] row)
-				throws IOException {
+		public void deletePrewritten(HaeinsaRowTransaction rowTxState, byte[] row) throws IOException {
 			table.deletePrewritten(rowTxState, row);
 		}
-
 	}
 }

@@ -91,33 +91,32 @@ public class HaeinsaColumnTracker {
 
 	/**
 	 * Argument 로 넘긴 HaeinsaKeyValue 가 scan 범위 안에 포함되는 지 판별해 준다. 다음 세 가지 경우가 있을 수 있다.
-	 *
 	 * <p>1. Scan 에 family 가 전혀 지정되지 않은 경우 - qualifier 범위에만 포함되면 된다.
-	 *
 	 * <p>2. Scan 에 family 가 지정되어 있고, kv 의 family 와 같지만 qualifier 는 지정되어 있지 않은 경우 - kv 와 family 가 같고
 	 * qualifier 가 Scan 범위 안에 포함되면 된다.
-	 *
 	 * <p>3. Scan 에 family 와 qualifier 가 함께 지정되어 있는 경우 - kv 의 (family, qualifier) 가 같아야 한다.
+	 *
 	 * @param kv
 	 * @return
 	 */
 	public boolean isMatched(HaeinsaKeyValue kv) {
-		//	familyMap 이 비어있다는 것은 scan 시에 특정 family 를 지정하지 않고 모든 (family, qualifier)를 scan 하는 것이라고 가정하여,
-		//	isColumnInclusive(kv) 를 바로 호출한다.
-		//	{ empty }
+		// familyMap 이 비어있다는 것은 scan 시에 특정 family 를 지정하지 않고
+		// 모든 (family, qualifier)를 scan 하는 것이라고 가정하여,
+		// isColumnInclusive(kv) 를 바로 호출한다.
+		// { empty }
 		if (familyMap.isEmpty()) {
 			return isColumnInclusive(kv);
 		}
 
 		NavigableSet<byte[]> set = familyMap.get(kv.getFamily());
-		//	해당 family 는 설정 되어 있고, qualifier 는 설정되어 있지 않은 경우
-		//	{ family -> null }
+		// 해당 family 는 설정 되어 있고, qualifier 는 설정되어 있지 않은 경우
+		// { family -> null }
 		if (familyMap.containsKey(kv.getFamily()) && set == null) {
 			return isColumnInclusive(kv);
 		}
 
-		//	해당 family 가 familyMap 에 있고 qualifier 도 설정되어 있는 경우
-		//	{ family -> qualifier }
+		// 해당 family 가 familyMap 에 있고 qualifier 도 설정되어 있는 경우
+		// { family -> qualifier }
 		if (set.contains(kv.getQualifier())) {
 			return isColumnInclusive(kv);
 		}
