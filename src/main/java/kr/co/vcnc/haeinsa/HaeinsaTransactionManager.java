@@ -78,13 +78,10 @@ public class HaeinsaTransactionManager {
 	 * @throws IOException
 	 */
 	private TRowLock getUnstableRowLock(byte[] tableName, byte[] row) throws IOException {
-		HaeinsaTableIfaceInternal table = tablePool.getTableInternal(tableName);
 		TRowLock rowLock = null;
-		try {
+		try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(tableName)) {
 			//	access to HBase
 			 rowLock = table.getRowLock(row);
-		} finally {
-			table.close();
 		}
 		if (rowLock.getState() == TRowLockState.STABLE) {
 			return null;

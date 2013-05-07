@@ -140,10 +140,11 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 		}
 		scanners.add(new HBaseGetScanner(result, Long.MAX_VALUE));
 		
+		HaeinsaResult hResult = null;
 		//	scanners at this moment = union( muationScanners from RowTransaction, Scanner of get )
-		ClientScanner scanner = new ClientScanner(tx, scanners, get.getFamilyMap(), lockInclusive);
-		HaeinsaResult hResult = scanner.next();
-		scanner.close();
+		try (ClientScanner scanner = new ClientScanner(tx, scanners, get.getFamilyMap(), lockInclusive)) {
+			hResult = scanner.next();
+		}
 		if (hResult == null){
 			// row가 비어있고 해당 row에 아무런 put도 하지 않았을 경우, ClientScanner를 initailize하면서 scanners에 들어있는 scanner가 아무것도 없게 됨
 			// 그러므로, 해당 row에 RowState를 만들지 않아서 제대로 된 transaction 처리가 되지 않는다.
