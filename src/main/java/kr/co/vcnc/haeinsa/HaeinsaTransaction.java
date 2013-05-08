@@ -24,13 +24,11 @@ import com.google.common.hash.Hashing;
  * Haeinsa 에서 하나의 Transaction 을 표현하는 단위이다. 내부에 하나의 Transaction 을 표현하기 위한
  * {@link HaeinsaTableTransaction} 을 들고 있으며, {@link HaeinsaTransactionManager}
  * 로의 reference 를 가지고 있다.
- *
  * <p>
  * {@link HaeinsaTransactionManager#begin()} 을 통해서 생성되거나
  * {@link HaeinsaTransactionManager#getTransaction()} 을 통해서 생성되어서 사용할 수 있다. 전자는
  * 새로운 Transaction 을 시작하는 경우에 사용되고, 후자는 실패한 Transaction 을 rollback 하거나 재시도 시킬 때에
  * 사용된다.
- *
  * <p>
  * 하나의 {@link HaeinsaTransaction} 은 {@link #commit()} 이나 {@link #rollback()} 이
  * 되고 나면 더 이상 사용할 수 없다.
@@ -44,29 +42,24 @@ public class HaeinsaTransaction {
 	private long prewriteTimestamp = Long.MIN_VALUE;
 	private final AtomicBoolean used = new AtomicBoolean(false);
 
-	// CommitMethod에서 SingleRowReadOnly method를 MultiRowReadOnly 와 합칠 수 있을 것 같다.
 	private static enum CommitMethod {
 		/**
-		 * rowTx 가 아무 것도 없을 때
+		 * rowTx가 아무 것도 없을 때
 		 */
 		NOTHING,
 		/**
-		 * rowTx 가 하나만 존재하고, mutation 의 종류가 HaeinsaPut 일 때
+		 * 모든 rowTx에 mutation 이 존재하지 않을 때 (Get/Scan 으로만 이루어져 있을 때)
+		 */
+		READ_ONLY,
+		/**
+		 * rowTx가 하나만 존재하고, mutation 의 종류가 HaeinsaPut 일 때
 		 */
 		SINGLE_ROW_PUT_ONLY,
 		/**
-		 * rowTx 가 하나만 존재하고, mutation 가 없을 때
+		 * rowTx가 여러 개 존재하고 최소 1개의 rowTx 에 mutation이 존재하거나, rowTx가 하나만 존재하면서
+		 * mutation 에 HaeinsaDelete가 포함되어 있을 때
 		 */
-		SINGLE_ROW_READ_ONLY,
-		/**
-		 * rowTx 가 여러 개 존재하고, 모든 rowTx 가 Get/Scan 으로 이루어져 있을 때
-		 */
-		MULTI_ROW_READ_ONLY,
-		/**
-		 * rowTx가 여러 개 존재하고 최소 1개의 rowTx 에 mutation이 존재하거나, rowTx 가 하나만 존재하면서
-		 * mutation에 HaeinsaDelete가 포함되어 있을 때
-		 */
-		MULTI_ROW_MUTATIONS,
+		MULTI_ROW_MUTATIONS;
 	}
 
 	public HaeinsaTransaction(HaeinsaTransactionManager manager) {
@@ -130,55 +123,8 @@ public class HaeinsaTransaction {
 	}
 
 	/**
-	 * Determine commitMethod among {@link CommitMethod#SINGLE_ROW_READ_ONLY},
-	 * {@link CommitMethod#SINGLE_ROW_PUT_ONLY},
-	 * {@link CommitMethod#MULTI_ROW_READ_ONLY} and
-	 * {@link CommitMethod#MULTI_ROW_MUTATIONS}.
-	 * <p>
-	 * Transaction of single row with at least one of {@link HaeinsaDelete} will
-	 * be considered as {@link CommitMethod#MULTI_ROW_MUTATIONS}.
-	 *
-	 * @return
-	 */
-	protected CommitMethod determineCommitMethod() {
-		int count = 0;
-		boolean haveMuations = false;
-		CommitMethod method = CommitMethod.NOTHING;
-		for (HaeinsaTableTransaction tableState : txStates.getTableStates().values()) {
-			for (HaeinsaRowTransaction rowState : tableState.getRowStates().values()) {
-				count++;
-				if (rowState.getMutations().size() > 0) {
-					// if any rowTx in Tx contains mutation ( Put/Delete )
-					haveMuations = true;
-				}
-
-				if (count == 1) {
-					if (rowState.getMutations().size() <= 0) {
-						method = CommitMethod.SINGLE_ROW_READ_ONLY;
-					} else if (rowState.getMutations().get(0) instanceof HaeinsaPut
-							&& rowState.getMutations().size() == 1) {
-						method = CommitMethod.SINGLE_ROW_PUT_ONLY;
-					} else if (haveMuations) {
-						// if rowTx contains HaeinsaDelete
-						method = CommitMethod.MULTI_ROW_MUTATIONS;
-					}
-				}
-				if (count > 1) {
-					if (haveMuations) {
-						return CommitMethod.MULTI_ROW_MUTATIONS;
-					} else {
-						method = CommitMethod.MULTI_ROW_READ_ONLY;
-					}
-				}
-			}
-		}
-		return method;
-	}
-
-	/**
-	 * Only-read multiRow don't have to do anything if conflict found. Commit
-	 * multiple row Transaction or single row Transaction which includes Delete
-	 * operation.
+	 * Commit multiple row Transaction or single row Transaction which includes
+	 * Delete operation.
 	 *
 	 * @throws IOException ConflictException, HBase IOException
 	 */
@@ -195,15 +141,15 @@ public class HaeinsaTransaction {
 
 		// prewrite secondaries (mutation rows)
 		for (Entry<TRowKey, HaeinsaRowTransaction> rowKeyStateEntry : txStates.getMutationRowStates().entrySet()) {
-			TRowKey rowKey = rowKeyStateEntry.getKey();
+			TRowKey key = rowKeyStateEntry.getKey();
 			HaeinsaRowTransaction rowTx = rowKeyStateEntry.getValue();
-			if (Bytes.equals(rowKey.getTableName(), primary.getTableName())
-					&& Bytes.equals(rowKey.getRow(), primary.getRow())) {
+			if (Bytes.equals(key.getTableName(), primary.getTableName())
+					&& Bytes.equals(key.getRow(), primary.getRow())) {
 				// if this is primaryRow
 				continue;
 			}
-			try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(rowKey.getTableName())) {
-				table.prewrite(rowTx, rowKey.getRow(), false);
+			try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(key.getTableName())) {
+				table.prewrite(rowTx, key.getRow(), false);
 			}
 		}
 
@@ -219,28 +165,28 @@ public class HaeinsaTransaction {
 	}
 
 	/**
-	 * Use {@link HaeinsaTable#commitSingleRowReadOnly()} to check RowLock on
-	 * HBase of read-only row of tx. If all lock-checking by get was success,
-	 * read-only multi-row tx was success. Throws Exception otherwise.
+	 * Use {@link HaeinsaTable#checkSingleRowLock()} to check RowLock on HBase
+	 * of read-only rows of tx. If all lock-checking by get was success,
+	 * read-only tx was success. Throws ConflictException otherwise.
 	 *
 	 * @throws IOException ConflictException, HBase IOException
 	 */
-	protected void commitMultiRowsReadOnly() throws IOException {
+	protected void commitReadOnly() throws IOException {
 		Preconditions.checkState(txStates.getMutationRowStates().size() == 0);
 		Preconditions.checkState(txStates.getReadOnlyRowStates().size() > 0);
 		HaeinsaTablePool tablePool = getManager().getTablePool();
 
 		// check secondaries
-		for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : txStates.getTableStates().entrySet()) {
-			for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()) {
-				if (Bytes.equals(tableStateEntry.getKey(), primary.getTableName())
-						&& Bytes.equals(rowStateEntry.getKey(), primary.getRow())) {
-					// if this is primaryRow
-					continue;
-				}
-				try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(tableStateEntry.getKey())) {
-					table.checkSingleRowLock(rowStateEntry.getValue(), rowStateEntry.getKey());
-				}
+		for (Entry<TRowKey, HaeinsaRowTransaction> rowKeyStateEntry : txStates.getReadOnlyRowStates().entrySet()) {
+			TRowKey key = rowKeyStateEntry.getKey();
+			HaeinsaRowTransaction rowTx = rowKeyStateEntry.getValue();
+			if (Bytes.equals(key.getTableName(), primary.getTableName())
+					&& Bytes.equals(key.getRow(), primary.getRow())) {
+				// if this is primaryRow
+				continue;
+			}
+			try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(key.getTableName())) {
+				table.checkSingleRowLock(rowTx, key.getTableName());
 			}
 		}
 
@@ -271,22 +217,6 @@ public class HaeinsaTransaction {
 	}
 
 	/**
-	 * Commit single row & read only Transaction.
-	 *
-	 * @throws IOException
-	 */
-	protected void commitSingleRowReadOnly() throws IOException {
-		HaeinsaTableTransaction primaryTableState = createOrGetTableState(primary.getTableName());
-		HaeinsaRowTransaction primaryRowState = primaryTableState.createOrGetRowState(primary.getRow());
-
-		HaeinsaTablePool tablePool = getManager().getTablePool();
-		// commit primary row
-		try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(primary.getTableName())) {
-			table.commitSingleRowReadOnly(primaryRowState, primary.getRow());
-		}
-	}
-
-	/**
 	 * Commit transaction to HBase. It start to prewrite data in HBase and try
 	 * to change {@link TRowLock}s. After {@link #commit()} is called, user
 	 * cannot use this instance again.
@@ -305,10 +235,6 @@ public class HaeinsaTransaction {
 		// fill mutationRowStates & readOnlyRowStates from rowStates
 		for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : txStates.getTableStates().entrySet()) {
 			for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()) {
-				// TODO(Andrew): Random 하게 primaryRowKey 를 고를 때 이왕이면 mutations
-				// 중에 HaeinsaPut 이
-				// 가장 처음에 있는 Row 를 골라서 applyMutations 에 걸리는 시간을 줄이면 좋겠다.
-
 				HaeinsaRowTransaction rowState = rowStateEntry.getValue();
 				maxIterationCount = Math.max(maxIterationCount, rowState.getIterationCount());
 				maxCurrentCommitTimestamp = Math.max(maxCurrentCommitTimestamp, rowState.getCurrent().getCommitTimestamp());
@@ -317,6 +243,8 @@ public class HaeinsaTransaction {
 		setPrewriteTimestamp(maxCurrentCommitTimestamp + 1);
 		setCommitTimestamp(Math.max(getPrewriteTimestamp(), maxCurrentCommitTimestamp + maxIterationCount));
 
+		// TODO(Andrew) : primaryRowKey 를 고를 때 이왕이면 mutations 중에 HaeinsaPut 이
+		// 가장 처음에 있는 Row 를 골라서 applyMutations 에 걸리는 시간을 줄이면 좋겠다.
 		// setPrimary among mutationRowStates first, next among
 		// readOnlyRowStates
 		TRowKey primaryRowKey = null;
@@ -334,18 +262,14 @@ public class HaeinsaTransaction {
 		// rowStates at all.
 		setPrimary(primaryRowKey);
 
-		CommitMethod method = determineCommitMethod();
+		CommitMethod method = txStates.determineCommitMethod();
 		switch (method) {
 		case MULTI_ROW_MUTATIONS: {
 			commitMultiRowsMutation();
 			break;
 		}
-		case MULTI_ROW_READ_ONLY: {
-			commitMultiRowsReadOnly();
-			break;
-		}
-		case SINGLE_ROW_READ_ONLY: {
-			commitSingleRowReadOnly();
+		case READ_ONLY: {
+			commitReadOnly();
 			break;
 		}
 		case SINGLE_ROW_PUT_ONLY: {
@@ -466,8 +390,7 @@ public class HaeinsaTransaction {
 	 */
 	protected void abort() throws IOException {
 		HaeinsaTablePool tablePool = getManager().getTablePool();
-		HaeinsaRowTransaction primaryRowTx = createOrGetTableState(primary.getTableName())
-				.createOrGetRowState(primary.getRow());
+		HaeinsaRowTransaction primaryRowTx = createOrGetTableState(primary.getTableName()).createOrGetRowState(primary.getRow());
 		// abort primary row
 		try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(primary.getTableName())) {
 			table.abortPrimary(primaryRowTx, primary.getRow());
@@ -513,6 +436,56 @@ public class HaeinsaTransaction {
 			return tableStates;
 		}
 
+		/**
+		 * Determine commitMethod among {@link CommitMethod#READ_ONLY},
+		 * {@link CommitMethod#SINGLE_ROW_PUT_ONLY} and
+		 * {@link CommitMethod#MULTI_ROW_MUTATIONS}
+		 * <p>
+		 * Transaction of single row with at least one of {@link HaeinsaDelete}
+		 * will be considered as {@link CommitMethod#MULTI_ROW_MUTATIONS}.
+		 *
+		 * @return
+		 */
+		public CommitMethod determineCommitMethod() {
+			int count = 0;
+			boolean haveMuations = false;
+			CommitMethod method = CommitMethod.NOTHING;
+			for (HaeinsaTableTransaction tableState : tableStates.values()) {
+				for (HaeinsaRowTransaction rowState : tableState.getRowStates().values()) {
+					count++;
+					if (rowState.getMutations().size() > 0) {
+						// if any rowTx in Tx contains mutation ( Put/Delete )
+						haveMuations = true;
+					}
+
+					if (count == 1) {
+						if (rowState.getMutations().size() <= 0) {
+							method = CommitMethod.READ_ONLY;
+						} else if (rowState.getMutations().get(0) instanceof HaeinsaPut
+								&& rowState.getMutations().size() == 1) {
+							method = CommitMethod.SINGLE_ROW_PUT_ONLY;
+						} else if (haveMuations) {
+							// if rowTx contiains HaeinsaDelete
+							method = CommitMethod.MULTI_ROW_MUTATIONS;
+						}
+					}
+					if (count > 1) {
+						if (haveMuations) {
+							return CommitMethod.MULTI_ROW_MUTATIONS;
+						} else {
+							method = CommitMethod.READ_ONLY;
+						}
+					}
+				}
+			}
+			return method;
+		}
+
+		/**
+		 * TRowKey(table,row)로 Hash 정렬된 mutation Row 들을 return 한다.
+		 *
+		 * @return
+		 */
 		public NavigableMap<TRowKey, HaeinsaRowTransaction> getMutationRowStates() {
 			TreeMap<TRowKey, HaeinsaRowTransaction> map = Maps.newTreeMap(comparator);
 			for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : tableStates.entrySet()) {
@@ -521,8 +494,7 @@ public class HaeinsaTransaction {
 					TRowKey rowKey = new TRowKey();
 					rowKey.setTableName(tableStateEntry.getKey());
 					rowKey.setRow(rowStateEntry.getKey());
-					if (rowState.getMutations().size() > 0
-							|| rowState.getCurrent().getState() != TRowLockState.STABLE) {
+					if (isMutationRow(rowState)) {
 						map.put(rowKey, rowState);
 					}
 				}
@@ -530,6 +502,11 @@ public class HaeinsaTransaction {
 			return map;
 		}
 
+		/**
+		 * TRowKey(table,row)로 Hash 정렬된 read-only Row 들을 return 한다.
+		 *
+		 * @return
+		 */
 		public NavigableMap<TRowKey, HaeinsaRowTransaction> getReadOnlyRowStates() {
 			TreeMap<TRowKey, HaeinsaRowTransaction> map = Maps.newTreeMap(comparator);
 			for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : tableStates.entrySet()) {
@@ -538,13 +515,27 @@ public class HaeinsaTransaction {
 					TRowKey rowKey = new TRowKey();
 					rowKey.setTableName(tableStateEntry.getKey());
 					rowKey.setRow(rowStateEntry.getKey());
-					if (rowState.getMutations().size() <= 0
-							&& rowState.getCurrent().getState() != TRowLockState.STABLE) {
+					if (!isMutationRow(rowState)) {
 						map.put(rowKey, rowState);
 					}
 				}
 			}
 			return map;
+		}
+
+		/**
+		 * Return true if number of mutations is bigger than 0 or TRowLockState
+		 * is not STABLE.
+		 * <p>
+		 * Former case means that row is mutation row on normal transaction
+		 * phase. Later case means that row was aborted during last normal
+		 * transaction phase, which means that row was mutation row previously.
+		 *
+		 * @param rowTx
+		 * @return
+		 */
+		private boolean isMutationRow(HaeinsaRowTransaction rowTx) {
+			return rowTx.getMutations().size() > 0 || rowTx.getCurrent().getState() != TRowLockState.STABLE;
 		}
 	}
 

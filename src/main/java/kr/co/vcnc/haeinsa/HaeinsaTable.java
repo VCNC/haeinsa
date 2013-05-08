@@ -305,8 +305,9 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 			hScan.addFamily(family);
 		}
 
-		ColumnRangeFilter rangeFilter = new ColumnRangeFilter(intraScan.getMinColumn(),
-				intraScan.isMinColumnInclusive(), intraScan.getMaxColumn(), intraScan.isMaxColumnInclusive());
+		ColumnRangeFilter rangeFilter = new ColumnRangeFilter(
+				intraScan.getMinColumn(), intraScan.isMinColumnInclusive(),
+				intraScan.getMaxColumn(), intraScan.isMaxColumnInclusive());
 		hScan.setFilter(rangeFilter);
 
 		HaeinsaTableTransaction tableState = tx.createOrGetTableState(getTableName());
@@ -505,21 +506,6 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 	}
 
 	/**
-	 * Commit single row read only Transaction. Read {@link TRowLock} from HBase
-	 * and compare that lock with saved one which have retrieved when start
-	 * transaction. If TRowLock is changed, it means transaction is failed, so
-	 * throw {@link ConflictException}.
-	 *
-	 * @param rowState
-	 * @param row
-	 * @throws IOException ConflictException, HBase IOException.
-	 */
-	@Override
-	public void commitSingleRowReadOnly(HaeinsaRowTransaction rowState, byte[] row) throws IOException {
-		checkSingleRowLock(rowState, row);
-	}
-
-	/**
 	 * Read {@link TRowLock} from HBase and compare that lock with prevRowLock.
 	 * If TRowLock is changed, it means transaction is failed, so throw
 	 * {@link ConflictException}.
@@ -561,8 +547,9 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 			}
 		}
 
-		TRowLock newRowLock = new TRowLock(ROW_LOCK_VERSION, TRowLockState.PREWRITTEN, tx.getCommitTimestamp())
-				.setCurrentTimestmap(tx.getPrewriteTimestamp());
+		TRowLock newRowLock = new TRowLock(
+				ROW_LOCK_VERSION, TRowLockState.PREWRITTEN,
+				tx.getCommitTimestamp()).setCurrentTimestmap(tx.getPrewriteTimestamp());
 		if (isPrimary) {
 			// for primary row
 			for (Entry<TRowKey, HaeinsaRowTransaction> rowStateEntry : tx.getMutationRowStates().entrySet()) {
@@ -619,8 +606,8 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 				Put put = new Put(row);
 				put.add(LOCK_FAMILY, LOCK_QUALIFIER, newRowLock.getCurrentTimestmap(), TRowLocks.serialize(newRowLock));
 				for (TKeyValue kv : mutation.getPut().getValues()) {
-					put.add(kv.getKey().getFamily(), kv.getKey().getQualifier(), newRowLock.getCurrentTimestmap(), kv
-							.getValue());
+					put.add(kv.getKey().getFamily(), kv.getKey().getQualifier(),
+							newRowLock.getCurrentTimestmap(), kv.getValue());
 				}
 				if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, put)) {
 					// 실패하는 경우는 다른 쪽에서 row의 lock을 획득했으므로 충돌이 났다고 처리한다.
@@ -630,7 +617,6 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 				}
 				break;
 			}
-
 			case REMOVE: {
 				Delete delete = new Delete(row);
 				if (mutation.getRemove().getRemoveFamiliesSize() > 0) {
@@ -640,8 +626,7 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 				}
 				if (mutation.getRemove().getRemoveCellsSize() > 0) {
 					for (TCellKey removeCell : mutation.getRemove().getRemoveCells()) {
-						delete.deleteColumns(removeCell.getFamily(), removeCell.getQualifier(), currentTimestamp + i
-								+ 1);
+						delete.deleteColumns(removeCell.getFamily(), removeCell.getQualifier(), currentTimestamp + i + 1);
 					}
 				}
 				if (!table.checkAndDelete(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, delete)) {
@@ -650,7 +635,6 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 				}
 				break;
 			}
-
 			default:
 				break;
 			}
@@ -824,8 +808,7 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 		private final HaeinsaTransaction tx;
 		private final HaeinsaTableTransaction tableState;
 		private boolean initialized;
-		private final NavigableSet<HaeinsaKeyValueScanner> scanners = Sets
-				.newTreeSet(HaeinsaKeyValueScanner.COMPARATOR);
+		private final NavigableSet<HaeinsaKeyValueScanner> scanners = Sets.newTreeSet(HaeinsaKeyValueScanner.COMPARATOR);
 		private final List<HaeinsaKeyValueScanner> scannerList = Lists.newArrayList();
 		// tracking delete of one specific row.
 		private final HaeinsaDeleteTracker deleteTracker = new HaeinsaDeleteTracker();

@@ -30,7 +30,8 @@ public class HaeinsaTablePool implements Closeable {
 	private final HTableInterfaceFactory tableFactory;
 
 	/**
-	 * Default Constructor. Default HBaseConfiguration and no limit on pool size.
+	 * Default Constructor. Default HBaseConfiguration and no limit on pool
+	 * size.
 	 */
 	public HaeinsaTablePool() {
 		this(HBaseConfiguration.create(), Integer.MAX_VALUE);
@@ -47,7 +48,8 @@ public class HaeinsaTablePool implements Closeable {
 	}
 
 	/**
-	 * Constructor to set maximum versions and use the specified configuration and table factory.
+	 * Constructor to set maximum versions and use the specified configuration
+	 * and table factory.
 	 *
 	 * @param config configuration
 	 * @param maxSize maximum number of references to keep for each table
@@ -58,7 +60,8 @@ public class HaeinsaTablePool implements Closeable {
 	}
 
 	/**
-	 * Constructor to set maximum versions and use the specified configuration and pool type.
+	 * Constructor to set maximum versions and use the specified configuration
+	 * and pool type.
 	 *
 	 * @param config configuration
 	 * @param maxSize maximum number of references to keep for each table
@@ -70,10 +73,11 @@ public class HaeinsaTablePool implements Closeable {
 	}
 
 	/**
-	 * Constructor to set maximum versions and use the specified configuration, table factory and
-	 * pool type. The HTablePool supports the {@link PoolType#Reusable} and
-	 * {@link PoolType#ThreadLocal}. If the pool type is null or not one of those two values, then
-	 * it will default to {@link PoolType#Reusable}.
+	 * Constructor to set maximum versions and use the specified configuration,
+	 * table factory and pool type. The HTablePool supports the
+	 * {@link PoolType#Reusable} and {@link PoolType#ThreadLocal}. If the pool
+	 * type is null or not one of those two values, then it will default to
+	 * {@link PoolType#Reusable}.
 	 *
 	 * @param config configuration
 	 * @param maxSize maximum number of references to keep for each table
@@ -81,8 +85,8 @@ public class HaeinsaTablePool implements Closeable {
 	 * @param poolType pool type which is one of {@link PoolType#Reusable} or
 	 *        {@link PoolType#ThreadLocal}
 	 */
-	public HaeinsaTablePool(final Configuration config, final int maxSize, final HTableInterfaceFactory tableFactory,
-			PoolType poolType) {
+	public HaeinsaTablePool(final Configuration config, final int maxSize,
+			final HTableInterfaceFactory tableFactory, PoolType poolType) {
 		// Make a new configuration instance so I can safely cleanup when
 		// done with the pool.
 		this.config = config == null ? new Configuration() : config;
@@ -196,12 +200,13 @@ public class HaeinsaTablePool implements Closeable {
 	 * Puts the specified HTable back into the pool.
 	 * <p>
 	 *
-	 * If the pool already contains <i>maxSize</i> references to the table, then the table instance
-	 * gets closed after flushing buffered edits.
+	 * If the pool already contains <i>maxSize</i> references to the table, then
+	 * the table instance gets closed after flushing buffered edits.
 	 *
 	 * @param table table
 	 */
-	private void returnTable(HaeinsaTableIfaceInternal table) throws IOException {
+	private void returnTable(HaeinsaTableIfaceInternal table)
+			throws IOException {
 		// this is the old putTable method renamed and made private
 		String tableName = Bytes.toString(table.getTableName());
 		if (tables.size(tableName) >= maxSize) {
@@ -227,11 +232,12 @@ public class HaeinsaTablePool implements Closeable {
 	}
 
 	/**
-	 * Closes all the HTable instances , belonging to the given table, in the table pool.
+	 * Closes all the HTable instances , belonging to the given table, in the
+	 * table pool.
 	 * <p>
 	 * Note: this is a 'shutdown' of the given table pool and different from
-	 * {@link #putTable(HTableInterface)}, that is used to return the table instance to the pool for
-	 * future re-use.
+	 * {@link #putTable(HTableInterface)}, that is used to return the table
+	 * instance to the pool for future re-use.
 	 *
 	 * @param tableName
 	 */
@@ -255,7 +261,8 @@ public class HaeinsaTablePool implements Closeable {
 	}
 
 	/**
-	 * Closes all the HTable instances , belonging to all tables in the table pool.
+	 * Closes all the HTable instances , belonging to all tables in the table
+	 * pool.
 	 * <p>
 	 * Note: this is a 'shutdown' of all the table pools.
 	 */
@@ -346,11 +353,6 @@ public class HaeinsaTablePool implements Closeable {
 
 		HaeinsaTableIfaceInternal getWrappedTable() {
 			return table;
-		}
-
-		@Override
-		public void commitSingleRowReadOnly(HaeinsaRowTransaction rowState, byte[] row) throws IOException {
-			table.commitSingleRowReadOnly(rowState, row);
 		}
 
 		@Override
