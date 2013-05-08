@@ -7,14 +7,15 @@ import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
 import com.google.common.collect.Lists;
 
 /**
- * Contains Transaction information of single row.
- * This information is only saved in client memory until {@link HaeinsaTransaction#commit()} called.
+ * Contains Transaction information of single row. This information is only
+ * saved in client memory until {@link HaeinsaTransaction#commit()} called.
  */
 class HaeinsaRowTransaction {
-	//	current RowLock saved in HBase. null if there is no lock at all.
+	// current RowLock saved in HBase. null if there is no lock at all.
 	private TRowLock current;
-	//	mutations will be saved in order of executions.
-	//	만약 이 rowTransaction 이 transaction 의 복원 과정에서 생성되었다면, 아래 mutations 은 비어 있는 상태이다.
+	// mutations will be saved in order of executions.
+	// 만약 이 rowTransaction 이 transaction 의 복원 과정에서 생성되었다면, 아래 mutations 은 비어 있는
+	// 상태이다.
 	private final List<HaeinsaMutation> mutations = Lists.newArrayList();
 	private final HaeinsaTableTransaction tableTransaction;
 
@@ -63,8 +64,10 @@ class HaeinsaRowTransaction {
 	}
 
 	/**
-	 * Return list of {@link HaeinsaKeyValueScanner}s which wrap mutations - (Put & Delete) contained inside instance.
-	 * Also assign sequenceID to every {@link HaeinsaMutation#MutationScanner}.
+	 * Return list of {@link HaeinsaKeyValueScanner}s which wrap mutations -
+	 * (Put & Delete) contained inside instance. Also assign sequenceID to every
+	 * {@link HaeinsaMutation#MutationScanner}.
+	 *
 	 * @return
 	 */
 	public List<HaeinsaKeyValueScanner> getScanners() {

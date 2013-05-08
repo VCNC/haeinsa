@@ -4,16 +4,19 @@ import java.io.Closeable;
 import java.io.IOException;
 
 /**
- * Scanner wrapper of HaeinsaResult.
- * Can contain multiple HaeinsaResult inside to allow iterator pattern.
- * <p>HaeinsaResultScanner interface provides both iterator pattern and next(), next(int) methods.
+ * Scanner wrapper of HaeinsaResult. Can contain multiple HaeinsaResult inside
+ * to allow iterator pattern.
+ * <p>
+ * HaeinsaResultScanner interface provides both iterator pattern and next(),
+ * next(int) methods.
  */
 public interface HaeinsaResultScanner extends Closeable, Iterable<HaeinsaResult> {
 
 	/**
 	 * Grab the next row's worth of values. The scanner will return a Result.
 	 *
-	 * @return Result object if there is another row, null if the scanner is exhausted.
+	 * @return Result object if there is another row, null if the scanner is
+	 *         exhausted.
 	 * @throws IOException e
 	 */
 	HaeinsaResult next() throws IOException;
@@ -23,7 +26,7 @@ public interface HaeinsaResultScanner extends Closeable, Iterable<HaeinsaResult>
 	 * @return Between zero and nbRows Results
 	 * @throws IOException e
 	 */
-	HaeinsaResult [] next(int nbRows) throws IOException;
+	HaeinsaResult[] next(int nbRows) throws IOException;
 
 	/**
 	 * Closes the scanner and releases any resources it has allocated

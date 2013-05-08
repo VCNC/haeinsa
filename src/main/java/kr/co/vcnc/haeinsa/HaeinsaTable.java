@@ -53,7 +53,6 @@ import com.google.common.collect.Sets;
  * {@link HaeinsaTransaction} to provide transaction on HBase.
  */
 class HaeinsaTable implements HaeinsaTableIfaceInternal {
-
 	private final HTableInterface table;
 
 	public HaeinsaTable(HTableInterface table) {
@@ -94,7 +93,6 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 				}
 			}
 		}
-
 		Result result = table.get(hGet);
 		return new HaeinsaResult(result);
 	}
@@ -102,7 +100,6 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 	@Override
 	public HaeinsaResult get(@Nullable HaeinsaTransaction tx, HaeinsaGet get) throws IOException {
 		Preconditions.checkNotNull(get);
-
 		if (tx == null) {
 			return getWithoutTx(get);
 		}
@@ -140,17 +137,18 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 		scanners.add(new HBaseGetScanner(result, Long.MAX_VALUE));
 
 		HaeinsaResult hResult = null;
-		// scanners at this moment = union( muationScanners from RowTransaction,
-		// Scanner of get )
+		// Scanners at this moment is:
+		// union( muationScanners from RowTransaction, Scanner of get)
 		try (ClientScanner scanner = new ClientScanner(tx, scanners, get.getFamilyMap(), lockInclusive)) {
 			hResult = scanner.next();
 		}
 		if (hResult == null) {
-			// row가 비어있고 해당 row에 아무런 put도 하지 않았을 경우, ClientScanner를
-			// initailize하면서 scanners에 들어있는
-			// scanner가 아무것도 없게 됨
-			// 그러므로, 해당 row에 RowState를 만들지 않아서 제대로 된 transaction 처리가 되지 않는다.
-			// 그래서 여기서 RowState가 없다면 만들어준다.
+			/*
+			 * row가 비어있고 해당 row에 아무런 put도 하지 않았을 경우, ClientScanner를
+			 * initailize하면서 scanners에 들어있는 scanner가 아무것도 없게 됨. 그러므로, 해당 row에
+			 * RowState를 만들지 않아서 제대로 된 transaction 처리가 되지 않는다. 그래서 여기서 RowState가
+			 * 없다면 만들어준다.
+			 */
 			rowState = tableState.createOrGetRowState(row);
 			if (rowState.getCurrent() == null) {
 				rowState.setCurrent(TRowLocks.deserialize(null));
@@ -223,7 +221,6 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 	@Override
 	public HaeinsaResultScanner getScanner(@Nullable HaeinsaTransaction tx, HaeinsaScan scan) throws IOException {
 		Preconditions.checkNotNull(scan);
-
 		if (tx == null) {
 			return getScannerWithoutTx(scan);
 		}
@@ -273,9 +270,8 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 		}
 		scanners.add(new HBaseScanScanner(table.getScanner(hScan)));
 
-		// scanners at this moment = union( muationScanners from all
-		// RowTransactions, Scanner of
-		// scan )
+		// Scanners at this moment is:
+		// union( muationScanners from all RowTransactions, Scanner of scan )
 		return new ClientScanner(tx, scanners, scan.getFamilyMap(), true);
 	}
 
@@ -292,7 +288,6 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 	public HaeinsaResultScanner getScanner(@Nullable HaeinsaTransaction tx, HaeinsaIntraScan intraScan)
 			throws IOException {
 		Preconditions.checkNotNull(intraScan);
-
 		if (tx == null) {
 			return getScannerWithoutTx(intraScan);
 		}
@@ -311,15 +306,12 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 		hScan.setFilter(rangeFilter);
 
 		HaeinsaTableTransaction tableState = tx.createOrGetTableState(getTableName());
-
 		HaeinsaRowTransaction rowState = tableState.getRowStates().get(intraScan.getRow());
-
 		if (rowState == null) {
 			rowState = checkOrRecoverLock(tx, intraScan.getRow(), tableState, rowState);
 		}
 
 		List<HaeinsaKeyValueScanner> scanners = Lists.newArrayList();
-
 		if (rowState != null) {
 			scanners.addAll(rowState.getScanners());
 		}
@@ -424,8 +416,7 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 	 */
 	private HaeinsaRowTransaction checkOrRecoverLock(HaeinsaTransaction tx,
 			byte[] row, HaeinsaTableTransaction tableState,
-			@Nullable HaeinsaRowTransaction rowState)
-			throws IOException {
+			@Nullable HaeinsaRowTransaction rowState) throws IOException {
 		if (rowState != null && rowState.getCurrent() != null) {
 			// return rowState itself if rowState already exist and contains
 			// lock information.
@@ -547,8 +538,7 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 			}
 		}
 
-		TRowLock newRowLock = new TRowLock(
-				ROW_LOCK_VERSION, TRowLockState.PREWRITTEN,
+		TRowLock newRowLock = new TRowLock(ROW_LOCK_VERSION, TRowLockState.PREWRITTEN,
 				tx.getCommitTimestamp()).setCurrentTimestmap(tx.getPrewriteTimestamp());
 		if (isPrimary) {
 			// for primary row
@@ -593,15 +583,16 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 
 		for (int i = 0; i < remaining.size(); i++) {
 			byte[] currentRowLockBytes = TRowLocks.serialize(rowTxState.getCurrent());
+			int mutationOffset = i + 1;
+			long mutationTimestamp = currentTimestamp + mutationOffset;
 
 			TMutation mutation = remaining.get(i);
 			switch (mutation.getType()) {
 			case PUT: {
 				TRowLock newRowLock = rowTxState.getCurrent().deepCopy();
-				newRowLock.setCurrentTimestmap(currentTimestamp + i + 1);
-				newRowLock.setMutations(remaining.subList(i + 1, remaining.size()));
-				// prewritten state 로 변하면서 ROW_LOCK_TIMEOUT 만큼 lock expiry 가
-				// 길어진다.
+				newRowLock.setCurrentTimestmap(mutationTimestamp);
+				newRowLock.setMutations(remaining.subList(mutationOffset, remaining.size()));
+				// prewritten state로 변하면서 ROW_LOCK_TIMEOUT만큼 lock expiry가 길어진다.
 				newRowLock.setExpiry(System.currentTimeMillis() + ROW_LOCK_TIMEOUT);
 				Put put = new Put(row);
 				put.add(LOCK_FAMILY, LOCK_QUALIFIER, newRowLock.getCurrentTimestmap(), TRowLocks.serialize(newRowLock));
@@ -621,12 +612,12 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 				Delete delete = new Delete(row);
 				if (mutation.getRemove().getRemoveFamiliesSize() > 0) {
 					for (ByteBuffer removeFamily : mutation.getRemove().getRemoveFamilies()) {
-						delete.deleteFamily(removeFamily.array(), currentTimestamp + i + 1);
+						delete.deleteFamily(removeFamily.array(), mutationTimestamp);
 					}
 				}
 				if (mutation.getRemove().getRemoveCellsSize() > 0) {
 					for (TCellKey removeCell : mutation.getRemove().getRemoveCells()) {
-						delete.deleteColumns(removeCell.getFamily(), removeCell.getQualifier(), currentTimestamp + i + 1);
+						delete.deleteColumns(removeCell.getFamily(), removeCell.getQualifier(), mutationTimestamp);
 					}
 				}
 				if (!table.checkAndDelete(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, delete)) {
@@ -808,16 +799,19 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 		private final HaeinsaTransaction tx;
 		private final HaeinsaTableTransaction tableState;
 		private boolean initialized;
-		private final NavigableSet<HaeinsaKeyValueScanner> scanners = Sets.newTreeSet(HaeinsaKeyValueScanner.COMPARATOR);
+		private final NavigableSet<HaeinsaKeyValueScanner> scanners =
+				Sets.newTreeSet(HaeinsaKeyValueScanner.COMPARATOR);
 		private final List<HaeinsaKeyValueScanner> scannerList = Lists.newArrayList();
 		// tracking delete of one specific row.
 		private final HaeinsaDeleteTracker deleteTracker = new HaeinsaDeleteTracker();
 		private final HaeinsaColumnTracker columnTracker;
+
 		/**
 		 * true if TRowLock inside scanners, false if TRowLock is already
 		 * included inside tableState.getRowStates().get(row)
 		 */
 		private final boolean lockInclusive;
+
 		/**
 		 * -1 if not used. ( Get / Scan )
 		 */
@@ -893,8 +887,8 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 		}
 
 		/**
-		 * ClientScanner 에 대한 iterator 를 return 한다. 내부적으로 {@link #next()} 을
-		 * 사용하도록 구현되어 있다.
+		 * ClientScanner에 대한 iterator를 return한다. 내부적으로 {@link #next()}을 사용하도록
+		 * 구현되어 있다.
 		 */
 		@Override
 		public Iterator<HaeinsaResult> iterator() {
@@ -931,8 +925,7 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 						}
 					} catch (IOException e) {
 						// IOException 을 throw 할 수 없는 hasNext() 의 특성상
-						// RunTimeException 으로
-						// 감싸서 throw 함.
+						// RunTimeException 으로 감싸서 throw 함.
 						throw new IllegalStateException(e.getMessage(), e);
 					}
 					return false;
@@ -941,12 +934,11 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 		}
 
 		/**
-		 * 정해진 row 에 대한 TRowLock 이 있는지 {@link #scanners} 중에서 찾아서 return 한다. 없으면
-		 * null 을 return 한다. 만약 {@link #scanners} 중 하나가 row 보다 선행하는
-		 * {@link HaeinsaKeyValueScanner} 라면 해당 Scanner 는 이 method 에 의해서 선택되지
-		 * 않는다. 즉, 올바른 동작을 위해서는 {@link #scanners} 에 들어 있는 모든
-		 * HaeinsaKeyValueScanner 의 peek() 값이 이 method 에 argument 로 주어지는 row 보다
-		 * 크거나 같은 row 값을 가지고 있어야 한다.
+		 * 정해진 row에 대한 TRowLock이 있는지 {@link #scanners}중에서 찾아서 return한다. 없으면
+		 * null을 return 한다. 만약 {@link #scanners} 중 하나가 row 보다 선행하는
+		 * {@link HaeinsaKeyValueScanner}라면 해당 Scanner는 이 method에 의해서 선택되지 않는다.
+		 * 즉, 올바른 동작을 위해서는 {@link #scanners}에 들어 있는 모든 HaeinsaKeyValueScanner의
+		 * peek() 값이 이 method 에 argument로 주어지는 row보다 크거나 같은 row 값을 가지고 있어야 한다.
 		 *
 		 * @param row
 		 * @return null if there is no TRowLock information inside scanners,
@@ -974,8 +966,8 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 				// move scannerList -> scanners
 				initialize();
 			}
-			final List<HaeinsaKeyValue> sortedKVs = Lists.newArrayList();
 
+			final List<HaeinsaKeyValue> sortedKVs = Lists.newArrayList();
 			while (true) {
 				if (scanners.isEmpty()) {
 					break;
@@ -986,27 +978,22 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 					// start new row, deal with TRowLock and Recover()
 					if (lockInclusive) {
 						// HBaseScanScanner 나 HBaseGetScanner 에 의해서 넘어온
-						// HaeinsaKeyValue 중에
-						// TRowLock 정보가 이미 존재함을 의미한다.
+						// HaeinsaKeyValue 중에 TRowLock 정보가 이미 존재함을 의미한다.
 						TRowLock currentRowLock = peekLock(currentKV.getRow());
 						HaeinsaRowTransaction rowState = tableState.createOrGetRowState(currentKV.getRow());
 						if (rowState.getCurrent() == null) {
 							// rowState 가 createOrGetRowState 에 의해서 방금 만들어졌다는
-							// 뜻이다.
-							// 따라서 적당한 TRowLock 값을 찾아서 rowState 에 넣어줘야 한다.
+							// 뜻이다. 따라서 적당한 TRowLock 값을 찾아서 rowState 에 넣어줘야 한다.
 							if (currentRowLock == null) {
-								// HBase 에 TRowLock 정보가 없는 경우
-								// 이 것은 Haeinsa 가 HBase 로부터의 lazy-migration 을
-								// 지원해야 하기 때문에 생기는 case
-								// 이다.
-								//
-								// TRowLock(ROW_LOCK_VERSION,
-								// TRowLockState.STABLE, Long.MIN_VALUE)
-								// 를
-								// HaeinsaRowTransaction에 넣으면 된다.
-								// 이 TRowLock 값은 후에 commit 시에 적당한 초기 TRowLock 으로
-								// override 되어 HBase 에
-								// 기록된다.
+								/*
+								 * HBase 에 TRowLock 정보가 없는 경우 이 것은 Haeinsa 가
+								 * HBase 로부터의 lazy-migration 을 지원해야 하기 때문에 생기는
+								 * case 이다. TRowLock(ROW_LOCK_VERSION,
+								 * TRowLockState.STABLE, Long.MIN_VALUE) 를
+								 * HaeinsaRowTransaction에 넣으면 된다. 이 TRowLock 값은
+								 * 후에 commit 시에 적당한 초기 TRowLock 으로 override 되어
+								 * HBase 에 기록된다.
+								 */
 								currentRowLock = TRowLocks.deserialize(null);
 								rowState.setCurrent(currentRowLock);
 							}
@@ -1056,8 +1043,8 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 						deleteTracker.add(currentKV, currentScanner.getSequenceID());
 					} else if (prevKV == currentKV
 							|| !(Bytes.equals(prevKV.getRow(), currentKV.getRow())
-									&& Bytes.equals(prevKV.getFamily(), currentKV.getFamily()) && Bytes.equals(prevKV
-									.getQualifier(), currentKV.getQualifier()))) {
+									&& Bytes.equals(prevKV.getFamily(), currentKV.getFamily())
+									&& Bytes.equals(prevKV.getQualifier(), currentKV.getQualifier()))) {
 						// prevKV 와 currentKV 의 reference 가 같은 경우는 해당 currentKV
 						// 가 새로운 row 인 경우이다.
 						// 그 외에 Row, Family, Qualifier 모두가 같은 경우가 더 나오면 무시한다. (
@@ -1153,17 +1140,20 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 	 */
 	private static class HBaseScanScanner implements HaeinsaKeyValueScanner {
 		private final ResultScanner resultScanner;
+
 		/**
 		 * current is null when scan is not started or next() is called last
 		 * time.
 		 */
 		private HaeinsaKeyValue current;
+
 		/**
 		 * currentResult is null when there is no more elements to scan in
 		 * resultScanner or scan is not started. currentResult 는 단일 row 에 대한 정보만
 		 * 가지고 있다.
 		 */
 		private Result currentResult;
+
 		/**
 		 * current = currentResult[resultIndex - 1]
 		 */
@@ -1188,8 +1178,7 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 				}
 				if (currentResult == null) {
 					// if currentResult is still null at this point, that means
-					// there is no more KV
-					// to scan.
+					// there is no more KV to scan.
 					return null;
 				}
 				// First scan or next() was called last time so move
@@ -1199,17 +1188,14 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 
 				return current;
 			} catch (IOException e) {
-				// TODO
-				// IOException ( 실제로는 next() 에 대한 ConflictException ) 을 감싸서
-				// RuntimeException 으로
-				// 올리는 것보다 더 좋은 방법이 있는 지 고민해 봅시다.
-				// 이 function 이 HaeinsaKeyValue 의 Comparator 로 들어가 버리기 때문에
-				// compare 연산에서 RuntimeException 이 throw 될 수 있다.
-				//
-				// 현재와 같은 상태를 유지하고 싶으면 Transaction 자체가 IOException 이 아니라
-				// Exception 을 던지도록 해서
-				// 사용자가 IOException 뿐 아니라 RuntimeException 도 catch 하도록 강제하는 방법이
-				// 있다.
+				/*
+				 * TODO: IOException (실제로는 next()에 대한 ConflictException) 을 감싸서
+				 * RuntimeException으로 올리는 것보다 더 좋은 방법이 있는 지 고민해 봅시다. 이 function
+				 * 이 HaeinsaKeyValue의 Comparator 로 들어가 버리기 때문에 compare 연산에서
+				 * RuntimeException이 throw 될 수 있다. 현재와 같은 상태를 유지하고 싶으면
+				 * Transaction 자체가 IOException이 아니라 Exception을 던지도록 해서 사용자가
+				 * IOException 뿐 아니라 RuntimeException도 catch하도록 강제하는 방법이 있다.
+				 */
 				throw new IllegalStateException(e.getMessage(), e);
 			}
 		}
@@ -1235,9 +1221,10 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 
 		@Override
 		public long getSequenceID() {
-			// Scan 은 언제나 HBase 에 실제로 저장되어 있는 데이터를 가져온 것이기 때문에 sequenceID 가 가장
-			// 크다.
-			// ( 가장 오래된 데이터이다. )
+			/*
+			 * Scan은 언제나 HBase에 실제로 저장되어 있는 데이터를 가져온 것이기 때문에 sequenceID가 가장 크다.
+			 * (가장 오래된 데이터이다)
+			 */
 			return Long.MAX_VALUE;
 		}
 
@@ -1321,5 +1308,4 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 		public void close() {
 		}
 	}
-
 }

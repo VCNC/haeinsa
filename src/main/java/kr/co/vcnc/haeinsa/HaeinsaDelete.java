@@ -17,10 +17,11 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 
 /**
- * Implementation of {@link HaeinsaMuation} which only contains HaeinsaKeyValue with
- * {@link Type#DeleteFamily} and {@link Type#DeleteColumn} identifier.
+ * Implementation of {@link HaeinsaMuation} which only contains HaeinsaKeyValue
+ * with {@link Type#DeleteFamily} and {@link Type#DeleteColumn} identifier.
  * HaeinsaPut can be analogous to {@link Delete} class in HBase.
- * <p>HaeinsaDelete only contains data of single row.
+ * <p>
+ * HaeinsaDelete only contains data of single row.
  */
 public class HaeinsaDelete extends HaeinsaMutation {
 
@@ -29,8 +30,7 @@ public class HaeinsaDelete extends HaeinsaMutation {
 	}
 
 	/**
-	 * @param d
-	 *            Delete to clone.
+	 * @param d Delete to clone.
 	 */
 	public HaeinsaDelete(final HaeinsaDelete d) {
 		this.row = d.getRow();
@@ -43,8 +43,7 @@ public class HaeinsaDelete extends HaeinsaMutation {
 	 * Overrides previous calls to deleteColumn and deleteColumns for the
 	 * specified family.
 	 *
-	 * @param family
-	 *            family name
+	 * @param family family name
 	 * @return this for invocation chaining
 	 */
 	public HaeinsaDelete deleteFamily(byte[] family) {
@@ -54,8 +53,7 @@ public class HaeinsaDelete extends HaeinsaMutation {
 		} else if (!set.isEmpty()) {
 			set.clear();
 		}
-		set.add(new HaeinsaKeyValue(row, family, null, null,
-				KeyValue.Type.DeleteFamily));
+		set.add(new HaeinsaKeyValue(row, family, null, null, KeyValue.Type.DeleteFamily));
 		familyMap.put(family, set);
 		return this;
 	}
@@ -63,10 +61,8 @@ public class HaeinsaDelete extends HaeinsaMutation {
 	/**
 	 * Delete all versions of the specified column.
 	 *
-	 * @param family
-	 *            family name
-	 * @param qualifier
-	 *            column qualifier
+	 * @param family family name
+	 * @param qualifier column qualifier
 	 * @return this for invocation chaining
 	 */
 	public HaeinsaDelete deleteColumns(byte[] family, byte[] qualifier) {
@@ -74,14 +70,14 @@ public class HaeinsaDelete extends HaeinsaMutation {
 		if (set == null) {
 			set = Sets.newTreeSet(HaeinsaKeyValue.COMPARATOR);
 		}
-		set.add(new HaeinsaKeyValue(this.row, family, qualifier, null,
-				KeyValue.Type.DeleteColumn));
+		set.add(new HaeinsaKeyValue(this.row, family, qualifier, null, KeyValue.Type.DeleteColumn));
 		familyMap.put(family, set);
 		return this;
 	}
 
 	/**
 	 * Merge all familyMap to this instance.
+	 *
 	 * @throw IllegalStateException if newMuatation is not HaeinsaDelete
 	 */
 	@Override

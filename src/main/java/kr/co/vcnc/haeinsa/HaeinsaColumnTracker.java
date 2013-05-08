@@ -10,13 +10,15 @@ import org.apache.hadoop.hbase.util.Bytes;
 import com.google.common.collect.Sets;
 
 /**
- * Tracking parameters of {@link HaeinsaScan} and {@link HaeinsaIntraScan} inside {@link HaeinsaTable}.
- * <p>Tracker can determine whether specific HaeinsaKeyValue inside scan range.
+ * Tracking parameters of {@link HaeinsaScan} and {@link HaeinsaIntraScan}
+ * inside {@link HaeinsaTable}.
+ * <p>
+ * Tracker can determine whether specific HaeinsaKeyValue inside scan range.
  */
 public class HaeinsaColumnTracker {
-	//	{ family -> qualifier }
-	private final Map<byte[], NavigableSet<byte[]>> familyMap = new TreeMap<byte[], NavigableSet<byte[]>>(
-			Bytes.BYTES_COMPARATOR);
+	// { family -> qualifier }
+	private final Map<byte[], NavigableSet<byte[]>> familyMap =
+			new TreeMap<byte[], NavigableSet<byte[]>>(Bytes.BYTES_COMPARATOR);
 
 	private final byte[] minColumn;
 	private final boolean minColumnInclusive;
@@ -25,9 +27,11 @@ public class HaeinsaColumnTracker {
 
 	/**
 	 * Constructor of HaeinsaColumnTracker.
+	 * <p>
+	 * If this ColumnTracker track {@link HaeinsaScan}, minColumn, maxColumn
+	 * should be null and minColumnInclusive, maxColumnInclusive should be
+	 * false.
 	 *
-	 * <p>If this ColumnTracker track {@link HaeinsaScan}, minColumn, maxColumn should be null and
-	 * minColumnInclusive, maxColumnInclusive should be false.
 	 * @param familyMap
 	 *
 	 * @param minColumn
@@ -36,16 +40,15 @@ public class HaeinsaColumnTracker {
 	 * @param maxColumnInclusive
 	 */
 	public HaeinsaColumnTracker(Map<byte[], NavigableSet<byte[]>> familyMap,
-			byte[] minColumn, boolean minColumnInclusive, byte[] maxColumn,
-			boolean maxColumnInclusive) {
+			byte[] minColumn, boolean minColumnInclusive,
+			byte[] maxColumn, boolean maxColumnInclusive) {
 		this.minColumn = minColumn;
 		this.maxColumn = maxColumn;
 		this.minColumnInclusive = minColumnInclusive;
 		this.maxColumnInclusive = maxColumnInclusive;
 		for (Entry<byte[], NavigableSet<byte[]>> entry : familyMap.entrySet()) {
 			if (entry.getValue() != null) {
-				NavigableSet<byte[]> qualifierSet = Sets
-						.newTreeSet(Bytes.BYTES_COMPARATOR);
+				NavigableSet<byte[]> qualifierSet = Sets.newTreeSet(Bytes.BYTES_COMPARATOR);
 				qualifierSet.addAll(entry.getValue());
 				this.familyMap.put(entry.getKey(), qualifierSet);
 			} else {
@@ -56,7 +59,9 @@ public class HaeinsaColumnTracker {
 
 	/**
 	 * Return true if qualifier of kv is placed between minColumn and maxColumn.
-	 * <p>Using lexicographical ordering to compare byte[]
+	 * <p>
+	 * Using lexicographical ordering to compare byte[]
+	 *
 	 * @param kv
 	 * @return
 	 */
@@ -74,15 +79,16 @@ public class HaeinsaColumnTracker {
 			return false;
 		}
 
-		//	kv 의 column 이 minColumn 값이 정하는 requirement 를 만족시키고 있으면서 maxColumn requirement 는 없을 때
+		// kv 의 column 이 minColumn 값이 정하는 requirement 를 만족시키고 있으면서 maxColumn
+		// requirement 는 없을 때
 		if (this.maxColumn == null) {
 			return true;
 		}
 
 		int cmpMax = Bytes.compareTo(kv.getQualifier(), maxColumn);
 
-		if (this.maxColumnInclusive && cmpMax <= 0 ||
-				!this.maxColumnInclusive && cmpMax < 0) {
+		if (this.maxColumnInclusive && cmpMax <= 0
+				|| !this.maxColumnInclusive && cmpMax < 0) {
 			return true;
 		}
 
@@ -90,11 +96,15 @@ public class HaeinsaColumnTracker {
 	}
 
 	/**
-	 * Argument 로 넘긴 HaeinsaKeyValue 가 scan 범위 안에 포함되는 지 판별해 준다. 다음 세 가지 경우가 있을 수 있다.
-	 * <p>1. Scan 에 family 가 전혀 지정되지 않은 경우 - qualifier 범위에만 포함되면 된다.
-	 * <p>2. Scan 에 family 가 지정되어 있고, kv 의 family 와 같지만 qualifier 는 지정되어 있지 않은 경우 - kv 와 family 가 같고
-	 * qualifier 가 Scan 범위 안에 포함되면 된다.
-	 * <p>3. Scan 에 family 와 qualifier 가 함께 지정되어 있는 경우 - kv 의 (family, qualifier) 가 같아야 한다.
+	 * Argument로 넘긴 HaeinsaKeyValue가 scan 범위 안에 포함되는 지 판별해 준다. 다음 세 가지 경우가 있을
+	 * 수있다.
+	 * <ol>
+	 * <li>Scan 에 family가 전혀 지정되지 않은 경우 - qualifier범위에만 포함되면 된다.</li>
+	 * <li>Scan 에 family가 지정되어 있고, kv의 family 와 같지만 qualifier 는 지정되어 있지 않은 경우 -
+	 * kv와 family가 같고 qualifier가 Scan범위 안에 포함되면 된다.</li>
+	 * <li>Scan 에 family와 qualifier 가 함께 지정되어 있는 경우 - kv의 (family, qualifier)가
+	 * 같아야 한다.</li>
+	 * </ol>
 	 *
 	 * @param kv
 	 * @return

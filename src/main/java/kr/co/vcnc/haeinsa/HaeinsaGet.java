@@ -10,12 +10,13 @@ import org.apache.hadoop.hbase.util.Bytes;
 
 /**
  * HaeinsaGet can be analogous to {@link Get} class in HBase.
- * <p>HaeinsaGet only contains data of single row.
+ * <p>
+ * HaeinsaGet only contains data of single row.
  */
 public class HaeinsaGet {
 	private byte[] row;
-	private Map<byte[], NavigableSet<byte[]>> familyMap = new TreeMap<byte[], NavigableSet<byte[]>>(
-			Bytes.BYTES_COMPARATOR);
+	private Map<byte[], NavigableSet<byte[]>> familyMap =
+			new TreeMap<byte[], NavigableSet<byte[]>>(Bytes.BYTES_COMPARATOR);
 
 	/**
 	 * Create a Get operation for the specified row.
@@ -23,8 +24,7 @@ public class HaeinsaGet {
 	 * If no further operations are done, this will get the latest version of
 	 * all columns in all families of the specified row.
 	 *
-	 * @param row
-	 *            row key
+	 * @param row row key
 	 */
 	public HaeinsaGet(byte[] row) {
 		this.row = row;
@@ -35,8 +35,7 @@ public class HaeinsaGet {
 	 * <p>
 	 * Overrides previous calls to addColumn for this family.
 	 *
-	 * @param family
-	 *            family name
+	 * @param family family name
 	 * @return the Get object
 	 */
 	public HaeinsaGet addFamily(byte[] family) {
@@ -50,10 +49,8 @@ public class HaeinsaGet {
 	 * <p>
 	 * Overrides previous calls to addFamily for this family.
 	 *
-	 * @param family
-	 *            family name
-	 * @param qualifier
-	 *            column qualifier
+	 * @param family family name
+	 * @param qualifier column qualifier
 	 * @return the Get objec
 	 */
 	public HaeinsaGet addColumn(byte[] family, byte[] qualifier) {

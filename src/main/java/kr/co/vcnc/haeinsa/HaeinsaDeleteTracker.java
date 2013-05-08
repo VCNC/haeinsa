@@ -10,13 +10,15 @@ import com.google.common.collect.Maps;
  * Tracking deleted columns and family inside specific row.
  */
 public class HaeinsaDeleteTracker {
-	//	{ family -> sequenceId }
+	// { family -> sequenceId }
 	private final NavigableMap<byte[], Long> families = Maps.newTreeMap(Bytes.BYTES_COMPARATOR);
-	//	{ family -> { column -> sequenceId } }
+	// { family -> { column -> sequenceId } }
 	private final NavigableMap<byte[], NavigableMap<byte[], Long>> cells = Maps.newTreeMap(Bytes.BYTES_COMPARATOR);
 
 	/**
-	 * Update family map or column map if kv is not exist in map or sequenceId is lower.
+	 * Update family map or column map if kv is not exist in map or sequenceId
+	 * is lower.
+	 *
 	 * @param kv - HaeinsaKeyValue to track
 	 * @param sequenceID - sequence ID, lower is newer.
 	 */
@@ -25,12 +27,11 @@ public class HaeinsaDeleteTracker {
 		case DeleteFamily: {
 			Long previous = families.get(kv.getFamily());
 			if (previous == null || previous.compareTo(sequenceID) > 0) {
-				//	sequenceId is lower than previous one.
+				// sequenceId is lower than previous one.
 				families.put(kv.getFamily(), sequenceID);
 			}
 			break;
 		}
-
 		case DeleteColumn: {
 			NavigableMap<byte[], Long> cellMap = cells.get(kv.getFamily());
 			if (cellMap == null) {
@@ -39,12 +40,11 @@ public class HaeinsaDeleteTracker {
 			}
 			Long previous = families.get(kv.getQualifier());
 			if (previous == null || previous.compareTo(sequenceID) > 0) {
-				//	sequenceId is lower than previous one.
+				// sequenceId is lower than previous one.
 				cellMap.put(kv.getQualifier(), sequenceID);
 			}
 			break;
 		}
-
 		default:
 			break;
 		}
@@ -54,7 +54,8 @@ public class HaeinsaDeleteTracker {
 	 *
 	 * @param kv
 	 * @param sequenceID
-	 * @return Return true if kv is deleted after sequenceID ( lower sequenceID ), return false otherwise.
+	 * @return Return true if kv is deleted after sequenceID (lower sequenceID),
+	 *         return false otherwise.
 	 */
 	public boolean isDeleted(HaeinsaKeyValue kv, long sequenceID) {
 		// check family
@@ -81,5 +82,4 @@ public class HaeinsaDeleteTracker {
 		families.clear();
 		cells.clear();
 	}
-
 }

@@ -345,11 +345,10 @@ public class HaeinsaComplexTest {
 				while (iteration < maxIter) {
 					try {
 						HaeinsaTransaction tx = tm.begin();
-						long oldValue1 =
-								Bytes.toLong(testTable.get(tx, new HaeinsaGet(row1).addColumn(CF, CQ1)).getValue(CF, CQ1));
-						long oldValue2 =
-								Bytes.toLong(testTable.get(tx, new HaeinsaGet(row2).addColumn(CF, CQ2)).getValue(CF, CQ2));
-
+						long oldValue1 = Bytes.toLong(testTable.get(tx,
+								new HaeinsaGet(row1).addColumn(CF, CQ1)).getValue(CF, CQ1));
+						long oldValue2 = Bytes.toLong(testTable.get(tx,
+								new HaeinsaGet(row2).addColumn(CF, CQ2)).getValue(CF, CQ2));
 						long newValue1 = nextHashedValue(oldValue1);
 						long newValue2 = nextHashedValue(oldValue2);
 
@@ -370,8 +369,8 @@ public class HaeinsaComplexTest {
 						failCount.getAndIncrement();
 					}
 				}
-				System.out.println("iteration : " + iteration
-						+ " on Thread : " + Thread.currentThread().getName());
+				System.out.println(String.format("iteration : %d on Thread : Ts",
+						iteration, Thread.currentThread().getName()));
 				return null;
 			}
 		};
@@ -387,10 +386,8 @@ public class HaeinsaComplexTest {
 			future.get();
 		}
 
-		long dbValue1 =
-				Bytes.toLong(testTable.get(tx, new HaeinsaGet(row1).addColumn(CF, CQ1)).getValue(CF, CQ1));
-		long dbValue2 =
-				Bytes.toLong(testTable.get(tx, new HaeinsaGet(row2).addColumn(CF, CQ2)).getValue(CF, CQ2));
+		long dbValue1 = Bytes.toLong(testTable.get(tx, new HaeinsaGet(row1).addColumn(CF, CQ1)).getValue(CF, CQ1));
+		long dbValue2 = Bytes.toLong(testTable.get(tx, new HaeinsaGet(row2).addColumn(CF, CQ2)).getValue(CF, CQ2));
 		assertEquals(dbValue1, value1.get());
 		assertEquals(dbValue2, value2.get());
 		System.out.println("Number of Success Transactions : " + successCount.get());

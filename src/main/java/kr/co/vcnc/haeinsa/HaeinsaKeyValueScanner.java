@@ -8,11 +8,15 @@ import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
 import com.google.common.collect.ComparisonChain;
 
 /**
- * Scanner wrapper of HaeinsaKeyValue.
- * Contains multiple HaeinsaKeyValue inside to allow iterator pattern.
- * <p>HaeinsaKeyValueScanner interface provides additional {@link HaeinsaKeyValueScanner#peek}
- * method to peek element of scanner without moving iterator.
- * <p>Each HaeinsaKeyValueScanner have sequenceId which represent which scanner is newer one.
+ * Scanner wrapper of HaeinsaKeyValue. Contains multiple HaeinsaKeyValue inside
+ * to allow iterator pattern.
+ * <p>
+ * HaeinsaKeyValueScanner interface provides additional
+ * {@link HaeinsaKeyValueScanner#peek} method to peek element of scanner without
+ * moving iterator.
+ * <p>
+ * Each HaeinsaKeyValueScanner have sequenceId which represent which scanner is
+ * newer one.
  */
 public interface HaeinsaKeyValueScanner {
 	Comparator<HaeinsaKeyValueScanner> COMPARATOR = new Comparator<HaeinsaKeyValueScanner>() {
@@ -42,16 +46,18 @@ public interface HaeinsaKeyValueScanner {
 
 	/**
 	 *
-	 * @return Return TRowLock if exist in HaeinsaKeyValue. Otherwise, return null
+	 * @return Return TRowLock if exist in HaeinsaKeyValue. Otherwise, return
+	 *         null
 	 * @throws IOException
 	 */
 	TRowLock peekLock() throws IOException;
 
 	/**
 	 * Get the sequence id associated with this KeyValueScanner. This is
-	 * required for comparing multiple KeyValueScanners to find out which one has the
-	 * latest data. The default implementation for this would be to return 0.
-	 * A KeyValueScanner having lower sequence id will be considered to be the newer one.
+	 * required for comparing multiple KeyValueScanners to find out which one
+	 * has the latest data. The default implementation for this would be to
+	 * return 0. A KeyValueScanner having lower sequence id will be considered
+	 * to be the newer one.
 	 */
 	long getSequenceID();
 

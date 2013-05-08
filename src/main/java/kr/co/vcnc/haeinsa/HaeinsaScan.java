@@ -12,14 +12,16 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 
 /**
- * HaeinsaScan is analogous to {@link Scan} class in HBase.
- * HaeinsaScan can be used to retrieve range of row with specific family or (family, qualifier) pairs.
- *
- * <p>HaeinsaScan do not support to set batch value, but only support caching.
- * So if user only specify column family and retrieve data from HBase,
- * {@link HaeinsaResultScanner} will return whole column family of the row at one time.
- *
- * <p>Setting batch size will be supported in future....(?)
+ * HaeinsaScan is analogous to {@link Scan} class in HBase. HaeinsaScan can be
+ * used to retrieve range of row with specific family or (family, qualifier)
+ * pairs.
+ * <p>
+ * HaeinsaScan do not support to set batch value, but only support caching. So
+ * if user only specify column family and retrieve data from HBase,
+ * {@link HaeinsaResultScanner} will return whole column family of the row at
+ * one time.
+ * <p>
+ * Setting batch size will be supported in future....(?)
  */
 public class HaeinsaScan {
 	private byte[] startRow = HConstants.EMPTY_START_ROW;
@@ -27,13 +29,15 @@ public class HaeinsaScan {
 	private int caching = -1;
 	private boolean cacheBlocks = true;
 
-	//	{ family -> qualifier }
-	private Map<byte[], NavigableSet<byte[]>> familyMap = new TreeMap<byte[], NavigableSet<byte[]>>(
-			Bytes.BYTES_COMPARATOR);
+	// { family -> qualifier }
+	private Map<byte[], NavigableSet<byte[]>> familyMap =
+			new TreeMap<byte[], NavigableSet<byte[]>>(Bytes.BYTES_COMPARATOR);
 
 	/**
 	 * Create a HaeinsaScan instance.
-	 * <p>If row is not specified for HaeinsaScan, the Scanner will start from the beginning of the table.
+	 * <p>
+	 * If row is not specified for HaeinsaScan, the Scanner will start from the
+	 * beginning of the table.
 	 */
 	public HaeinsaScan() {
 	}
@@ -44,8 +48,7 @@ public class HaeinsaScan {
 	 * If the specified row does not exist, the Scanner will start from the next
 	 * closest row after the specified row.
 	 *
-	 * @param startRow
-	 *            row to start scanner at or after
+	 * @param startRow row to start scanner at or after
 	 */
 	public HaeinsaScan(byte[] startRow) {
 		this.startRow = startRow;
@@ -54,10 +57,8 @@ public class HaeinsaScan {
 	/**
 	 * Create a Scan operation for the range of rows specified.
 	 *
-	 * @param startRow
-	 *            row to start scanner at or after (inclusive)
-	 * @param stopRow
-	 *            row to stop scanner before (exclusive)
+	 * @param startRow row to start scanner at or after (inclusive)
+	 * @param stopRow row to stop scanner before (exclusive)
 	 */
 	public HaeinsaScan(byte[] startRow, byte[] stopRow) {
 		this.startRow = startRow;
@@ -67,10 +68,8 @@ public class HaeinsaScan {
 	/**
 	 * Creates a new instance of this class while copying all values.
 	 *
-	 * @param scan
-	 *            The scan instance to copy from.
-	 * @throws IOException
-	 *             When copying the values fails.
+	 * @param scan The scan instance to copy from.
+	 * @throws IOException When copying the values fails.
 	 */
 	public HaeinsaScan(HaeinsaScan scan) throws IOException {
 		startRow = scan.getStartRow();
@@ -96,8 +95,7 @@ public class HaeinsaScan {
 	 * <p>
 	 * Overrides previous calls to addColumn for this family.
 	 *
-	 * @param family
-	 *            family name
+	 * @param family family name
 	 * @return this
 	 */
 	public HaeinsaScan addFamily(byte[] family) {
@@ -111,10 +109,8 @@ public class HaeinsaScan {
 	 * <p>
 	 * Overrides previous calls to addFamily for this family.
 	 *
-	 * @param family
-	 *            family name
-	 * @param qualifier
-	 *            column qualifier
+	 * @param family family name
+	 * @param qualifier column qualifier
 	 * @return this
 	 */
 	public HaeinsaScan addColumn(byte[] family, byte[] qualifier) {
@@ -124,15 +120,13 @@ public class HaeinsaScan {
 		}
 		set.add(qualifier);
 		familyMap.put(family, set);
-
 		return this;
 	}
 
 	/**
 	 * Set the start row of the scan.
 	 *
-	 * @param startRow
-	 *            row to start scan on, inclusive
+	 * @param startRow row to start scan on, inclusive
 	 * @return this
 	 */
 	public HaeinsaScan setStartRow(byte[] startRow) {
@@ -143,8 +137,7 @@ public class HaeinsaScan {
 	/**
 	 * Set the stop row.
 	 *
-	 * @param stopRow
-	 *            row to end at (exclusive)
+	 * @param stopRow row to end at (exclusive)
 	 * @return this
 	 */
 	public HaeinsaScan setStopRow(byte[] stopRow) {
@@ -158,8 +151,7 @@ public class HaeinsaScan {
 	 * apply. Higher caching values will enable faster scanners but will use
 	 * more memory.
 	 *
-	 * @param caching
-	 *            the number of rows for caching
+	 * @param caching the number of rows for caching
 	 */
 	public void setCaching(int caching) {
 		this.caching = caching;
@@ -168,8 +160,7 @@ public class HaeinsaScan {
 	/**
 	 * Setting the familyMap
 	 *
-	 * @param familyMap
-	 *            map of family to qualifier
+	 * @param familyMap map of family to qualifier
 	 * @return this
 	 */
 	public HaeinsaScan setFamilyMap(Map<byte[], NavigableSet<byte[]>> familyMap) {
@@ -235,18 +226,17 @@ public class HaeinsaScan {
 	}
 
 	/**
-	 * Set whether blocks should be cached for this Scan.
-	 * HBase 에서 해당 Scan 을 위해서 HFile 의 Block 을 memory 에 Cache 하고 있을 것인지를 결정할 수 있다.
-	 * 일반적으로 Block 을 caching 하면 다음번 get request 에 대한 응답이 빠를 수 있으나 DB 의 메모리 소모가 심해진다.
-	 * cacheBlocks 와 caching 은 서로 관계가 없는 설정이다.
+	 * Set whether blocks should be cached for this Scan. HBase 에서 해당 Scan 을 위해서
+	 * HFile 의 Block 을 memory 에 Cache 하고 있을 것인지를 결정할 수 있다. 일반적으로 Block 을 caching
+	 * 하면 다음번 get request 에 대한 응답이 빠를 수 있으나 DB 의 메모리 소모가 심해진다. cacheBlocks 와
+	 * caching 은 서로 관계가 없는 설정이다.
 	 * <p>
 	 * This is true by default. When true, default settings of the table and
 	 * family are used (this will never override caching blocks if the block
 	 * cache is disabled for that family or entirely).
 	 *
-	 * @param cacheBlocks
-	 *            if false, default settings are overridden and blocks will not
-	 *            be cached
+	 * @param cacheBlocks if false, default settings are overridden and blocks
+	 *        will not be cached
 	 */
 	public void setCacheBlocks(boolean cacheBlocks) {
 		this.cacheBlocks = cacheBlocks;
@@ -255,8 +245,8 @@ public class HaeinsaScan {
 	/**
 	 * Get whether blocks should be cached for this Scan.
 	 *
-	 * @return true if default setting of block caching should be used, false if blocks should
-	 *         not be cached
+	 * @return true if default setting of block caching should be used, false if
+	 *         blocks should not be cached
 	 */
 	public boolean getCacheBlocks() {
 		return cacheBlocks;
