@@ -85,6 +85,10 @@
 		    <property name="format" value="^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$" />
 		</module>
 		<module name="TypeName" />
+		<!-- configure size violations -->
+		<module name="LineLength">
+			<property name="max" value="160" />
+		</module>
 		<!-- configure whitespaces -->
 		<module name="GenericWhitespace" />
 		<module name="EmptyForInitializerPad" />

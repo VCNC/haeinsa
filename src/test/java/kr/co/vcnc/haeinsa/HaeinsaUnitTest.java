@@ -767,10 +767,18 @@ public class HaeinsaUnitTest {
 		assertTrue(checkLockExist(hTestTable, Bytes.toBytes("row8")));
 
 		tx = tm.begin();
-		assertArrayEquals(testTable.get(tx, new HaeinsaGet(Bytes.toBytes("row5"))).getValue(Bytes.toBytes("data"), Bytes.toBytes("col5")), Bytes.toBytes("value5"));
-		assertArrayEquals(testTable.get(tx, new HaeinsaGet(Bytes.toBytes("row6"))).getValue(Bytes.toBytes("data"), Bytes.toBytes("col6")), Bytes.toBytes("value6"));
-		assertArrayEquals(testTable.get(tx, new HaeinsaGet(Bytes.toBytes("row7"))).getValue(Bytes.toBytes("data"), Bytes.toBytes("col7")), Bytes.toBytes("value7"));
-		assertArrayEquals(testTable.get(tx, new HaeinsaGet(Bytes.toBytes("row8"))).getValue(Bytes.toBytes("data"), Bytes.toBytes("col8")), Bytes.toBytes("value8"));
+		assertArrayEquals(testTable.get(tx,
+				new HaeinsaGet(Bytes.toBytes("row5"))).getValue(Bytes.toBytes("data"), Bytes.toBytes("col5")),
+				Bytes.toBytes("value5"));
+		assertArrayEquals(testTable.get(tx,
+				new HaeinsaGet(Bytes.toBytes("row6"))).getValue(Bytes.toBytes("data"), Bytes.toBytes("col6")),
+				Bytes.toBytes("value6"));
+		assertArrayEquals(testTable.get(tx,
+				new HaeinsaGet(Bytes.toBytes("row7"))).getValue(Bytes.toBytes("data"), Bytes.toBytes("col7")),
+				Bytes.toBytes("value7"));
+		assertArrayEquals(testTable.get(tx,
+				new HaeinsaGet(Bytes.toBytes("row8"))).getValue(Bytes.toBytes("data"), Bytes.toBytes("col8")),
+				Bytes.toBytes("value8"));
 		tx.rollback();
 
 		/**
