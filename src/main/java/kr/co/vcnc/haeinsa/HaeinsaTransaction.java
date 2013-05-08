@@ -109,44 +109,6 @@ public class HaeinsaTransaction {
 		}
 	}
 	
-	/**
-	 * Determine commitMethod among {@link CommitMethod#READ_ONLY}, {@link CommitMethod#SINGLE_ROW_PUT_ONLY} and
-	 * {@link CommitMethod#MULTI_ROW_MUTATIONS}
-	 * <p> Transaction of single row with at least one of {@link HaeinsaDelete} will be considered as 
-	 * {@link CommitMethod#MULTI_ROW_MUTATIONS}.
-	 * @return
-	 */
-	protected CommitMethod determineCommitMethod(){
-		int count = 0;
-		boolean haveMuations = false;
-		CommitMethod method = CommitMethod.NOTHING;
-		for (HaeinsaTableTransaction tableState : txStates.getTableStates().values()){
-			for (HaeinsaRowTransaction rowState : tableState.getRowStates().values()){
-				count ++;
-				if(rowState.getMutations().size()>0){
-					//	if any rowTx in Tx contains mutation ( Put/Delete ) 
-					haveMuations = true;
-				}
-				
-				if (count==1){
-					if (rowState.getMutations().size() <= 0){
-						method = CommitMethod.READ_ONLY;
-					}else if (rowState.getMutations().get(0) instanceof HaeinsaPut && rowState.getMutations().size() == 1) {
-						method = CommitMethod.SINGLE_ROW_PUT_ONLY;
-					}else if(haveMuations){
-						method = CommitMethod.MULTI_ROW_MUTATIONS;	//	if rowTx contains HaeinsaDelete
-					}
-				}
-				if (count > 1){
-					if(haveMuations)
-						return CommitMethod.MULTI_ROW_MUTATIONS;
-					else
-						method = CommitMethod.READ_ONLY;
-				}
-			}
-		}
-		return method;
-	}
 		
 	/**
 	 * Commit multiple row Transaction or single row Transaction which includes Delete operation.
@@ -313,7 +275,7 @@ public class HaeinsaTransaction {
 		//	primaryRowKey can be null at this point, which means there is no rowStates at all.
 		setPrimary(primaryRowKey);
 		
-		CommitMethod method = determineCommitMethod();
+		CommitMethod method = txStates.determineCommitMethod();
 		switch (method) {
 		case MULTI_ROW_MUTATIONS:{
 			commitMultiRowsMutation();
@@ -511,7 +473,50 @@ public class HaeinsaTransaction {
 		public NavigableMap<byte[], HaeinsaTableTransaction> getTableStates(){
 			return tableStates;
 		}
+
+		/**
+		 * Determine commitMethod among {@link CommitMethod#READ_ONLY}, {@link CommitMethod#SINGLE_ROW_PUT_ONLY} and
+		 * {@link CommitMethod#MULTI_ROW_MUTATIONS}
+		 * <p> Transaction of single row with at least one of {@link HaeinsaDelete} will be considered as 
+		 * {@link CommitMethod#MULTI_ROW_MUTATIONS}.
+		 * @return
+		 */
+		public CommitMethod determineCommitMethod(){
+			int count = 0;
+			boolean haveMuations = false;
+			CommitMethod method = CommitMethod.NOTHING;
+			for (HaeinsaTableTransaction tableState : tableStates.values()){
+				for (HaeinsaRowTransaction rowState : tableState.getRowStates().values()){
+					count ++;
+					if(rowState.getMutations().size()>0){
+						//	if any rowTx in Tx contains mutation ( Put/Delete ) 
+						haveMuations = true;
+					}
+					
+					if (count==1){
+						if (rowState.getMutations().size() <= 0){
+							method = CommitMethod.READ_ONLY;
+						}else if (rowState.getMutations().get(0) instanceof HaeinsaPut && rowState.getMutations().size() == 1) {
+							method = CommitMethod.SINGLE_ROW_PUT_ONLY;
+						}else if(haveMuations){
+							method = CommitMethod.MULTI_ROW_MUTATIONS;	//	if rowTx contains HaeinsaDelete
+						}
+					}
+					if (count > 1){
+						if(haveMuations)
+							return CommitMethod.MULTI_ROW_MUTATIONS;
+						else
+							method = CommitMethod.READ_ONLY;
+					}
+				}
+			}
+			return method;
+		}
 		
+		/**
+		 * TRowKey(table,row)로 Hash 정렬된 mutation Row 들을 return 한다.
+		 * @return
+		 */
 		public NavigableMap<TRowKey, HaeinsaRowTransaction> getMutationRowStates(){
 			TreeMap<TRowKey, HaeinsaRowTransaction> map = Maps.newTreeMap(comparator);
 			for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : tableStates.entrySet()){
@@ -529,6 +534,10 @@ public class HaeinsaTransaction {
 			return map;
 		}
 		
+		/**
+		 * TRowKey(table,row)로 Hash 정렬된 read-only Row 들을 return 한다.
+		 * @return
+		 */
 		public NavigableMap<TRowKey, HaeinsaRowTransaction> getReadOnlyRowStates(){
 			TreeMap<TRowKey, HaeinsaRowTransaction> map = Maps.newTreeMap(comparator);
 			for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : tableStates.entrySet()){
