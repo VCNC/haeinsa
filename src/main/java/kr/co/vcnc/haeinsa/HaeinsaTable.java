@@ -119,9 +119,7 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 				}
 			}
 		}
-		// To ymkim
-		// rowState == null이고 hGet 이 family 가 아예 없는 경우에도
-		// 여전히 lock 을 가져올 수 있지 않나?
+
 		if (rowState == null) {
 			if (hGet.hasFamilies()) {
 				hGet.addColumn(LOCK_FAMILY, LOCK_QUALIFIER);
@@ -317,9 +315,8 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 		}
 		scanners.add(new HBaseScanScanner(table.getScanner(hScan)));
 
-		// scanners at this moment = union( muationScanners from RowTransaction,
-		// Scanner of
-		// intraScan )
+		// scanners at this moment is:
+		// union( muationScanners from RowTransaction, Scanner of intraScan )
 		return new ClientScanner(tx, scanners, hScan.getFamilyMap(), intraScan, false);
 	}
 
