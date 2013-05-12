@@ -1,6 +1,8 @@
 # Haeinsa
 
-Haeinsa is linearly scalable multi-row transaction library for HBase. The isolation level of transaction is serializable snapshot isolation.
+Haeinsa is linearly scalable multi-row, multi-table transaction library for HBase.
+Haeinsa uses two-phase locking and multi-version concurrency control for implementing transaction.
+The isolation level of transaction is serializable.
 
 ## Usage
 
