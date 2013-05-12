@@ -24,8 +24,7 @@ public final class TestingUtility {
 		return new HaeinsaTablePool(conf, 128, new HTableInterfaceFactory() {
 
 			@Override
-			public void releaseHTableInterface(HTableInterface table)
-					throws IOException {
+			public void releaseHTableInterface(HTableInterface table) throws IOException {
 				table.close();
 			}
 
