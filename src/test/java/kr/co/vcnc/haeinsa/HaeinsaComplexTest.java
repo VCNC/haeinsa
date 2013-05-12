@@ -4,12 +4,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Random;
-import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.hadoop.conf.Configuration;
@@ -18,18 +16,12 @@ import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
-import org.apache.hadoop.hbase.ZooKeeperConnectionException;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
-import org.apache.hadoop.hbase.client.HConnectionManager;
-import org.apache.hadoop.hbase.client.HTable;
-import org.apache.hadoop.hbase.client.HTableInterface;
-import org.apache.hadoop.hbase.client.HTableInterfaceFactory;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 /**
@@ -77,27 +69,7 @@ public class HaeinsaComplexTest {
 	@Test
 	public void testSimepleIncrement() throws Exception {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
-		HaeinsaTablePool tablePool = new HaeinsaTablePool(CONF, 128, new HTableInterfaceFactory() {
-
-			@Override
-			public void releaseHTableInterface(HTableInterface table)
-					throws IOException {
-				table.close();
-			}
-
-			@Override
-			public HTableInterface createHTableInterface(Configuration config,
-					byte[] tableName) {
-				try {
-					return new HTable(tableName, HConnectionManager.getConnection(config), threadPool);
-				} catch (ZooKeeperConnectionException e) {
-					e.printStackTrace();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-				return null;
-			}
-		});
+		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
 
 		final HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
 		HaeinsaTableIface testTable = tablePool.getTable("test");
@@ -159,27 +131,7 @@ public class HaeinsaComplexTest {
 	@Test
 	public void testConcurrentRandomIncrement() throws Exception {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
-		HaeinsaTablePool tablePool = new HaeinsaTablePool(CONF, 128, new HTableInterfaceFactory() {
-
-			@Override
-			public void releaseHTableInterface(HTableInterface table)
-					throws IOException {
-				table.close();
-			}
-
-			@Override
-			public HTableInterface createHTableInterface(Configuration config,
-					byte[] tableName) {
-				try {
-					return new HTable(tableName, HConnectionManager.getConnection(config), threadPool);
-				} catch (ZooKeeperConnectionException e) {
-					e.printStackTrace();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-				return null;
-			}
-		});
+		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
 
 		final HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
 		final HaeinsaTableIface testTable = tablePool.getTable("test");
@@ -229,8 +181,7 @@ public class HaeinsaComplexTest {
 						failCount.getAndIncrement();
 					}
 				}
-				System.out.println("iteration : " + iteration
-						+ " on Thread : " + Thread.currentThread().getName());
+				System.out.println(String.format("iteration : %d on Thread : %s", iteration, Thread.currentThread().getName()));
 			}
 		};
 
@@ -268,8 +219,11 @@ public class HaeinsaComplexTest {
 	 * Thread 에서 동시에 여러 번의 동일한 Transaction 을 시도한다. 각각의 Transaction 은 이전에 DB 에
 	 * 있었던 값을 읽고 그 값을 기반으로 난수와 더한 후에 hash 를 걸어서 얻은 새로운 값을 DB 에 쓰게 된다.
 	 *
-	 * - Pseudo code 는 다음과 같다. db.put (row1, hash( db.get(row1) + random ))
+	 * Pseudo code 는 다음과 같다.
+	 * <pre>
+	 * db.put (row1, hash( db.get(row1) + random ))
 	 * db.put (row2, hash( db.get(row2) + random ))
+	 * </pre>
 	 *
 	 * 만약 Transaction 이 성공을 하게 되면 Local memory lock 을 획득한 후에 Local 에 있는
 	 * AtomicInteger 2개를 compareAndSet 으로 변경한다.
@@ -282,27 +236,7 @@ public class HaeinsaComplexTest {
 	@Test
 	public void testSerializability() throws Exception {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
-		HaeinsaTablePool tablePool = new HaeinsaTablePool(CONF, 128, new HTableInterfaceFactory() {
-
-			@Override
-			public void releaseHTableInterface(HTableInterface table)
-					throws IOException {
-				table.close();
-			}
-
-			@Override
-			public HTableInterface createHTableInterface(Configuration config,
-					byte[] tableName) {
-				try {
-					return new HTable(tableName, HConnectionManager.getConnection(config), threadPool);
-				} catch (ZooKeeperConnectionException e) {
-					e.printStackTrace();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-				return null;
-			}
-		});
+		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
 
 		final HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
 		final HaeinsaTableIface testTable = tablePool.getTable("test");
@@ -314,7 +248,8 @@ public class HaeinsaComplexTest {
 		final AtomicLong value2 = new AtomicLong(new Random().nextInt());
 
 		final long maxIter = 100;
-		int numberOfJob = 10;
+		final int numberOfJob = 10;
+		final CountDownLatch countDownLatch = new CountDownLatch(numberOfJob);
 		final AtomicLong successCount = new AtomicLong(0);
 		final AtomicLong failCount = new AtomicLong(0);
 
@@ -333,14 +268,18 @@ public class HaeinsaComplexTest {
 		testTable.put(tx, put);
 		tx.commit();
 
-		/**
-		 * newValue1 = hashWithRandom( oldValue1 ) newValue2 = hashWithRandom(
-		 * oldValue2 ) tx.begin(); tx.write(newValue1) tx.write(newValue2)
+		/*
+		 * newValue1 = hashWithRandom( oldValue1 )
+		 * newValue2 = hashWithRandom( oldValue2 )
+		 *
+		 * tx.begin();
+		 * tx.write(newValue1);
+		 * tx.write(newValue2);
 		 * tx.commit();
 		 */
-		Callable<Void> serialJob = new Callable<Void>() {
+		Runnable serialJob = new Runnable() {
 			@Override
-			public Void call() throws Exception {
+			public void run() {
 				int iteration = 0;
 				while (iteration < maxIter) {
 					try {
@@ -369,22 +308,18 @@ public class HaeinsaComplexTest {
 						failCount.getAndIncrement();
 					}
 				}
-				System.out.println(String.format("iteration : %d on Thread : Ts",
-						iteration, Thread.currentThread().getName()));
-				return null;
+				System.out.println(String.format("iteration : %d on Thread : Ts", iteration, Thread.currentThread().getName()));
+				countDownLatch.countDown();
 			}
 		};
 
 		ExecutorService service = Executors.newFixedThreadPool(numberOfJob,
 				new ThreadFactoryBuilder().setNameFormat("Serializability-job-thread-%d").build());
 
-		ArrayList<Future<Void>> futures = Lists.newArrayList();
 		for (int i = 0; i < numberOfJob; i++) {
-			futures.add(service.submit(serialJob));
+			service.execute(serialJob);
 		}
-		for (Future<Void> future : futures) {
-			future.get();
-		}
+		countDownLatch.await();
 
 		long dbValue1 = Bytes.toLong(testTable.get(tx, new HaeinsaGet(row1).addColumn(CF, CQ1)).getValue(CF, CQ1));
 		long dbValue2 = Bytes.toLong(testTable.get(tx, new HaeinsaGet(row2).addColumn(CF, CQ2)).getValue(CF, CQ2));
@@ -392,8 +327,7 @@ public class HaeinsaComplexTest {
 		assertEquals(dbValue2, value2.get());
 		System.out.println("Number of Success Transactions : " + successCount.get());
 		System.out.println("Number of Failed Transactions : " + failCount.get());
-		System.out.println("Conflict rate : " + failCount.get() /
-				((double) failCount.get() + (double) successCount.get()) * 100.0);
+		System.out.println("Conflict rate : " + failCount.get() / ((double) failCount.get() + (double) successCount.get()) * 100.0);
 
 		// release resources
 		testTable.close();
@@ -408,7 +342,7 @@ public class HaeinsaComplexTest {
 	 * @param oldValue
 	 * @return
 	 */
-	public long nextHashedValue(long oldValue) {
+	private long nextHashedValue(long oldValue) {
 		String result = "";
 		result += oldValue;
 		result += new Random().nextInt();
