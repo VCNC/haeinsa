@@ -136,7 +136,7 @@ public class HaeinsaTransaction {
 		}
 		long maxCurrentCommitTimestamp = System.currentTimeMillis();
 		long maxIterationCount = Long.MIN_VALUE;
-	
+
 		// determine commitTimestamp & determine primary row
 		// fill mutationRowStates & readOnlyRowStates from rowStates
 		for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : txStates.getTableStates().entrySet()) {
@@ -148,7 +148,7 @@ public class HaeinsaTransaction {
 		}
 		setPrewriteTimestamp(maxCurrentCommitTimestamp + 1);
 		setCommitTimestamp(Math.max(getPrewriteTimestamp(), maxCurrentCommitTimestamp + maxIterationCount));
-	
+
 		// TODO(Andrew) : primaryRowKey 를 고를 때 이왕이면 mutations 중에 HaeinsaPut 이
 		// 가장 처음에 있는 Row 를 골라서 applyMutations 에 걸리는 시간을 줄이면 좋겠다.
 		// setPrimary among mutationRowStates first, next among
@@ -167,7 +167,7 @@ public class HaeinsaTransaction {
 		// primaryRowKey can be null at this point, which means there is no
 		// rowStates at all.
 		setPrimary(primaryRowKey);
-	
+
 		CommitMethod method = txStates.determineCommitMethod();
 		switch (method) {
 		case MULTI_ROW_MUTATIONS: {
