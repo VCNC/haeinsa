@@ -5,25 +5,21 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-import java.io.IOException;
 import java.util.Iterator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import kr.co.vcnc.haeinsa.exception.ConflictException;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
-import org.apache.hadoop.hbase.ZooKeeperConnectionException;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
-import org.apache.hadoop.hbase.client.HConnectionManager;
-import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTableInterface;
-import org.apache.hadoop.hbase.client.HTableInterfaceFactory;
 import org.apache.hadoop.hbase.client.HTablePool;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -85,27 +81,7 @@ public class HaeinsaUnitTest {
 	@Test
 	public void testTransaction() throws Exception {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
-		HaeinsaTablePool tablePool = new HaeinsaTablePool(CONF, 128, new HTableInterfaceFactory() {
-
-			@Override
-			public void releaseHTableInterface(HTableInterface table)
-					throws IOException {
-				table.close();
-			}
-
-			@Override
-			public HTableInterface createHTableInterface(Configuration config,
-					byte[] tableName) {
-				try {
-					return new HTable(tableName, HConnectionManager.getConnection(config), threadPool);
-				} catch (ZooKeeperConnectionException e) {
-					e.printStackTrace();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-				return null;
-			}
-		});
+		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
 
 		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
 		HaeinsaTableIface testTable = tablePool.getTable("test");
@@ -356,27 +332,7 @@ public class HaeinsaUnitTest {
 	@Test
 	public void testConflictAndAbort() throws Exception {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
-		HaeinsaTablePool tablePool = new HaeinsaTablePool(CONF, 128, new HTableInterfaceFactory() {
-
-			@Override
-			public void releaseHTableInterface(HTableInterface table)
-					throws IOException {
-				table.close();
-			}
-
-			@Override
-			public HTableInterface createHTableInterface(Configuration config,
-					byte[] tableName) {
-				try {
-					return new HTable(tableName, HConnectionManager.getConnection(config), threadPool);
-				} catch (ZooKeeperConnectionException e) {
-					e.printStackTrace();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-				return null;
-			}
-		});
+		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
 
 		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
 		HaeinsaTableIface testTable = tablePool.getTable("test");
@@ -455,27 +411,7 @@ public class HaeinsaUnitTest {
 	@Test
 	public void testConflictAndRecover() throws Exception {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
-		HaeinsaTablePool tablePool = new HaeinsaTablePool(CONF, 128, new HTableInterfaceFactory() {
-
-			@Override
-			public void releaseHTableInterface(HTableInterface table)
-					throws IOException {
-				table.close();
-			}
-
-			@Override
-			public HTableInterface createHTableInterface(Configuration config,
-					byte[] tableName) {
-				try {
-					return new HTable(tableName, HConnectionManager.getConnection(config), threadPool);
-				} catch (ZooKeeperConnectionException e) {
-					e.printStackTrace();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-				return null;
-			}
-		});
+		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
 
 		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
 		HaeinsaTableIfaceInternal testTable = (HaeinsaTableIfaceInternal) tablePool.getTable("test");
@@ -592,41 +528,21 @@ public class HaeinsaUnitTest {
 	@Test
 	public void testHBaseHaeinsaMigration() throws Exception {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
-		HaeinsaTablePool tablePool = new HaeinsaTablePool(CONF, 128, new HTableInterfaceFactory() {
-
-			@Override
-			public void releaseHTableInterface(HTableInterface table)
-					throws IOException {
-				table.close();
-			}
-
-			@Override
-			public HTableInterface createHTableInterface(Configuration config,
-					byte[] tableName) {
-				try {
-					return new HTable(tableName, HConnectionManager.getConnection(config), threadPool);
-				} catch (ZooKeeperConnectionException e) {
-					e.printStackTrace();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-				return null;
-			}
-		});
+		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
 
 		HTablePool hbasePool = new HTablePool(CONF, 128, PoolType.Reusable);
 		HTableInterface hTestTable = hbasePool.getTable("test");
 
-		/**
+		/*
 		 * HBase 의 row1 에 바로 put 을 한 후에 row1 에 Haeinsa Get 을 하고 다른 row2 에
 		 * Haeinsa put 을 한 후에 transaction 을 commit 한다. row1 과 row2 가 모두 lock 정보가
 		 * 적힌 Haeinsa 로 migration 되어야 한다. ( multiRowCommit() 을 사용하게 되므로 )
 		 *
 		 * 1. HBase put { row1, data, col1 }
-		 *
-		 * 2. Get { row1, data, col1 } 3. Put { row2, data, col2 }
-		 *
-		 * 4. Get { row1, data, col1 } 5. Get { row2, data, col2 }
+		 * 2. Get { row1, data, col1 }
+		 * 3. Put { row2, data, col2 }
+		 * 4. Get { row1, data, col1 }
+		 * 5. Get { row2, data, col2 }
 		 */
 		Put hPut = new Put(Bytes.toBytes("row1"));
 		hPut.add(Bytes.toBytes("data"), Bytes.toBytes("col1"), Bytes.toBytes("value1"));
@@ -663,12 +579,11 @@ public class HaeinsaUnitTest {
 		assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row1")));
 		assertTrue(checkLockExist(hTestTable, Bytes.toBytes("row2")));
 
-		/**
+		/*
 		 * HBase 의 row3 에 바로 put 을 한 후에 row3 에 Haeinsa Put 을 하고 transaction 을
 		 * commit 한다. row3 는 lock 정보가 적힌 Haeinsa 로 migration 되어야 한다.
 		 *
 		 * 1. HBase put { row3, data, col4 }
-		 *
 		 * 2. Put { row3, data, col3 }
 		 */
 		hPut = new Put(Bytes.toBytes("row3"));
@@ -692,12 +607,11 @@ public class HaeinsaUnitTest {
 		// now have lock at { row3 }
 		assertTrue(checkLockExist(hTestTable, Bytes.toBytes("row3")));
 
-		/**
+		/*
 		 * HBase 의 row4에 바로 put 을 한 후에 row4 에 Haeinsa Delete 를 하고 transaction 을
 		 * commit 한다. row4 는 lock 정보가 적힌 Haeinsa 로 migration 하고 데이터는 비어 있어야 한다.
 		 *
 		 * 1. HBase put { row4, data, col4 }
-		 *
 		 * 2. Delete { row4, data, col4 }
 		 */
 		hPut = new Put(Bytes.toBytes("row4"));
@@ -719,14 +633,15 @@ public class HaeinsaUnitTest {
 		// now have lock at { row4 }
 		assertTrue(checkLockExist(hTestTable, Bytes.toBytes("row4")));
 
-		/**
+		/*
 		 * HBase 의 row5, row6, row7 에 바로 put 을 한 후에 row5 ~ row8 에 Haeinsa Scan 을
 		 * 하고 row8 에 Haeinsa put 을 한 후에 Transaction 을 commit 한다.
 		 *
-		 * 1. HBase put { row5, data, col5 } 2. HBase put { row6, data, col6 }
+		 * 1. HBase put { row5, data, col5 }
+		 * 2. HBase put { row6, data, col6 }
 		 * 3. HBase put { row7, data, col7 }
-		 *
-		 * 4. Scan { [ row5 ~ row8 ] } 5. Put { row8, data, col8 }
+		 * 4. Scan { [ row5 ~ row8 ] }
+		 * 5. Put { row8, data, col8 }
 		 */
 		// test HBase put -> Haeinsa Scan ( w\ multiRowCommit() ) Migration
 		hPut = new Put(Bytes.toBytes("row5"));
@@ -781,15 +696,14 @@ public class HaeinsaUnitTest {
 				Bytes.toBytes("value8"));
 		tx.rollback();
 
-		/**
+		/*
 		 * HBase 의 row9 에 바로 여러 column 을 미리 put 한 후에 row9 에 intraScan 을 하고 row10
 		 * 에 put 을 한 후에 Transaction 을 commit 한다. row10 과 row11 이 모두 lock 정보가 적힌
 		 * Haeinsa 로 migration 되어야 한다. ( multiRowCommit() 을 사용하게 되므로 )
 		 *
 		 * 1. HBase put { row9, data, [col9-ver1, col9-ver2, col9-ver3] }
-		 *
-		 * 2. IntraScan { row9, data, col9 ~ col9-ver3 } 3. Put { row10, data,
-		 * col10 }
+		 * 2. IntraScan { row9, data, col9 ~ col9-ver3 }
+		 * 3. Put { row10, data, col10 }
 		 */
 		hPut = new Put(Bytes.toBytes("row9"));
 		hPut.add(Bytes.toBytes("data"), Bytes.toBytes("col9-ver1"), Bytes.toBytes("value9-ver1"));
@@ -820,13 +734,13 @@ public class HaeinsaUnitTest {
 		assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row9")));
 		assertTrue(checkLockExist(hTestTable, Bytes.toBytes("row10")));
 
-		/**
+		/*
 		 * 비어 있는 row11 에 intraScan 을 통해 read 를 시도한 후에 row10 에 HaeinsaPut 을 하고
 		 * Transaction 을 commit 한다. row10 과 row11 은 모두 Haeinsa 로 migration 되고
 		 * lock 을 보유해야 한다.
 		 *
-		 * 1. intraScan { row11, data, col11 ~ col11-ver3 } -> empty 2. Put {
-		 * row10, data, col10 }
+		 * 1. intraScan { row11, data, col11 ~ col11-ver3 } -> empty
+		 * 2. Put { row10, data, col10 }
 		 */
 		byte[] row = Bytes.toBytes("row10");
 		byte[] oldPutLock = getLock(hTestTable, row);
@@ -869,34 +783,16 @@ public class HaeinsaUnitTest {
 	@Test
 	public void testMultipleMutations() throws Exception {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
-		HaeinsaTablePool tablePool = new HaeinsaTablePool(CONF, 128, new HTableInterfaceFactory() {
+		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
 
-			@Override
-			public void releaseHTableInterface(HTableInterface table)
-					throws IOException {
-				table.close();
-			}
-
-			@Override
-			public HTableInterface createHTableInterface(Configuration config,
-					byte[] tableName) {
-				try {
-					return new HTable(tableName, HConnectionManager.getConnection(config), threadPool);
-				} catch (ZooKeeperConnectionException e) {
-					e.printStackTrace();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-				return null;
-			}
-		});
 		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
 		HaeinsaTableIface testTable = tablePool.getTable("test");
 
-		/**
+		/*
 		 * 일단 row-abc 라는 row 에 2개의 값과 row-d 라는 row 에 1개의 값을 put 한다.
 		 *
-		 * 1. put { row-abc, data, column-a } 2. put { row-abc, data, column-b }
+		 * 1. put { row-abc, data, column-a }
+		 * 2. put { row-abc, data, column-b }
 		 * 3. put { row-d, meta, column-d }
 		 */
 		HaeinsaTransaction tx = tm.begin();
@@ -914,9 +810,11 @@ public class HaeinsaUnitTest {
 
 		tx.commit();
 
-		/**
-		 * 4. put { row-abc, data, column-c } 5. put { row-e, meta, column-e }
-		 * 6. deleteFamily { row-abc, data } 7. put { row-abc, data, col-after }
+		/*
+		 * 4. put { row-abc, data, column-c }
+		 * 5. put { row-e, meta, column-e }
+		 * 6. deleteFamily { row-abc, data }
+		 * 7. put { row-abc, data, col-after }
 		 */
 		tx = tm.begin();
 		put = new HaeinsaPut(Bytes.toBytes("row-abc"));
@@ -937,11 +835,12 @@ public class HaeinsaUnitTest {
 
 		tx.commit();
 
-		/**
+		/*
 		 * 결과를 확인하기 위한 단계이다. 3, 5, 7 번의 put만 남아 있어야 한다.
 		 *
-		 * 3. put { row-d, meta, column-d } 5. put { row-e, meta, column-e } 7.
-		 * put { row-abc, data, col-after } ( row-abc 의 column 이 유일해야 한다. )
+		 * 3. put { row-d, meta, column-d }
+		 * 5. put { row-e, meta, column-e }
+		 * 7. put { row-abc, data, col-after } ( row-abc 의 column 이 유일해야 한다. )
 		 */
 		tx = tm.begin();
 		HaeinsaGet get = new HaeinsaGet(Bytes.toBytes("row-d"));
@@ -975,42 +874,22 @@ public class HaeinsaUnitTest {
 	@Test
 	public void testHaeinsaTableWithoutTx() throws Exception {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
-		HaeinsaTablePool tablePool = new HaeinsaTablePool(CONF, 128, new HTableInterfaceFactory() {
+		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
 
-			@Override
-			public void releaseHTableInterface(HTableInterface table)
-					throws IOException {
-				table.close();
-			}
-
-			@Override
-			public HTableInterface createHTableInterface(Configuration config,
-					byte[] tableName) {
-				try {
-					return new HTable(tableName, HConnectionManager.getConnection(config), threadPool);
-				} catch (ZooKeeperConnectionException e) {
-					e.printStackTrace();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-				return null;
-			}
-		});
 		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
 		HaeinsaTableIface testTable = tablePool.getTable("test");
 		HTablePool hbasePool = new HTablePool(CONF, 128, PoolType.Reusable);
 		HTableInterface hTestTable = hbasePool.getTable("test");
 
-		/**
+		/*
 		 * row-put-a 와 row-put-b 에 데이터를 쓴 후에 Transaction 을 commit 하고 새로운
 		 * Transaction 을 만들어서 row-put-a 에는 GetWithoutTx, row-put-b 에는 Put 을 한 후에
 		 * commit 한다. row-put-a 의 lock 은 바뀌지 않아야 하며, row-put-b 의 lock 은 바뀌어야 한다.
 		 *
-		 * 1. Put { row-put-a, data, col-put-a } 2. Put { row-put-b, data,
-		 * col-put-b }
-		 *
-		 * 3. GetWithoutTx { row-put-a, data } 4. Put { row-put-b, data,
-		 * col-put-b }
+		 * 1. Put { row-put-a, data, col-put-a }
+		 * 2. Put { row-put-b, data, col-put-b }
+		 * 3. GetWithoutTx { row-put-a, data }
+		 * 4. Put { row-put-b, data, col-put-b }
 		 */
 		// put initial data
 		HaeinsaTransaction tx = tm.begin();
@@ -1045,14 +924,14 @@ public class HaeinsaUnitTest {
 		row = Bytes.toBytes("row-put-b");
 		assertTrue(checkLockChanged(hTestTable, row, oldLockPut));
 
-		/**
+		/*
 		 * row-put-a 와 row-put-b 에 있는 데이터를 ScanWithoutTx 를 통해서 읽은 후에 row-put-c 에
 		 * 새로운 값을 put 하고 Transaction 을 commit 한다. row-put-a 와 row-put-b 의 lock 은
 		 * 바뀌지 않고, row-put-c 의 lock 은 바뀌어야 한다. 이 unit test 에서는 바로 위의 unit test
 		 * 에서 put 한 데이터를 사용한다.
 		 *
-		 * 1. ScanWithtoutTx { row-put-a ~ row-put-c } 2. Put { row-put-c, data,
-		 * col-put-c }
+		 * 1. ScanWithtoutTx { row-put-a ~ row-put-c }
+		 * 2. Put { row-put-c, data, col-put-c }
 		 */
 		// getScannerWithoutTx ( HaeinsaScan )
 		tx = tm.begin();
@@ -1085,14 +964,13 @@ public class HaeinsaUnitTest {
 		row = Bytes.toBytes("row-put-c");
 		assertTrue(checkLockChanged(hTestTable, row, oldLockPut));
 
-		/**
+		/*
 		 * row-put-d 의 column col-put-a, col-put-b, col-put-c 에 put 을 한 후에
 		 * Transaction 을 commit 한다. 새로운 Transaction 을 시작한 후 row-put-d 에 있는 데이터를
 		 * IntraScanWithoutTx 를 통해서 읽은 후에 row-put-e 에 새로운 값을 쓰고 Transaction 을
 		 * commit 한다. row-put-d 의 lock 은 변하지 않고, row-put-e 의 lock 은 변해야 한다.
 		 *
 		 * 1. Put { row-put-d, data, [ col-put-a, col-put-b, col-put-c ] }
-		 *
 		 * 2. IntraScanWithoutTx { row-put-d, data, [ col-put-a ~ col-put-d ] }
 		 * 3. Put { row-put-e, data, col-put-e }
 		 */
@@ -1145,16 +1023,16 @@ public class HaeinsaUnitTest {
 	 * @return
 	 * @throws Exception
 	 */
-	public boolean checkLockExist(HTableInterface table, byte[] row) throws Exception {
+	private boolean checkLockExist(HTableInterface table, byte[] row) throws Exception {
 		return getLock(table, row) != null;
 	}
 
-	public byte[] getLock(HTableInterface table, byte[] row) throws Exception {
+	private byte[] getLock(HTableInterface table, byte[] row) throws Exception {
 		return table.get(new Get(row).addColumn(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER))
 				.getValue(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER);
 	}
 
-	public boolean checkLockChanged(HTableInterface table, byte[] row, byte[] oldLock) throws Exception {
+	private boolean checkLockChanged(HTableInterface table, byte[] row, byte[] oldLock) throws Exception {
 		return !Bytes.equals(getLock(table, row), oldLock);
 	}
 }

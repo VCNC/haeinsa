@@ -16,12 +16,7 @@ import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
-import org.apache.hadoop.hbase.ZooKeeperConnectionException;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
-import org.apache.hadoop.hbase.client.HConnectionManager;
-import org.apache.hadoop.hbase.client.HTable;
-import org.apache.hadoop.hbase.client.HTableInterface;
-import org.apache.hadoop.hbase.client.HTableInterfaceFactory;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -74,27 +69,7 @@ public class HaeinsaComplexTest {
 	@Test
 	public void testSimepleIncrement() throws Exception {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
-		HaeinsaTablePool tablePool = new HaeinsaTablePool(CONF, 128, new HTableInterfaceFactory() {
-
-			@Override
-			public void releaseHTableInterface(HTableInterface table)
-					throws IOException {
-				table.close();
-			}
-
-			@Override
-			public HTableInterface createHTableInterface(Configuration config,
-					byte[] tableName) {
-				try {
-					return new HTable(tableName, HConnectionManager.getConnection(config), threadPool);
-				} catch (ZooKeeperConnectionException e) {
-					e.printStackTrace();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-				return null;
-			}
-		});
+		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
 
 		final HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
 		HaeinsaTableIface testTable = tablePool.getTable("test");
@@ -156,27 +131,7 @@ public class HaeinsaComplexTest {
 	@Test
 	public void testConcurrentRandomIncrement() throws Exception {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
-		HaeinsaTablePool tablePool = new HaeinsaTablePool(CONF, 128, new HTableInterfaceFactory() {
-
-			@Override
-			public void releaseHTableInterface(HTableInterface table)
-					throws IOException {
-				table.close();
-			}
-
-			@Override
-			public HTableInterface createHTableInterface(Configuration config,
-					byte[] tableName) {
-				try {
-					return new HTable(tableName, HConnectionManager.getConnection(config), threadPool);
-				} catch (ZooKeeperConnectionException e) {
-					e.printStackTrace();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-				return null;
-			}
-		});
+		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
 
 		final HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
 		final HaeinsaTableIface testTable = tablePool.getTable("test");
@@ -281,25 +236,7 @@ public class HaeinsaComplexTest {
 	@Test
 	public void testSerializability() throws Exception {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
-		HaeinsaTablePool tablePool = new HaeinsaTablePool(CONF, 128, new HTableInterfaceFactory() {
-
-			@Override
-			public void releaseHTableInterface(HTableInterface table) throws IOException {
-				table.close();
-			}
-
-			@Override
-			public HTableInterface createHTableInterface(Configuration config, byte[] tableName) {
-				try {
-					return new HTable(tableName, HConnectionManager.getConnection(config), threadPool);
-				} catch (ZooKeeperConnectionException e) {
-					e.printStackTrace();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-				return null;
-			}
-		});
+		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
 
 		final HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
 		final HaeinsaTableIface testTable = tablePool.getTable("test");
@@ -334,7 +271,7 @@ public class HaeinsaComplexTest {
 		/*
 		 * newValue1 = hashWithRandom( oldValue1 )
 		 * newValue2 = hashWithRandom( oldValue2 )
-		 * 
+		 *
 		 * tx.begin();
 		 * tx.write(newValue1);
 		 * tx.write(newValue2);
@@ -383,7 +320,7 @@ public class HaeinsaComplexTest {
 			service.execute(serialJob);
 		}
 		countDownLatch.await();
-		
+
 		long dbValue1 = Bytes.toLong(testTable.get(tx, new HaeinsaGet(row1).addColumn(CF, CQ1)).getValue(CF, CQ1));
 		long dbValue2 = Bytes.toLong(testTable.get(tx, new HaeinsaGet(row2).addColumn(CF, CQ2)).getValue(CF, CQ2));
 		assertEquals(dbValue1, value1.get());
@@ -405,7 +342,7 @@ public class HaeinsaComplexTest {
 	 * @param oldValue
 	 * @return
 	 */
-	public long nextHashedValue(long oldValue) {
+	private long nextHashedValue(long oldValue) {
 		String result = "";
 		result += oldValue;
 		result += new Random().nextInt();
