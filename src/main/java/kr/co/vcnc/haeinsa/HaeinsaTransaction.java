@@ -44,10 +44,6 @@ public class HaeinsaTransaction {
 
 	private static enum CommitMethod {
 		/**
-		 * rowTx가 아무 것도 없을 때
-		 */
-		NOTHING,
-		/**
 		 * 모든 rowTx에 mutation 이 존재하지 않을 때 (Get/Scan 으로만 이루어져 있을 때)
 		 */
 		READ_ONLY,
@@ -59,7 +55,11 @@ public class HaeinsaTransaction {
 		 * rowTx가 여러 개 존재하고 최소 1개의 rowTx 에 mutation이 존재하거나, rowTx가 하나만 존재하면서
 		 * mutation 에 HaeinsaDelete가 포함되어 있을 때
 		 */
-		MULTI_ROW_MUTATIONS;
+		MULTI_ROW_MUTATIONS,
+		/**
+		 * rowTx가 아무 것도 없을 때
+		 */
+		NOTHING;
 	}
 
 	public HaeinsaTransaction(HaeinsaTransactionManager manager) {
@@ -123,100 +123,6 @@ public class HaeinsaTransaction {
 	}
 
 	/**
-	 * Commit multiple row Transaction or single row Transaction which includes
-	 * Delete operation.
-	 *
-	 * @throws IOException ConflictException, HBase IOException
-	 */
-	protected void commitMultiRowsMutation() throws IOException {
-		Preconditions.checkState(txStates.getMutationRowStates().size() > 0);
-		HaeinsaTableTransaction primaryTableState = createOrGetTableState(primary.getTableName());
-		HaeinsaRowTransaction primaryRowState = primaryTableState.createOrGetRowState(primary.getRow());
-
-		HaeinsaTablePool tablePool = getManager().getTablePool();
-		// prewrite primary row (mutation row)
-		try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(primary.getTableName())) {
-			table.prewrite(primaryRowState, primary.getRow(), true);
-		}
-
-		// prewrite secondaries (mutation rows)
-		for (Entry<TRowKey, HaeinsaRowTransaction> rowKeyStateEntry : txStates.getMutationRowStates().entrySet()) {
-			TRowKey key = rowKeyStateEntry.getKey();
-			HaeinsaRowTransaction rowTx = rowKeyStateEntry.getValue();
-			if (Bytes.equals(key.getTableName(), primary.getTableName())
-					&& Bytes.equals(key.getRow(), primary.getRow())) {
-				// if this is primaryRow
-				continue;
-			}
-			try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(key.getTableName())) {
-				table.prewrite(rowTx, key.getRow(), false);
-			}
-		}
-
-		// check locking of secondaries by get (read-only rows)
-		for (Entry<TRowKey, HaeinsaRowTransaction> rowKeyStateEntry : txStates.getReadOnlyRowStates().entrySet()) {
-			TRowKey rowKey = rowKeyStateEntry.getKey();
-			HaeinsaRowTransaction rowTx = rowKeyStateEntry.getValue();
-			try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(rowKey.getTableName())) {
-				table.checkSingleRowLock(rowTx, rowKey.getRow());
-			}
-		}
-		makeStable();
-	}
-
-	/**
-	 * Use {@link HaeinsaTable#checkSingleRowLock()} to check RowLock on HBase
-	 * of read-only rows of tx. If all lock-checking by get was success,
-	 * read-only tx was success. Throws ConflictException otherwise.
-	 *
-	 * @throws IOException ConflictException, HBase IOException
-	 */
-	protected void commitReadOnly() throws IOException {
-		Preconditions.checkState(txStates.getMutationRowStates().size() == 0);
-		Preconditions.checkState(txStates.getReadOnlyRowStates().size() > 0);
-		HaeinsaTablePool tablePool = getManager().getTablePool();
-
-		// check secondaries
-		for (Entry<TRowKey, HaeinsaRowTransaction> rowKeyStateEntry : txStates.getReadOnlyRowStates().entrySet()) {
-			TRowKey key = rowKeyStateEntry.getKey();
-			HaeinsaRowTransaction rowTx = rowKeyStateEntry.getValue();
-			if (Bytes.equals(key.getTableName(), primary.getTableName())
-					&& Bytes.equals(key.getRow(), primary.getRow())) {
-				// if this is primaryRow
-				continue;
-			}
-			try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(key.getTableName())) {
-				table.checkSingleRowLock(rowTx, key.getTableName());
-			}
-		}
-
-		// check primary last
-		HaeinsaTableTransaction primaryTableState = createOrGetTableState(primary.getTableName());
-		HaeinsaRowTransaction primaryRowState = primaryTableState.createOrGetRowState(primary.getRow());
-		try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(primary.getTableName())) {
-			table.checkSingleRowLock(primaryRowState, primary.getRow());
-		}
-		// do not need stable-phase
-	}
-
-	/**
-	 * Commit single row & PUT only (possibly include get/scan, but not Delete)
-	 * Transaction.
-	 *
-	 * @throws IOException
-	 */
-	protected void commitSingleRowPutOnly() throws IOException {
-		HaeinsaTableTransaction primaryTableState = createOrGetTableState(primary.getTableName());
-		HaeinsaRowTransaction primaryRowState = primaryTableState.createOrGetRowState(primary.getRow());
-
-		HaeinsaTablePool tablePool = getManager().getTablePool();
-		// commit primary row
-		try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(primary.getTableName())) {
-			table.commitSingleRowPutOnly(primaryRowState, primary.getRow());
-		}
-	}
-
-	/**
 	 * Commit transaction to HBase. It start to prewrite data in HBase and try
 	 * to change {@link TRowLock}s. After {@link #commit()} is called, user
 	 * cannot use this instance again.
@@ -264,10 +170,6 @@ public class HaeinsaTransaction {
 
 		CommitMethod method = txStates.determineCommitMethod();
 		switch (method) {
-		case MULTI_ROW_MUTATIONS: {
-			commitMultiRowsMutation();
-			break;
-		}
 		case READ_ONLY: {
 			commitReadOnly();
 			break;
@@ -276,12 +178,110 @@ public class HaeinsaTransaction {
 			commitSingleRowPutOnly();
 			break;
 		}
+		case MULTI_ROW_MUTATIONS: {
+			commitMultiRowsMutation();
+			break;
+		}
 		case NOTHING: {
 			break;
 		}
 		default:
 			break;
 		}
+	}
+
+	/**
+	 * Use {@link HaeinsaTable#checkSingleRowLock()} to check RowLock on HBase
+	 * of read-only rows of tx. If all lock-checking by get was success,
+	 * read-only tx was success. Throws ConflictException otherwise.
+	 *
+	 * @throws IOException ConflictException, HBase IOException
+	 */
+	private void commitReadOnly() throws IOException {
+		Preconditions.checkState(txStates.getMutationRowStates().size() == 0);
+		Preconditions.checkState(txStates.getReadOnlyRowStates().size() > 0);
+		HaeinsaTablePool tablePool = getManager().getTablePool();
+
+		// check secondaries
+		for (Entry<TRowKey, HaeinsaRowTransaction> rowKeyStateEntry : txStates.getReadOnlyRowStates().entrySet()) {
+			TRowKey key = rowKeyStateEntry.getKey();
+			HaeinsaRowTransaction rowTx = rowKeyStateEntry.getValue();
+			if (Bytes.equals(key.getTableName(), primary.getTableName())
+					&& Bytes.equals(key.getRow(), primary.getRow())) {
+				// if this is primaryRow
+				continue;
+			}
+			try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(key.getTableName())) {
+				table.checkSingleRowLock(rowTx, key.getTableName());
+			}
+		}
+
+		// check primary last
+		HaeinsaTableTransaction primaryTableState = createOrGetTableState(primary.getTableName());
+		HaeinsaRowTransaction primaryRowState = primaryTableState.createOrGetRowState(primary.getRow());
+		try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(primary.getTableName())) {
+			table.checkSingleRowLock(primaryRowState, primary.getRow());
+		}
+		// do not need stable-phase
+	}
+
+	/**
+	 * Commit single row & PUT only (possibly include get/scan, but not Delete)
+	 * Transaction.
+	 *
+	 * @throws IOException
+	 */
+	private void commitSingleRowPutOnly() throws IOException {
+		HaeinsaTableTransaction primaryTableState = createOrGetTableState(primary.getTableName());
+		HaeinsaRowTransaction primaryRowState = primaryTableState.createOrGetRowState(primary.getRow());
+
+		HaeinsaTablePool tablePool = getManager().getTablePool();
+		// commit primary row
+		try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(primary.getTableName())) {
+			table.commitSingleRowPutOnly(primaryRowState, primary.getRow());
+		}
+	}
+
+	/**
+	 * Commit multiple row Transaction or single row Transaction which includes
+	 * Delete operation.
+	 *
+	 * @throws IOException ConflictException, HBase IOException
+	 */
+	private void commitMultiRowsMutation() throws IOException {
+		Preconditions.checkState(txStates.getMutationRowStates().size() > 0);
+		HaeinsaTableTransaction primaryTableState = createOrGetTableState(primary.getTableName());
+		HaeinsaRowTransaction primaryRowState = primaryTableState.createOrGetRowState(primary.getRow());
+	
+		HaeinsaTablePool tablePool = getManager().getTablePool();
+		// prewrite primary row (mutation row)
+		try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(primary.getTableName())) {
+			table.prewrite(primaryRowState, primary.getRow(), true);
+		}
+	
+		// prewrite secondaries (mutation rows)
+		for (Entry<TRowKey, HaeinsaRowTransaction> rowKeyStateEntry : txStates.getMutationRowStates().entrySet()) {
+			TRowKey key = rowKeyStateEntry.getKey();
+			HaeinsaRowTransaction rowTx = rowKeyStateEntry.getValue();
+			if (Bytes.equals(key.getTableName(), primary.getTableName())
+					&& Bytes.equals(key.getRow(), primary.getRow())) {
+				// if this is primaryRow
+				continue;
+			}
+			try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(key.getTableName())) {
+				table.prewrite(rowTx, key.getRow(), false);
+			}
+		}
+	
+		// check locking of secondaries by get (read-only rows)
+		for (Entry<TRowKey, HaeinsaRowTransaction> rowKeyStateEntry : txStates.getReadOnlyRowStates().entrySet()) {
+			TRowKey rowKey = rowKeyStateEntry.getKey();
+			HaeinsaRowTransaction rowTx = rowKeyStateEntry.getValue();
+			try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(rowKey.getTableName())) {
+				table.checkSingleRowLock(rowTx, rowKey.getRow());
+			}
+		}
+		makeStable();
 	}
 
 	/**

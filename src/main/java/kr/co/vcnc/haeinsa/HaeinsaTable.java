@@ -1084,8 +1084,8 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 
 		/**
 		 * Moving index of scanner of currentScanner by one. If there is no more
-		 * element at the scanner, remove currentScanner from scanners (
-		 * NavigableSet ).
+		 * element at the scanner, remove currentScanner from scanners
+		 * (NavigableSet)
 		 *
 		 * @param currentScanner
 		 * @throws IOException

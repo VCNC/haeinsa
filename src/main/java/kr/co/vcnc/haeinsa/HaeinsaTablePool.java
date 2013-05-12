@@ -110,8 +110,6 @@ public class HaeinsaTablePool implements Closeable {
 
 	/**
 	 * Get a reference to the specified table from the pool.
-	 * <p>
-	 * <p/>
 	 *
 	 * @param tableName table name
 	 * @return a reference to the specified table
@@ -131,8 +129,6 @@ public class HaeinsaTablePool implements Closeable {
 
 	/**
 	 * Get a reference to the specified internal table interface from the pool.
-	 * <p>
-	 * <p/>
 	 *
 	 * @param tableName table name
 	 * @return a reference to the specified table
@@ -153,7 +149,6 @@ public class HaeinsaTablePool implements Closeable {
 	/**
 	 * Get a reference to the specified table from the pool.
 	 * <p>
-	 *
 	 * Create a new one if one is not available.
 	 *
 	 * @param tableName table name
@@ -171,7 +166,6 @@ public class HaeinsaTablePool implements Closeable {
 	/**
 	 * Get a reference to the specified table from the pool.
 	 * <p>
-	 *
 	 * Create a new one if one is not available.
 	 *
 	 * @param tableName table name
@@ -185,7 +179,6 @@ public class HaeinsaTablePool implements Closeable {
 	/**
 	 * Get a reference to the specified internal table interface from the pool.
 	 * <p>
-	 *
 	 * Create a new one if one is not available.
 	 *
 	 * @param tableName table name
@@ -199,7 +192,6 @@ public class HaeinsaTablePool implements Closeable {
 	/**
 	 * Puts the specified HTable back into the pool.
 	 * <p>
-	 *
 	 * If the pool already contains <i>maxSize</i> references to the table, then
 	 * the table instance gets closed after flushing buffered edits.
 	 *

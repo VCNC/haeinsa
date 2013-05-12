@@ -23,6 +23,7 @@ import org.apache.hadoop.hbase.client.Scan;
  * Implemented by {@link HaeinsaTable}.
  */
 public interface HaeinsaTableIface extends Closeable {
+
 	/**
 	 * Gets the name of this table.
 	 *
