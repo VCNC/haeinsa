@@ -123,12 +123,80 @@ public class HaeinsaTransaction {
 	}
 
 	/**
+	 * Commit transaction to HBase. It start to prewrite data in HBase and try
+	 * to change {@link TRowLock}s. After {@link #commit()} is called, user
+	 * cannot use this instance again.
+	 *
+	 * @throws IOException ConflictException, HBase IOException.
+	 */
+	public void commit() throws IOException {
+		// check if this transaction is used.
+		if (!used.compareAndSet(false, true)) {
+			throw new IllegalStateException("this transaction is already used.");
+		}
+		long maxCurrentCommitTimestamp = System.currentTimeMillis();
+		long maxIterationCount = Long.MIN_VALUE;
+	
+		// determine commitTimestamp & determine primary row
+		// fill mutationRowStates & readOnlyRowStates from rowStates
+		for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : txStates.getTableStates().entrySet()) {
+			for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()) {
+				HaeinsaRowTransaction rowState = rowStateEntry.getValue();
+				maxIterationCount = Math.max(maxIterationCount, rowState.getIterationCount());
+				maxCurrentCommitTimestamp = Math.max(maxCurrentCommitTimestamp, rowState.getCurrent().getCommitTimestamp());
+			}
+		}
+		setPrewriteTimestamp(maxCurrentCommitTimestamp + 1);
+		setCommitTimestamp(Math.max(getPrewriteTimestamp(), maxCurrentCommitTimestamp + maxIterationCount));
+	
+		// TODO(Andrew) : primaryRowKey 를 고를 때 이왕이면 mutations 중에 HaeinsaPut 이
+		// 가장 처음에 있는 Row 를 골라서 applyMutations 에 걸리는 시간을 줄이면 좋겠다.
+		// setPrimary among mutationRowStates first, next among
+		// readOnlyRowStates
+		TRowKey primaryRowKey = null;
+		NavigableMap<TRowKey, HaeinsaRowTransaction> mutationRowStates = txStates.getMutationRowStates();
+		NavigableMap<TRowKey, HaeinsaRowTransaction> readOnlyRowStates = txStates.getReadOnlyRowStates();
+		if (mutationRowStates.size() > 0) {
+			// if there is any mutation row, choose first one among muation row.
+			primaryRowKey = mutationRowStates.firstKey();
+		} else if (readOnlyRowStates.size() > 0) {
+			// if there is no mutation row at all, choose first one among
+			// read-only row.
+			primaryRowKey = readOnlyRowStates.firstKey();
+		}
+		// primaryRowKey can be null at this point, which means there is no
+		// rowStates at all.
+		setPrimary(primaryRowKey);
+	
+		CommitMethod method = txStates.determineCommitMethod();
+		switch (method) {
+		case MULTI_ROW_MUTATIONS: {
+			commitMultiRowsMutation();
+			break;
+		}
+		case READ_ONLY: {
+			commitReadOnly();
+			break;
+		}
+		case SINGLE_ROW_PUT_ONLY: {
+			commitSingleRowPutOnly();
+			break;
+		}
+		case NOTHING: {
+			break;
+		}
+		default:
+			break;
+		}
+	}
+
+	/**
 	 * Commit multiple row Transaction or single row Transaction which includes
 	 * Delete operation.
 	 *
 	 * @throws IOException ConflictException, HBase IOException
 	 */
-	protected void commitMultiRowsMutation() throws IOException {
+	private void commitMultiRowsMutation() throws IOException {
 		Preconditions.checkState(txStates.getMutationRowStates().size() > 0);
 		HaeinsaTableTransaction primaryTableState = createOrGetTableState(primary.getTableName());
 		HaeinsaRowTransaction primaryRowState = primaryTableState.createOrGetRowState(primary.getRow());
@@ -171,7 +239,7 @@ public class HaeinsaTransaction {
 	 *
 	 * @throws IOException ConflictException, HBase IOException
 	 */
-	protected void commitReadOnly() throws IOException {
+	private void commitReadOnly() throws IOException {
 		Preconditions.checkState(txStates.getMutationRowStates().size() == 0);
 		Preconditions.checkState(txStates.getReadOnlyRowStates().size() > 0);
 		HaeinsaTablePool tablePool = getManager().getTablePool();
@@ -205,7 +273,7 @@ public class HaeinsaTransaction {
 	 *
 	 * @throws IOException
 	 */
-	protected void commitSingleRowPutOnly() throws IOException {
+	private void commitSingleRowPutOnly() throws IOException {
 		HaeinsaTableTransaction primaryTableState = createOrGetTableState(primary.getTableName());
 		HaeinsaRowTransaction primaryRowState = primaryTableState.createOrGetRowState(primary.getRow());
 
@@ -213,74 +281,6 @@ public class HaeinsaTransaction {
 		// commit primary row
 		try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(primary.getTableName())) {
 			table.commitSingleRowPutOnly(primaryRowState, primary.getRow());
-		}
-	}
-
-	/**
-	 * Commit transaction to HBase. It start to prewrite data in HBase and try
-	 * to change {@link TRowLock}s. After {@link #commit()} is called, user
-	 * cannot use this instance again.
-	 *
-	 * @throws IOException ConflictException, HBase IOException.
-	 */
-	public void commit() throws IOException {
-		// check if this transaction is used.
-		if (!used.compareAndSet(false, true)) {
-			throw new IllegalStateException("this transaction is already used.");
-		}
-		long maxCurrentCommitTimestamp = System.currentTimeMillis();
-		long maxIterationCount = Long.MIN_VALUE;
-
-		// determine commitTimestamp & determine primary row
-		// fill mutationRowStates & readOnlyRowStates from rowStates
-		for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : txStates.getTableStates().entrySet()) {
-			for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()) {
-				HaeinsaRowTransaction rowState = rowStateEntry.getValue();
-				maxIterationCount = Math.max(maxIterationCount, rowState.getIterationCount());
-				maxCurrentCommitTimestamp = Math.max(maxCurrentCommitTimestamp, rowState.getCurrent().getCommitTimestamp());
-			}
-		}
-		setPrewriteTimestamp(maxCurrentCommitTimestamp + 1);
-		setCommitTimestamp(Math.max(getPrewriteTimestamp(), maxCurrentCommitTimestamp + maxIterationCount));
-
-		// TODO(Andrew) : primaryRowKey 를 고를 때 이왕이면 mutations 중에 HaeinsaPut 이
-		// 가장 처음에 있는 Row 를 골라서 applyMutations 에 걸리는 시간을 줄이면 좋겠다.
-		// setPrimary among mutationRowStates first, next among
-		// readOnlyRowStates
-		TRowKey primaryRowKey = null;
-		NavigableMap<TRowKey, HaeinsaRowTransaction> mutationRowStates = txStates.getMutationRowStates();
-		NavigableMap<TRowKey, HaeinsaRowTransaction> readOnlyRowStates = txStates.getReadOnlyRowStates();
-		if (mutationRowStates.size() > 0) {
-			// if there is any mutation row, choose first one among muation row.
-			primaryRowKey = mutationRowStates.firstKey();
-		} else if (readOnlyRowStates.size() > 0) {
-			// if there is no mutation row at all, choose first one among
-			// read-only row.
-			primaryRowKey = readOnlyRowStates.firstKey();
-		}
-		// primaryRowKey can be null at this point, which means there is no
-		// rowStates at all.
-		setPrimary(primaryRowKey);
-
-		CommitMethod method = txStates.determineCommitMethod();
-		switch (method) {
-		case MULTI_ROW_MUTATIONS: {
-			commitMultiRowsMutation();
-			break;
-		}
-		case READ_ONLY: {
-			commitReadOnly();
-			break;
-		}
-		case SINGLE_ROW_PUT_ONLY: {
-			commitSingleRowPutOnly();
-			break;
-		}
-		case NOTHING: {
-			break;
-		}
-		default:
-			break;
 		}
 	}
 
