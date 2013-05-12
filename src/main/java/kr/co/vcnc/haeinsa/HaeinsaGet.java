@@ -9,24 +9,22 @@ import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.util.Bytes;
 
 /**
- * HaeinsaGet can be analogous to {@link Get} class in HBase. 
- * <p>HaeinsaGet only contains data of single row.
- * @author Youngmok Kim
- *
+ * HaeinsaGet can be analogous to {@link Get} class in HBase.
+ * <p>
+ * HaeinsaGet only contains data of single row.
  */
 public class HaeinsaGet {
-	private byte[] row = null;
-	private Map<byte[], NavigableSet<byte[]>> familyMap = new TreeMap<byte[], NavigableSet<byte[]>>(
-			Bytes.BYTES_COMPARATOR);
+	private byte[] row;
+	private Map<byte[], NavigableSet<byte[]>> familyMap =
+			new TreeMap<byte[], NavigableSet<byte[]>>(Bytes.BYTES_COMPARATOR);
 
 	/**
 	 * Create a Get operation for the specified row.
 	 * <p>
 	 * If no further operations are done, this will get the latest version of
 	 * all columns in all families of the specified row.
-	 * 
-	 * @param row
-	 *            row key
+	 *
+	 * @param row row key
 	 */
 	public HaeinsaGet(byte[] row) {
 		this.row = row;
@@ -36,9 +34,8 @@ public class HaeinsaGet {
 	 * Get all columns from the specified family.
 	 * <p>
 	 * Overrides previous calls to addColumn for this family.
-	 * 
-	 * @param family
-	 *            family name
+	 *
+	 * @param family family name
 	 * @return the Get object
 	 */
 	public HaeinsaGet addFamily(byte[] family) {
@@ -51,11 +48,9 @@ public class HaeinsaGet {
 	 * Get the column from the specific family with the specified qualifier.
 	 * <p>
 	 * Overrides previous calls to addFamily for this family.
-	 * 
-	 * @param family
-	 *            family name
-	 * @param qualifier
-	 *            column qualifier
+	 *
+	 * @param family family name
+	 * @param qualifier column qualifier
 	 * @return the Get objec
 	 */
 	public HaeinsaGet addColumn(byte[] family, byte[] qualifier) {
@@ -70,7 +65,7 @@ public class HaeinsaGet {
 
 	/**
 	 * Method for retrieving the get's row
-	 * 
+	 *
 	 * @return row
 	 */
 	public byte[] getRow() {
@@ -79,7 +74,7 @@ public class HaeinsaGet {
 
 	/**
 	 * Method for retrieving the get's familyMap
-	 * 
+	 *
 	 * @return familyMap
 	 */
 	public Map<byte[], NavigableSet<byte[]>> getFamilyMap() {
