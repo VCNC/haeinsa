@@ -252,13 +252,13 @@ public class HaeinsaTransaction {
 		Preconditions.checkState(txStates.getMutationRowStates().size() > 0);
 		HaeinsaTableTransaction primaryTableState = createOrGetTableState(primary.getTableName());
 		HaeinsaRowTransaction primaryRowState = primaryTableState.createOrGetRowState(primary.getRow());
-	
+
 		HaeinsaTablePool tablePool = getManager().getTablePool();
 		// prewrite primary row (mutation row)
 		try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(primary.getTableName())) {
 			table.prewrite(primaryRowState, primary.getRow(), true);
 		}
-	
+
 		// prewrite secondaries (mutation rows)
 		for (Entry<TRowKey, HaeinsaRowTransaction> rowKeyStateEntry : txStates.getMutationRowStates().entrySet()) {
 			TRowKey key = rowKeyStateEntry.getKey();
@@ -272,7 +272,7 @@ public class HaeinsaTransaction {
 				table.prewrite(rowTx, key.getRow(), false);
 			}
 		}
-	
+
 		// check locking of secondaries by get (read-only rows)
 		for (Entry<TRowKey, HaeinsaRowTransaction> rowKeyStateEntry : txStates.getReadOnlyRowStates().entrySet()) {
 			TRowKey rowKey = rowKeyStateEntry.getKey();
