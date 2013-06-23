@@ -3,7 +3,9 @@ package kr.co.vcnc.haeinsa.exception;
 import java.io.IOException;
 
 /**
- *
+ *	Exception when transaction meet conflict during execution.
+ *	This exception extends {@link IOException}, so user don't need to 
+ *	explicitly distinguish between failure on HBase IO and conflict. 
  */
 public class ConflictException extends IOException {
 
