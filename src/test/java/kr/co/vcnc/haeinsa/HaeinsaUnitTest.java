@@ -371,6 +371,7 @@ public class HaeinsaUnitTest {
 		Assert.assertNull(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("name")));
 		Assert.assertTrue(Bytes.equals(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("city")), Bytes.toBytes("Seoul")));
 		Assert.assertTrue(Bytes.equals(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("email")), Bytes.toBytes("ymkim+1@vcnc.co.kr")));
+		tx.rollback();
 
 		// clear test - table
 		tx = tm.begin();
@@ -380,7 +381,6 @@ public class HaeinsaUnitTest {
 		while (iter.hasNext()) {
 			result = iter.next();
 			for (HaeinsaKeyValue kv : result.list()) {
-				kv.getRow();
 				// delete specific kv - delete only if it's not lock family
 				delete = new HaeinsaDelete(kv.getRow());
 				// should not return lock by scanner
@@ -429,7 +429,6 @@ public class HaeinsaUnitTest {
 		while (iter.hasNext()) {
 			HaeinsaResult result = iter.next();
 			for (HaeinsaKeyValue kv : result.list()) {
-				kv.getRow();
 				// delete specific kv - delete only if it's not lock family
 				HaeinsaDelete delete = new HaeinsaDelete(kv.getRow());
 				// should not return lock by scanner
