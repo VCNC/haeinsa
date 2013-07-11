@@ -555,7 +555,7 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 		newRowLock.setPrewritten(Lists.newArrayList(prewritten));
 		newRowLock.setMutations(remaining);
 		newRowLock.setExpiry(System.currentTimeMillis() + ROW_LOCK_TIMEOUT);
-		put.add(LOCK_FAMILY, LOCK_QUALIFIER, tx.getCommitTimestamp(), TRowLocks.serialize(newRowLock));
+		put.add(LOCK_FAMILY, LOCK_QUALIFIER, tx.getPrewriteTimestamp(), TRowLocks.serialize(newRowLock));
 
 		byte[] currentRowLockBytes = TRowLocks.serialize(rowState.getCurrent());
 
@@ -592,10 +592,10 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 				// prewritten state로 변하면서 ROW_LOCK_TIMEOUT만큼 lock expiry가 길어진다.
 				newRowLock.setExpiry(System.currentTimeMillis() + ROW_LOCK_TIMEOUT);
 				Put put = new Put(row);
-				put.add(LOCK_FAMILY, LOCK_QUALIFIER, newRowLock.getCurrentTimestmap(), TRowLocks.serialize(newRowLock));
+				byte[] newLockBytes = TRowLocks.serialize(newRowLock);
+				put.add(LOCK_FAMILY, LOCK_QUALIFIER, newRowLock.getCurrentTimestmap(), newLockBytes);
 				for (TKeyValue kv : mutation.getPut().getValues()) {
-					put.add(kv.getKey().getFamily(), kv.getKey().getQualifier(),
-							newRowLock.getCurrentTimestmap(), kv.getValue());
+					put.add(kv.getKey().getFamily(), kv.getKey().getQualifier(), newRowLock.getCurrentTimestmap(), kv.getValue());
 				}
 				if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, put)) {
 					// 실패하는 경우는 다른 쪽에서 row의 lock을 획득했으므로 충돌이 났다고 처리한다.
@@ -661,7 +661,7 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 
 		byte[] newRowLockBytes = TRowLocks.serialize(newRowLock);
 		Put put = new Put(row);
-		put.add(LOCK_FAMILY, LOCK_QUALIFIER, commitTimestamp, newRowLockBytes);
+		put.add(LOCK_FAMILY, LOCK_QUALIFIER, newRowLock.getCurrentTimestmap(), newRowLockBytes);
 
 		if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, put)) {
 			transaction.abort();
