@@ -592,8 +592,7 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 				// prewritten state로 변하면서 ROW_LOCK_TIMEOUT만큼 lock expiry가 길어진다.
 				newRowLock.setExpiry(System.currentTimeMillis() + ROW_LOCK_TIMEOUT);
 				Put put = new Put(row);
-				byte[] newLockBytes = TRowLocks.serialize(newRowLock);
-				put.add(LOCK_FAMILY, LOCK_QUALIFIER, newRowLock.getCurrentTimestmap(), newLockBytes);
+				put.add(LOCK_FAMILY, LOCK_QUALIFIER, newRowLock.getCurrentTimestmap(), TRowLocks.serialize(newRowLock));
 				for (TKeyValue kv : mutation.getPut().getValues()) {
 					put.add(kv.getKey().getFamily(), kv.getKey().getQualifier(), newRowLock.getCurrentTimestmap(), kv.getValue());
 				}
