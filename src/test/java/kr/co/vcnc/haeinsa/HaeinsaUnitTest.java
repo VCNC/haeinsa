@@ -5,10 +5,12 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import junit.framework.Assert;
 import kr.co.vcnc.haeinsa.exception.ConflictException;
 
 import org.apache.hadoop.conf.Configuration;
@@ -326,6 +328,119 @@ public class HaeinsaUnitTest {
 
 		testTable.close();
 		logTable.close();
+		tablePool.close();
+	}
+
+	@Test
+	public void testMultiPutAndMultiDelete() throws Exception {
+		final ExecutorService threadPool = Executors.newCachedThreadPool();
+		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
+
+		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
+		HaeinsaTableIface testTable = tablePool.getTable("test");
+		HaeinsaTransaction tx = tm.begin();
+
+		HaeinsaPut put = new HaeinsaPut(Bytes.toBytes("ymkim"));
+		put.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-1234-5678+1"));
+		put.add(Bytes.toBytes("data"), Bytes.toBytes("email"), Bytes.toBytes("ymkim+1@vcnc.co.kr"));
+		put.add(Bytes.toBytes("data"), Bytes.toBytes("name"), Bytes.toBytes("Youngmok Kim+1"));
+		testTable.put(tx, put);
+
+		HaeinsaDelete delete = new HaeinsaDelete(Bytes.toBytes("ymkim"));
+		delete.deleteColumns(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"));
+		testTable.delete(tx, delete);
+
+		put = new HaeinsaPut(Bytes.toBytes("ymkim"));
+		put.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-1234-5678+2"));
+		testTable.put(tx, put);
+
+		delete = new HaeinsaDelete(Bytes.toBytes("ymkim"));
+		delete.deleteColumns(Bytes.toBytes("data"), Bytes.toBytes("name"));
+		testTable.delete(tx, delete);
+
+		put = new HaeinsaPut(Bytes.toBytes("ymkim"));
+		put.add(Bytes.toBytes("data"), Bytes.toBytes("city"), Bytes.toBytes("Seoul"));
+		testTable.put(tx, put);
+
+		tx.commit();
+
+		tx = tm.begin();
+		HaeinsaGet get = new HaeinsaGet(Bytes.toBytes("ymkim"));
+		HaeinsaResult result = testTable.get(tx, get);
+		Assert.assertTrue(Bytes.equals(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber")), Bytes.toBytes("010-1234-5678+2")));
+		Assert.assertNull(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("name")));
+		Assert.assertTrue(Bytes.equals(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("city")), Bytes.toBytes("Seoul")));
+		Assert.assertTrue(Bytes.equals(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("email")), Bytes.toBytes("ymkim+1@vcnc.co.kr")));
+		tx.rollback();
+
+		// clear test - table
+		tx = tm.begin();
+		HaeinsaScan scan = new HaeinsaScan();
+		HaeinsaResultScanner scanner = testTable.getScanner(tx, scan);
+		Iterator<HaeinsaResult> iter = scanner.iterator();
+		while (iter.hasNext()) {
+			result = iter.next();
+			for (HaeinsaKeyValue kv : result.list()) {
+				// delete specific kv - delete only if it's not lock family
+				delete = new HaeinsaDelete(kv.getRow());
+				// should not return lock by scanner
+				assertFalse(Bytes.equals(kv.getFamily(), HaeinsaConstants.LOCK_FAMILY));
+				delete.deleteColumns(kv.getFamily(), kv.getQualifier());
+				testTable.delete(tx, delete);
+			}
+		}
+		tx.commit();
+		scanner.close();
+
+		testTable.close();
+		tablePool.close();
+	}
+
+	@Test
+	public void testMultiRowReadOnly() throws Exception {
+		final ExecutorService threadPool = Executors.newCachedThreadPool();
+		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
+
+		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
+		HaeinsaTableIface testTable = tablePool.getTable("test");
+
+		// Test 2 puts tx
+		HaeinsaTransaction tx = tm.begin();
+		HaeinsaPut put = new HaeinsaPut(Bytes.toBytes("ymkim"));
+		put.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-1234-5678"));
+		testTable.put(tx, put);
+		HaeinsaPut testPut = new HaeinsaPut(Bytes.toBytes("kjwoo"));
+		testPut.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-9876-5432"));
+		testTable.put(tx, testPut);
+		tx.commit();
+
+		tx = tm.begin();
+		HaeinsaGet get1 = new HaeinsaGet(Bytes.toBytes("ymkim"));
+		HaeinsaGet get2 = new HaeinsaGet(Bytes.toBytes("kjwoo"));
+		HaeinsaResult result1 = testTable.get(tx, get1);
+		HaeinsaResult result2 = testTable.get(tx, get2);
+		tx.commit();
+
+		// clear test - table
+		tx = tm.begin();
+		HaeinsaScan scan = new HaeinsaScan();
+		HaeinsaResultScanner scanner = testTable.getScanner(tx, scan);
+		Iterator<HaeinsaResult> iter = scanner.iterator();
+		while (iter.hasNext()) {
+			HaeinsaResult result = iter.next();
+			for (HaeinsaKeyValue kv : result.list()) {
+				// delete specific kv - delete only if it's not lock family
+				HaeinsaDelete delete = new HaeinsaDelete(kv.getRow());
+				// should not return lock by scanner
+				assertFalse(Bytes.equals(kv.getFamily(), HaeinsaConstants.LOCK_FAMILY));
+				delete.deleteColumns(kv.getFamily(), kv.getQualifier());
+				testTable.delete(tx, delete);
+			}
+		}
+		tx.commit();
+		scanner.close();
+
+		testTable.close();
 		tablePool.close();
 	}
 
