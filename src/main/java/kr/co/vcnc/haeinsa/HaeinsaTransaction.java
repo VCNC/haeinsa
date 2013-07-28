@@ -208,7 +208,7 @@ public class HaeinsaTransaction {
 				continue;
 			}
 			try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(key.getTableName())) {
-				table.checkSingleRowLock(rowTx, key.getTableName());
+				table.checkSingleRowLock(rowTx, key.getRow());
 			}
 		}
 
