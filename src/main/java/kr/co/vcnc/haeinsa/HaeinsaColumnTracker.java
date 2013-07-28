@@ -110,7 +110,7 @@ public class HaeinsaColumnTracker {
 	 */
 	public boolean isMatched(HaeinsaKeyValue kv) {
 		// If familyMap is empty, then Haeinsa transaction assumes
-		// that programmer wants to scan all ( family, qualifier ) pairs 
+		// that programmer wants to scan all (family, qualifier) pairs 
 		// inside scan range, and call isColumnInclusive(kv) directly.
 		// { empty }
 		if (familyMap.isEmpty()) {
