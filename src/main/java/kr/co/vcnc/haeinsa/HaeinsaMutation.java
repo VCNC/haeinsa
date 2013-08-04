@@ -16,12 +16,17 @@ import org.apache.hadoop.hbase.util.Bytes;
 import com.google.common.collect.Iterables;
 
 /**
- * {@link TMutation} (Thrift class) 에 대응하는 abstract class 이다. 단일한 row 에 대한 여러
- * Put 혹은 Delete 를 한꺼번에 들고 있을 수 있다. {@link HaeinsaPut} 혹은 {@link HaeinsaDelete}
- * 로 구현해서 사용한다.
+ * HaeinsaMutation is abstract class equivalent to auto-generated thrift class {@link TMutation}.
+ * HaeinsaMutation can handle multiple Puts or Deletes of single row, 
+ * but single HaeinsaMutation instance can not represent both at same time.
+ * {@link HaeinsaPut} and {@link HaeinsaDelete} are implementations of this class. 
  * <p>
- * HaeinsaTable 이 put/delete 정보를 get/scan 에 projection 할 때 사용할 수 있도록
- * {@link HaeinsaKeyValueScanner} 를 return 해준다.
+ * This class assists HaeinsaTable to project history of Puts/Deletes inside transaction 
+ * to Get/Scan operations which is executed after.
+ * These late Get/Scan operations can see the mutated view of specific row
+ * even before those mutations are committed to HBase. 
+ * <p>
+ * HaeinsaMutation provides {@link HaeinsaKeyValueScanner} interface by {@link #getScanner()} method.
  */
 public abstract class HaeinsaMutation {
 	protected byte[] row;
@@ -83,7 +88,7 @@ public abstract class HaeinsaMutation {
 	public abstract TMutation toTMutation();
 
 	/**
-	 * 단일한 row 에 대한 {@link #MutationScanner} 를 반환하게 된다.
+	 * Return {@link #HaeinsaKeyValueScanner} interface for single row.
 	 *
 	 * @param sequenceID sequence id represent which Scanner is newer one. Lower
 	 *        id is newer one.
@@ -94,13 +99,13 @@ public abstract class HaeinsaMutation {
 	}
 
 	/**
-	 * HaeinsaMutation 가 가지고 있는 Put 혹은 Delete Type 의 HaeinsaKeyValue 를 모아서
-	 * HaeinsaKeyValueScanner interface로 접근할 수 있게 해준다.
+	 * MutationScanner is HaeinsaKeyValueScanner implementation which provides interface to access
+	 * actual Puts or Deletes which inherit HaeinsaMutations.
 	 * <p>
-	 * MutationScanner 가 제공하는 iterator 는 {@link HaeinsaKeyValue#COMPARATOR} 에
-	 * 의해서 정렬된 HaeinsaKeyValue 의 Collection 에 접근하게 된다.
+	 * Iterator provided by MutationScanner uses {@link HaeinsaKeyValue#COMPARATOR} to 
+	 * sort HaeinsaKeyValue in {@link HaeinsaMutation#familyMap}. 
 	 * <p>
-	 * 하나의 MutationScanner 가 제공하는 값들은 동일한 sequenceID 를 가지게 된다.
+	 * All HaeinsaKeyValue provided by single MutationScanner have same sequenceID.
 	 */
 	private class MutationScanner implements HaeinsaKeyValueScanner {
 		private final long sequenceID;
