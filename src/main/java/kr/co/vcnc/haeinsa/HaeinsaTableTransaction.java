@@ -31,23 +31,20 @@ class HaeinsaTableTransaction {
 	}
 
 	/**
-	 * 현재의 TableTransaction 이 들고 있는 RowTransaction 을 return 한다. 만약 주어진 row 에
-	 * 해당하는 RowTransaction 이 존재하지 않는다면, TableTransaction 내에 해당 row 의
-	 * RowTransaction 을 만들고 그 RowTransaction 을 내부 map 에 저장한 후에 return 한다.
+	 * Return rowTransaction which this instance contains in rowStates map. 
+	 * If there is no rowTransaction for this row, then create new one and return it.
+	 * Returned rowTransaction is always saved in rowStates.
 	 * <p>
-	 * 이 method 를 사용해서 HaeinsaRowTransaction 을 사용하는 유저는 항상 해당
-	 * {@link HaeinsaRowTransaction} 이 적당한 TRowLock 정보를 들고 있는지 확인해야 한다. 다음 3가지
-	 * 경우가 있을 수 있다.
+	 * There are three possible states of TRowLock of {@link HaeinsaRowTransaction} which returned by this method.
 	 * <p>
-	 * 1. 이미 존재하는 {@link HaeinsaRowTransaction} 을 가져온 경우 - current 값을 변경하면 안된다.
-	 *
+	 * 1. When get {@link HaeinsaRowTransaction} which is already contained in rowStates 
+	 * - Should not change {@link HaeinsaRowTransaction#current} manually.
 	 * <p>
-	 * 2. 새로 만들어졌고 HBase 에서 가져올 {@link TRowLock} 정보가 있는 경우 -
-	 * {@link HaeinsaRowTransaction#setCurrent()} 를 사용하면 된다.
-	 *
+	 * 2. When rowTransaction is newly created by this method and {@link TRowLock} associated with the row exists
+	 * - Use {@link HaeinsaRowTransaction#setCurrent()} to set current field of rowTransaction.
 	 * <p>
-	 * 3. 새로 만들어졌고 HBase 에서 가져올 {@link TRowLock} 정보가 없는 경우 -
-	 * {@link TRowLocks#serialize(null)} 을 넣으면 된다.
+	 * 3. When rowTransaction is newly created by this method and there is no associated {@link TRowLock}
+	 * - Use {@link TRowLocks#serialize(null)} method to set default {@link TRowLock} to current field of rowTransaction.
 	 *
 	 * @param row
 	 * @return RowTransaction - {@link HaeinsaRowTransaction} which contained in
