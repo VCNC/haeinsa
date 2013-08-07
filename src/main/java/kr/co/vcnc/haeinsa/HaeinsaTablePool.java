@@ -11,7 +11,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.client.HTableFactory;
-import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.HTableInterfaceFactory;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.PoolMap;
@@ -190,7 +189,7 @@ public class HaeinsaTablePool implements Closeable {
 	}
 
 	/**
-	 * Puts the specified HTable back into the pool.
+	 * Puts the specified HaeinsaTableIface back into the pool.
 	 * <p>
 	 * If the pool already contains <i>maxSize</i> references to the table, then
 	 * the table instance gets closed after flushing buffered edits.
@@ -224,11 +223,11 @@ public class HaeinsaTablePool implements Closeable {
 	}
 
 	/**
-	 * Closes all the HTable instances , belonging to the given table, in the
+	 * Closes all the HaeinsaTable instances , belonging to the given table, in the
 	 * table pool.
 	 * <p>
 	 * Note: this is a 'shutdown' of the given table pool and different from
-	 * {@link #putTable(HTableInterface)}, that is used to return the table
+	 * {@link #putTable(HaeinsaTableIface)}, that is used to return the table
 	 * instance to the pool for future re-use.
 	 *
 	 * @param tableName
