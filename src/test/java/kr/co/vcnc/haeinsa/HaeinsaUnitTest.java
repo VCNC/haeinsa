@@ -325,7 +325,7 @@ public class HaeinsaUnitTest {
 		tablePool.close();
 	}
 
-	@Test
+	@Test(dependsOnMethods = { "testTransaction" })
 	public void testMultiPutAndMultiDelete() throws Exception {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
 		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
@@ -390,7 +390,7 @@ public class HaeinsaUnitTest {
 		tablePool.close();
 	}
 
-	@Test
+	@Test(dependsOnMethods = { "testMultiPutAndMultiDelete" })
 	public void testMultiRowReadOnly() throws Exception {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
 		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
@@ -438,7 +438,7 @@ public class HaeinsaUnitTest {
 		tablePool.close();
 	}
 
-	@Test
+	@Test(dependsOnMethods = { "testTransaction" })
 	public void testConflictAndAbort() throws Exception {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
 		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
@@ -517,7 +517,7 @@ public class HaeinsaUnitTest {
 		tablePool.close();
 	}
 
-	@Test
+	@Test(dependsOnMethods = { "testTransaction" })
 	public void testConflictAndRecover() throws Exception {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
 		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
@@ -634,7 +634,7 @@ public class HaeinsaUnitTest {
 	 *
 	 * @throws Exception
 	 */
-	@Test
+	@Test(dependsOnMethods = { "testTransaction" })
 	public void testHBaseHaeinsaMigration() throws Exception {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
 		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
@@ -889,7 +889,7 @@ public class HaeinsaUnitTest {
 	 *
 	 * @throws Exception
 	 */
-	@Test
+	@Test(dependsOnMethods = { "testTransaction" })
 	public void testMultipleMutations() throws Exception {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
 		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
@@ -980,7 +980,7 @@ public class HaeinsaUnitTest {
 	 *
 	 * @throws Exception
 	 */
-	@Test
+	@Test(dependsOnMethods = { "testTransaction" })
 	public void testHaeinsaTableWithoutTx() throws Exception {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
 		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
