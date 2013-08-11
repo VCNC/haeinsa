@@ -147,7 +147,7 @@
 				<version>2.10</version>
 				<executions>
 					<execution>
-						<id>check-style</id>
+						<id>checkstyle</id>
 						<goals>
 							<goal>check</goal>
 						</goals>
@@ -185,6 +185,7 @@
 						<exclude>**/LICENSE.txt</exclude>
 						<exclude>src/test/resources/**</exclude>
 						<exclude>src/main/resources/**</exclude>
+						<exclude>external/**</exclude>
 					</excludes>
 				</configuration>
 				<executions>
