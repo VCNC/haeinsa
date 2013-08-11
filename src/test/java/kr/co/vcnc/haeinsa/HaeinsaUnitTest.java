@@ -5,7 +5,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -417,8 +416,8 @@ public class HaeinsaUnitTest {
 		tx = tm.begin();
 		HaeinsaGet get1 = new HaeinsaGet(Bytes.toBytes("ymkim"));
 		HaeinsaGet get2 = new HaeinsaGet(Bytes.toBytes("kjwoo"));
-		HaeinsaResult result1 = testTable.get(tx, get1);
-		HaeinsaResult result2 = testTable.get(tx, get2);
+		testTable.get(tx, get1);
+		testTable.get(tx, get2);
 		tx.commit();
 
 		// clear test - table
