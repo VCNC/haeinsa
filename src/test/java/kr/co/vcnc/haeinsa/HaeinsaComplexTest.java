@@ -61,8 +61,7 @@ public class HaeinsaComplexTest {
 	}
 
 	/**
-	 * 1 개의 Thread 에서 DB 의 특정 row 에 1 씩 증가하는 Transaction 을 걸고, 여러 차례의
-	 * Transaction 후에 결과가 예상한 대로 나오는지 테스트한다.
+	 * Test which executes multiple transactions which increment specific value by single thread and check result.
 	 *
 	 * @throws Exception
 	 */
@@ -122,10 +121,9 @@ public class HaeinsaComplexTest {
 	}
 
 	/**
-	 * 동시에 numberOfJob 개의 Thread 가 동일한 row 에 접근해서 random 하게 값을 증가시키는 transaction
-	 * 을 시도한다. 여러 차례의 Transaction 이후에 local AtomicLong 에 저장한 값과 비교해서 일치하는 지
-	 * 테스트한다.
-	 *
+	 * Test which execute multiple transactions by multiple threads concurrently which increase value of 
+	 * single row randomly. Check result after transactions with value in local variable.
+	 * 
 	 * @throws Exception
 	 */
 	@Test
@@ -215,21 +213,17 @@ public class HaeinsaComplexTest {
 	}
 
 	/**
-	 * Serializability 를 테스트한다. row1 과 row2 에 각각 랜덤한 값을 쓰고 시작한다. 그 이후의 여러 개의
-	 * Thread 에서 동시에 여러 번의 동일한 Transaction 을 시도한다. 각각의 Transaction 은 이전에 DB 에
-	 * 있었던 값을 읽고 그 값을 기반으로 난수와 더한 후에 hash 를 걸어서 얻은 새로운 값을 DB 에 쓰게 된다.
-	 *
-	 * Pseudo code 는 다음과 같다.
+	 * Test serializability. 
+	 * Start with writing random value in row1 and row2. 
+	 * Execute transaction by multiple threads concurrently. 
+	 * Each transaction will get value from DB and write new value on the row based on previous value.
+	 * Pseudo code is as follow
 	 * <pre>
 	 * db.put (row1, hash( db.get(row1) + random ))
 	 * db.put (row2, hash( db.get(row2) + random ))
 	 * </pre>
-	 *
-	 * 만약 Transaction 이 성공을 하게 되면 Local memory lock 을 획득한 후에 Local 에 있는
-	 * AtomicInteger 2개를 compareAndSet 으로 변경한다.
-	 *
-	 * 여러 횟수의 concurrent 한 Transaction 이후에 local memory 에 저장된 값과 DB 에 저장된 값이 같으면
-	 * 해당 Schedule 은 Serializable 한 것이라고 볼 수 있다.
+	 * If transaction successes, it will acquire local memory lock and atomically change two atomicInteger in local.
+	 * After multiple times of concurrent transaction, if data in memory and DB is same then we can think this schedule is serializable.
 	 *
 	 * @throws Exception
 	 */
