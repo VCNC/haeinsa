@@ -25,11 +25,11 @@ import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
 
 /**
- * Manager class of {@link HaeinsaTransaction}. 
+ * Manager class of {@link HaeinsaTransaction}.
  * This class contains {@link HaeinsaTablePool} inside to provide tablePool when user want to access
  * HBase through {@link HaeinsaTransaction} with {@link HaeinsaTable} and execute transaction.
  * <p>
- * HaeinsaTransactionManager also provides method to recover failed transaction from TRowLock in HBase 
+ * HaeinsaTransactionManager also provides method to recover failed transaction from TRowLock in HBase
  * which can be used to clear it up or complete it.
  */
 public class HaeinsaTransactionManager {
@@ -58,7 +58,7 @@ public class HaeinsaTransactionManager {
 
 	/**
 	 * Make new {@link HaeinsaTransaction} instance which can be used to recover
-	 * other failed/uncompleted transaction. Also read and recover primaryRowKey and primaryRowLock 
+	 * other failed/uncompleted transaction. Also read and recover primaryRowKey and primaryRowLock
 	 * from failed transaction on HBase.
 	 * <p>
 	 * This method is thread-safe.
@@ -81,7 +81,7 @@ public class HaeinsaTransactionManager {
 		TRowLock primaryRowLock = null;
 		TRowKey primaryRowKey = null;
 		if (!startUnstableRowLock.isSetPrimary()) {
-			// this row is primary row, because primary field is not set. 
+			// this row is primary row, because primary field is not set.
 			primaryRowKey = new TRowKey(ByteBuffer.wrap(tableName), ByteBuffer.wrap(row));
 			primaryRowLock = startUnstableRowLock;
 		} else {
@@ -116,7 +116,7 @@ public class HaeinsaTransactionManager {
 
 	/**
 	 * Recover TRowLocks of failed HaeinsaTransaction from primary row on HBase.
-	 * Transaction information about secondary rows are recovered with {@link #addSecondaryRowLock()}. 
+	 * Transaction information about secondary rows are recovered with {@link #addSecondaryRowLock()}.
 	 * HaeinsaTransaction made by this method do not assign proper values on mutations variable.
 	 *
 	 * @param rowKey
@@ -140,17 +140,17 @@ public class HaeinsaTransactionManager {
 	}
 
 	/**
-	 * Recover TRowLock of secondary row inferred from {@link TRowLock#secondaries} field of primary row lock. 
+	 * Recover TRowLock of secondary row inferred from {@link TRowLock#secondaries} field of primary row lock.
 	 * <p>
-	 * If target secondary row is in stable state, the row does not included in recovered HaeinsaTransaction 
+	 * If target secondary row is in stable state, the row does not included in recovered HaeinsaTransaction
 	 * because it suggest that this secondary row is already stabled by previous failed transaction.
 	 * <p>
-	 * Secondary row is not included in recovered transaction neither when commitTimestamp is different with primary row's, 
+	 * Secondary row is not included in recovered transaction neither when commitTimestamp is different with primary row's,
 	 * because it implicates that the row is locked by other transaction.
 	 * <p>
 	 * As similar to {@link #getTransactionFromPrimary()}, rowTransaction added by this method do not have
-	 * proper mutations variable. 
-	 * 
+	 * proper mutations variable.
+	 *
 	 * @param transaction
 	 * @param rowKey
 	 * @throws IOException

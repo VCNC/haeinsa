@@ -46,13 +46,13 @@ class HaeinsaTableTransaction {
 	}
 
 	/**
-	 * Return rowTransaction which this instance contains in rowStates map. 
+	 * Return rowTransaction which this instance contains in rowStates map.
 	 * If there is no rowTransaction for this row, then create new one and return it.
 	 * Returned rowTransaction is always saved in rowStates.
 	 * <p>
 	 * There are three possible states of TRowLock of {@link HaeinsaRowTransaction} which returned by this method.
 	 * <p>
-	 * 1. When get {@link HaeinsaRowTransaction} which is already contained in rowStates 
+	 * 1. When get {@link HaeinsaRowTransaction} which is already contained in rowStates
 	 * - Should not change {@link HaeinsaRowTransaction#current} manually.
 	 * <p>
 	 * 2. When rowTransaction is newly created by this method and {@link TRowLock} associated with the row exists

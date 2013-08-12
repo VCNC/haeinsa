@@ -645,7 +645,7 @@ public class HaeinsaUnitTest {
 	}
 
 	/**
-	 * Unit test for lazy-migration from HBase-only to Haeinsa. 
+	 * Unit test for lazy-migration from HBase-only to Haeinsa.
 	 *
 	 * @throws Exception
 	 */
@@ -660,13 +660,13 @@ public class HaeinsaUnitTest {
 		/*
 		 * - HBase operation
 		 * 1. HBase Put { row1, data, col1 }
-		 * 
+		 *
 		 * - beginTransaction
 		 * 2. Get { row1, data, col1 }
 		 * 3. Put { row2, data, col2 }
 		 * - commit
-		 * 
-		 * There should be lock at row2, but not in row1. 
+		 *
+		 * There should be lock at row2, but not in row1.
 		 */
 		Put hPut = new Put(Bytes.toBytes("row1"));
 		hPut.add(Bytes.toBytes("data"), Bytes.toBytes("col1"), Bytes.toBytes("value1"));
@@ -706,11 +706,11 @@ public class HaeinsaUnitTest {
 		/*
 		 * - HBase operation
 		 * 1. HBase Put { row3, data, col4 }
-		 * 
+		 *
 		 * - beginTransaction
 		 * 2. Put { row3, data, col3 }
 		 * - commit
-		 * 
+		 *
 		 * There should be lock at row3.
 		 */
 		hPut = new Put(Bytes.toBytes("row3"));
@@ -737,11 +737,11 @@ public class HaeinsaUnitTest {
 		/*
 		 * - HBase operation
 		 * 1. HBase put { row4, data, col4 }
-		 * 
+		 *
 		 * - beginTransaction
 		 * 2. Delete { row4, data, col4 }
 		 * - commit
-		 * 
+		 *
 		 * There should be lock at row4.
 		 */
 		hPut = new Put(Bytes.toBytes("row4"));
@@ -768,12 +768,12 @@ public class HaeinsaUnitTest {
 		 * 1. HBase put { row5, data, col5 }
 		 * 2. HBase put { row6, data, col6 }
 		 * 3. HBase put { row7, data, col7 }
-		 * 
+		 *
 		 * - beginTransaction
 		 * 4. Scan { [ row5 ~ row8 ] }
 		 * 5. Put { row8, data, col8 }
 		 * - commit
-		 * 
+		 *
 		 * There should be lock at row8, and there are no lock at row5 ~ row7.
 		 */
 		// test HBase put -> Haeinsa Scan ( w\ multiRowCommit() ) Migration
@@ -832,12 +832,12 @@ public class HaeinsaUnitTest {
 		/*
 		 * - HBase operation
 		 * 1. HBase put { row9, data, [col9-ver1, col9-ver2, col9-ver3] }
-		 * 
+		 *
 		 * - beginTransaction
 		 * 2. IntraScan { row9, data, col9 ~ col9-ver3 }
 		 * 3. Put { row10, data, col10 }
 		 * - commit
-		 * 
+		 *
 		 * There should be lock at row10, but not in row9.
 		 */
 		hPut = new Put(Bytes.toBytes("row9"));
@@ -874,7 +874,7 @@ public class HaeinsaUnitTest {
 		 * 1. intraScan { row11, data, col11 ~ col11-ver3 } -> empty
 		 * 2. Put { row10, data, col10 }
 		 * - commit
-		 * 
+		 *
 		 * There should be lock at row10, but not in row11.
 		 */
 		byte[] row = Bytes.toBytes("row10");
@@ -910,8 +910,8 @@ public class HaeinsaUnitTest {
 	}
 
 	/**
-	 * Unit test for multiple mutations for any rows in {@link HaeinsaTransaction}. 
-	 * 
+	 * Unit test for multiple mutations for any rows in {@link HaeinsaTransaction}.
+	 *
 	 * @throws Exception
 	 */
 	@Test(dependsOnMethods = { "testTransaction" })
@@ -1003,7 +1003,7 @@ public class HaeinsaUnitTest {
 	}
 
 	/**
-	 * 
+	 *
 	 * Unit test for check get/scan without transaction.
 	 *
 	 * @throws Exception
@@ -1023,12 +1023,12 @@ public class HaeinsaUnitTest {
 		 * 1. Put { row-put-a, data, col-put-a }
 		 * 2. Put { row-put-b, data, col-put-b }
 		 * - commit
-		 * 
+		 *
 		 * - beginTransaction
 		 * 3. GetWithoutTx { row-put-a, data }
 		 * 4. Put { row-put-b, data, col-put-b }
 		 * - commit
-		 * 
+		 *
 		 * Lock of row-put-a should not be changed, and lock of row-put-b should be changed.
 		 */
 		// put initial data
@@ -1069,7 +1069,7 @@ public class HaeinsaUnitTest {
 		 * 1. ScanWithtoutTx { row-put-a ~ row-put-c }
 		 * 2. Put { row-put-c, data, col-put-c }
 		 * - commit
-		 * 
+		 *
 		 * Lock of row-put-a and row-put-b should not be changed, and lock of row-put-c should be changed.
 		 */
 		// getScannerWithoutTx ( HaeinsaScan )
@@ -1107,12 +1107,12 @@ public class HaeinsaUnitTest {
 		 * - beginTransaction
 		 * 1. Put { row-put-d, data, [ col-put-a, col-put-b, col-put-c ] }
 		 * - commit
-		 * 
+		 *
 		 * - beginTransaction
 		 * 2. IntraScanWithoutTx { row-put-d, data, [ col-put-a ~ col-put-d ] }
 		 * 3. Put { row-put-e, data, col-put-e }
 		 * - commit
-		 * 
+		 *
 		 * Lock of row-put-d should not be changed, and lock of row-put-e should be changed.
 		 */
 		// getScannerWithoutTx ( HaeinsaIntrascan )

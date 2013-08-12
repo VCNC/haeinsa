@@ -32,14 +32,14 @@ import com.google.common.collect.Iterables;
 
 /**
  * HaeinsaMutation is abstract class equivalent to auto-generated thrift class {@link TMutation}.
- * HaeinsaMutation can handle multiple Puts or Deletes of single row, 
+ * HaeinsaMutation can handle multiple Puts or Deletes of single row,
  * but single HaeinsaMutation instance can not represent both at same time.
- * {@link HaeinsaPut} and {@link HaeinsaDelete} are implementations of this class. 
+ * {@link HaeinsaPut} and {@link HaeinsaDelete} are implementations of this class.
  * <p>
- * This class assists HaeinsaTable to project history of Puts/Deletes inside transaction 
+ * This class assists HaeinsaTable to project history of Puts/Deletes inside transaction
  * to Get/Scan operations which is executed after.
  * These late Get/Scan operations can see the mutated view of specific row
- * even before those mutations are committed to HBase. 
+ * even before those mutations are committed to HBase.
  * <p>
  * HaeinsaMutation provides {@link HaeinsaKeyValueScanner} interface by {@link #getScanner()} method.
  */
@@ -117,8 +117,8 @@ public abstract class HaeinsaMutation {
 	 * MutationScanner is HaeinsaKeyValueScanner implementation which provides interface to access
 	 * actual Puts or Deletes which inherit HaeinsaMutations.
 	 * <p>
-	 * Iterator provided by MutationScanner uses {@link HaeinsaKeyValue#COMPARATOR} to 
-	 * sort HaeinsaKeyValue in {@link HaeinsaMutation#familyMap}. 
+	 * Iterator provided by MutationScanner uses {@link HaeinsaKeyValue#COMPARATOR} to
+	 * sort HaeinsaKeyValue in {@link HaeinsaMutation#familyMap}.
 	 * <p>
 	 * All HaeinsaKeyValue provided by single MutationScanner have same sequenceID.
 	 */

@@ -17,13 +17,13 @@ package kr.co.vcnc.haeinsa;
 
 import java.io.IOException;
 
-import org.apache.hadoop.hbase.client.Delete;
-import org.apache.hadoop.hbase.client.HTableInterface;
-
 import kr.co.vcnc.haeinsa.exception.ConflictException;
 import kr.co.vcnc.haeinsa.thrift.generated.TMutationType;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
+
+import org.apache.hadoop.hbase.client.Delete;
+import org.apache.hadoop.hbase.client.HTableInterface;
 
 /**
  * Extended interface from {@link HaeinsaTableIface} which defines private methods that are used to implement transaction.
@@ -62,16 +62,16 @@ interface HaeinsaTableIfaceInternal extends HaeinsaTableIface {
 	/**
 	 * Prewrite specific row with rowState variable.
 	 * Put version, state, commitTimestamp, currentTimestamp fields of {@link TRowLock} to lock column of the row on HBase.
-	 * If first mutation in rowState is {@link HaeinsaPut}, then apply consequent Puts in the same RPC which changes lock to 
-	 * {@link TRowLockState#PREWRITTEN}. 
-	 * Remaining mutations which is not applied with first RPC is remained in {@link TRowLock#mutations}. 
+	 * If first mutation in rowState is {@link HaeinsaPut}, then apply consequent Puts in the same RPC which changes lock to
+	 * {@link TRowLockState#PREWRITTEN}.
+	 * Remaining mutations which is not applied with first RPC is remained in {@link TRowLock#mutations}.
 	 * This field will be used in {@link #applyMutations()} stage.
-	 * Columns written in prewritten stage will be recorded in {@link TRowLock#prewritten} field, 
+	 * Columns written in prewritten stage will be recorded in {@link TRowLock#prewritten} field,
 	 * which will be used in {@link HaeinsaTransaction#abort()} to clean up dirty data
-	 * if transaction failed. 
+	 * if transaction failed.
 	 * <p>
 	 * Add list of secondary rows in secondaries field if this row is primary row, add key of primary row in primary field otherwise.
-	 * 
+	 *
 	 * @param rowState
 	 * @param row
 	 * @param isPrimary
@@ -80,19 +80,19 @@ interface HaeinsaTableIfaceInternal extends HaeinsaTableIface {
 	void prewrite(HaeinsaRowTransaction rowState, byte[] row, boolean isPrimary) throws IOException;
 
 	/**
-	 * Apply all remained mutations to HBase row while {@link TRowLock} is in {@link TRowLockState#PREWRITTEN}. 
+	 * Apply all remained mutations to HBase row while {@link TRowLock} is in {@link TRowLockState#PREWRITTEN}.
 	 * <p>
-	 * Haeinsa groups consequent Puts or Removes to one HaeinsaMutation, 
+	 * Haeinsa groups consequent Puts or Removes to one HaeinsaMutation,
 	 * and {@link TRowLock#mutations} save them in alternative order.
-	 * Apply Puts and Removes alternatively as same order which those mutations happen during transaction. 
+	 * Apply Puts and Removes alternatively as same order which those mutations happen during transaction.
 	 * {@link TRowLock} in HBase row is changed only when applying Puts.
 	 * <p>
 	 * So if transaction failed just after applying {@link TMutationType#REMOVE} to HBase,
 	 * increased {@link TRowLock#currentTimestmap} and remaining {@link TRowLock#mutations} fields are not changed on HBase.
 	 * If other client try to recover this transaction, currentTimestamp is smaller by 1 than actual currentTimestamp when transaction failed.
-	 * However this is not an issue for transaction consistency because new client will execute idempotent remove operations one more time 
+	 * However this is not an issue for transaction consistency because new client will execute idempotent remove operations one more time
 	 * on same timestamp which are already used during previous transaction attempt.
-	 * 
+	 *
 	 * @param rowTxState
 	 * @param row
 	 * @throws IOException ConflictException, HBase IOException.
@@ -103,7 +103,7 @@ interface HaeinsaTableIfaceInternal extends HaeinsaTableIface {
 	 * Change specific row to {@link TRowLockState#STABLE} state.
 	 * Use commitTimestamp field of {@link TRowLock} as timestamp on HBase.
 	 * Only {@link TRowLock#version}, {@link TRowLock#state} and {@link TRowLock#commitTimestamp} fields are written.
-	 * 
+	 *
 	 * @param tx
 	 * @param row
 	 * @throws IOException ConflictException, HBase IOException.
@@ -114,7 +114,7 @@ interface HaeinsaTableIfaceInternal extends HaeinsaTableIface {
 	 * Change specific row to {@link TRowLockState#COMMITTED} state.
 	 * While normal transaction execution, if this method is called {@link TRowLock} is changed from
 	 * {@link TRowLockState#PREWRITTEN} to {@link TRowLockState#COMMITTED}.
-	 * If transaction failed after commit primary by this method, 
+	 * If transaction failed after commit primary by this method,
 	 * failed-over client will call this method again to extend lock expiry on primary row.
 	 * In this case, {@link TRowLock} is remained in {@link TRowLockState#COMMITTED}.
 	 *
@@ -134,13 +134,13 @@ interface HaeinsaTableIfaceInternal extends HaeinsaTableIface {
 	TRowLock getRowLock(byte[] row) throws IOException;
 
 	/**
-	 * Change {@link TRowLock} to {@link TRowLockState#ABORTED} state to roll back 
+	 * Change {@link TRowLock} to {@link TRowLockState#ABORTED} state to roll back
 	 * failed or expired transaction to previous state when transaction have not started.
 	 * <p>
-	 * {@link TRowLock} can transform from {@link TRowLockState#PREWRITTEN} state to {@link TRowLockState#ABORTED}, 
+	 * {@link TRowLock} can transform from {@link TRowLockState#PREWRITTEN} state to {@link TRowLockState#ABORTED},
 	 * or {@link TRowLockState#ABORTED} to another {@link TRowLockState#ABORTED}.
-	 * Later is when different client failed again during cleaning up aborted transaction. 
-	 * 
+	 * Later is when different client failed again during cleaning up aborted transaction.
+	 *
 	 * @param tx
 	 * @param row
 	 * @throws IOException ConflictException, HBase IOException.
