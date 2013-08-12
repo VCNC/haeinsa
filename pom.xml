@@ -180,12 +180,16 @@
 						<owner>VCNC, inc</owner>
 						<year>2013</year>
 					</properties>
+					<mapping>
+						<thrift>JAVADOC_STYLE</thrift>
+					</mapping>
 					<excludes>
 						<exclude>**/README</exclude>
 						<exclude>**/LICENSE.txt</exclude>
 						<exclude>src/test/resources/**</exclude>
 						<exclude>src/main/resources/**</exclude>
 						<exclude>external/**</exclude>
+						<exclude>tools/**</exclude>
 					</excludes>
 				</configuration>
 				<executions>
