@@ -1,8 +1,5 @@
 package kr.co.vcnc.haeinsa;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
 import java.io.IOException;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
@@ -18,9 +15,10 @@ import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.testng.Assert;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
@@ -112,8 +110,8 @@ public class HaeinsaComplexTest {
 		long countOnDB = Bytes.toLong(testTable.get(tx, get).getValue(CF, CQ));
 		tx.rollback();
 
-		assertEquals(countOnDB, maxIter);
-		assertEquals(count.get(), maxIter);
+		Assert.assertEquals(countOnDB, maxIter);
+		Assert.assertEquals(count.get(), maxIter);
 
 		testTable.close();
 		tablePool.close();
@@ -199,7 +197,7 @@ public class HaeinsaComplexTest {
 		tx.rollback();
 		System.out.println(countOnDB);
 
-		assertEquals(countOnDB, count.get());
+		Assert.assertEquals(countOnDB, count.get());
 		System.out.println("Number of Success Transactions : " + successCount.get());
 		System.out.println("Number of Failed Transactions : " + failCount.get());
 		System.out.println("Conflict rate : " + failCount.get() /
@@ -294,8 +292,8 @@ public class HaeinsaComplexTest {
 						iteration++;
 						successCount.incrementAndGet();
 						synchronized (lock) {
-							assertTrue(value1.compareAndSet(oldValue1, newValue1));
-							assertTrue(value2.compareAndSet(oldValue2, newValue2));
+							Assert.assertTrue(value1.compareAndSet(oldValue1, newValue1));
+							Assert.assertTrue(value2.compareAndSet(oldValue2, newValue2));
 						}
 					} catch (Exception e) {
 						// fail
@@ -317,8 +315,8 @@ public class HaeinsaComplexTest {
 
 		long dbValue1 = Bytes.toLong(testTable.get(tx, new HaeinsaGet(row1).addColumn(CF, CQ1)).getValue(CF, CQ1));
 		long dbValue2 = Bytes.toLong(testTable.get(tx, new HaeinsaGet(row2).addColumn(CF, CQ2)).getValue(CF, CQ2));
-		assertEquals(dbValue1, value1.get());
-		assertEquals(dbValue2, value2.get());
+		Assert.assertEquals(dbValue1, value1.get());
+		Assert.assertEquals(dbValue2, value2.get());
 		System.out.println("Number of Success Transactions : " + successCount.get());
 		System.out.println("Number of Failed Transactions : " + failCount.get());
 		System.out.println("Conflict rate : " + failCount.get() / ((double) failCount.get() + (double) successCount.get()) * 100.0);
