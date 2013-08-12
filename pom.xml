@@ -42,13 +42,6 @@
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 	</properties>
 
-	<distributionManagement>
-		<repository>
-			<id>deploy repo</id>
-			<url>file://${project.basedir}/external/repo</url>
-		</repository>
-	</distributionManagement>
-
 	<pluginRepositories>
 		<pluginRepository>
 			<id>dtrott</id>
