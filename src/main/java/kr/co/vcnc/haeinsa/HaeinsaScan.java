@@ -225,10 +225,10 @@ public class HaeinsaScan {
 	}
 
 	/**
-	 * Set whether blocks should be cached for this Scan. HBase 에서 해당 Scan 을 위해서
-	 * HFile 의 Block 을 memory 에 Cache 하고 있을 것인지를 결정할 수 있다. 일반적으로 Block 을 caching
-	 * 하면 다음번 get request 에 대한 응답이 빠를 수 있으나 DB 의 메모리 소모가 심해진다. cacheBlocks 와
-	 * caching 은 서로 관계가 없는 설정이다.
+	 * Set whether blocks should be cached for this Scan.
+	 * Generally caching block help next get/scan requests to the same block, 
+	 * but DB consume more memory which could cause longer jvm gc or cache churn.
+	 * CacheBlocks and caching are different configurations.
 	 * <p>
 	 * This is true by default. When true, default settings of the table and
 	 * family are used (this will never override caching blocks if the block

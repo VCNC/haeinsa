@@ -21,17 +21,15 @@ import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
 
 /**
- * Haeinsa 에서 하나의 Transaction 을 표현하는 단위이다. 내부에 하나의 Transaction 을 표현하기 위한
- * {@link HaeinsaTableTransaction} 을 들고 있으며, {@link HaeinsaTransactionManager}
- * 로의 reference 를 가지고 있다.
+ * Representation of single transaction in Haeinsa. 
+ * It contains {@link HaeinsaTableTransaction}s to include information of overall transaction, 
+ * and have reference to {@link HaeinsaTransactionManager} which created this instance.
  * <p>
- * {@link HaeinsaTransactionManager#begin()} 을 통해서 생성되거나
- * {@link HaeinsaTransactionManager#getTransaction()} 을 통해서 생성되어서 사용할 수 있다. 전자는
- * 새로운 Transaction 을 시작하는 경우에 사용되고, 후자는 실패한 Transaction 을 rollback 하거나 재시도 시킬 때에
- * 사용된다.
+ * HaeinsaTransaction can be generated via calling {@link HaeinsaTransactionManager#begin()}
+ * or {@link HaeinsaTransactionManager#getTransaction()}. 
+ * Former is used when start new transaction, later is used when try to roll back or retry failed transaction.
  * <p>
- * 하나의 {@link HaeinsaTransaction} 은 {@link #commit()} 이나 {@link #rollback()} 이
- * 되고 나면 더 이상 사용할 수 없다.
+ * One {@link HaeinsaTransaction} can't be used after calling {@link #commit()} or {@link #rollback()} is called.
  */
 public class HaeinsaTransaction {
 	private final HaeinsaTransactionState txStates = new HaeinsaTransactionState();
@@ -44,20 +42,20 @@ public class HaeinsaTransaction {
 
 	private static enum CommitMethod {
 		/**
-		 * 모든 rowTx에 mutation 이 존재하지 않을 때 (Get/Scan 으로만 이루어져 있을 때)
+		 * If all rowTx do not have mutation. (only consisted with Get/Scan)
 		 */
 		READ_ONLY,
 		/**
-		 * rowTx가 하나만 존재하고, mutation 의 종류가 HaeinsaPut 일 때
+		 * If there is only one rowTx and type of its mutation is HaeinsaPut.
 		 */
 		SINGLE_ROW_PUT_ONLY,
 		/**
-		 * rowTx가 여러 개 존재하고 최소 1개의 rowTx 에 mutation이 존재하거나, rowTx가 하나만 존재하면서
-		 * mutation 에 HaeinsaDelete가 포함되어 있을 때
+		 * When there is multiple rowTx and at least one of that include mutation, 
+		 * or there is only one rowTx and its mutation contains HaeinsaDelete. 
 		 */
 		MULTI_ROW_MUTATIONS,
 		/**
-		 * rowTx가 아무 것도 없을 때
+		 * If there is no rowTx (there is no actual DB access).
 		 */
 		NOTHING;
 	}
@@ -99,10 +97,10 @@ public class HaeinsaTransaction {
 	}
 
 	/**
-	 * tableName 을 가지는 {@link HaeinsaTableTransaction} 을 가져온다. 만약 해당 이름의
-	 * {@link HaeinsaTableTrasaction} 이 존재하지 않으면 새로 instance 를 생성해서
-	 * HaeinsaTransaction 내부의 {@link #tableStates} 에 저장하고 return 한다.
-	 *
+	 * Bring {@link HaeinsaTableTransaction} which have name of tableName. 
+	 * If there is no {@link HaeinsaTableTransaction} have this name, 
+	 * then create one instance for it and save inside {@link #tableStates} and return.
+	 * 
 	 * @param tableName
 	 * @return
 	 */
@@ -149,8 +147,6 @@ public class HaeinsaTransaction {
 		setPrewriteTimestamp(maxCurrentCommitTimestamp + 1);
 		setCommitTimestamp(Math.max(getPrewriteTimestamp(), maxCurrentCommitTimestamp + maxIterationCount));
 
-		// TODO(Andrew) : primaryRowKey 를 고를 때 이왕이면 mutations 중에 HaeinsaPut 이
-		// 가장 처음에 있는 Row 를 골라서 applyMutations 에 걸리는 시간을 줄이면 좋겠다.
 		// setPrimary among mutationRowStates first, next among
 		// readOnlyRowStates
 		TRowKey primaryRowKey = null;
@@ -285,15 +281,14 @@ public class HaeinsaTransaction {
 	}
 
 	/**
-	 * 하나의 Transaction 에 해당하는 모든 mutation row 의 {@link TRowLock} 의 state 를
-	 * {@link TRowLockState#STABLE} 로 바꾼다. 다음 2가지 경우에 불릴 수 있다.
+	 * Change states of {@link TRowLock} of all mutation rows to {@link TRowLockState#STABLE}.
+	 * This can be called by following two cases.
 	 * <p>
-	 * 1. {@link #commitMultiRows()} 에서 primary row 를
-	 * {@link TRowLockState#COMMITTED} 로 바꾸고 primary row 와 secondary row 의
-	 * mutation 을 모두 적용한 후에 {@link TRowLockState#STABLE} 로 바꾸는 작업을 수행한다.
+	 * 1. In case of {@link #commitMultiRowsMutation()}, after changing primary row to 
+	 * {@link TRowLockState#COMMITTED} and applying all mutations in primary row and secondary rows.
 	 * <p>
-	 * 2. {@link #recover()} 에서부터 불려서 중간에 실패한 Transaction 을 완성시키는 작업을 수행한다. 이
-	 * 함수가 실행되기 위해선 primary row 가 {@link TRowLockState#COMMITTED} 에 와 있어야 한다.
+	 * 2. When try to {@link #recover()} failed transaction in the middle of execution.
+	 * This method should be called only when primary row is in the state of {@link TRowLockState#COMMITTED}.
 	 *
 	 * @throws IOException ConflictException, HBase IOException.
 	 */
@@ -303,11 +298,11 @@ public class HaeinsaTransaction {
 				.createOrGetRowState(primary.getRow());
 		// commit primary or get more time to commit this.
 		try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(primary.getTableName())) {
-			// commit 이 2번 일어날 수 있는데, 복원하는 Client 가 lock 에 대한 권한을 가질려면 expiry 를
-			// 추가로 늘려야 하기 때문입니다.
+			// commitPrimary can be happened two times, this is because recovering client need to 
+			// extend expiry during recovering. 
 			table.commitPrimary(primaryRowTx, primary.getRow());
 		}
-		// 이 지점에 도달하면 이 transaction 은 이미 성공한 것으로 취급됩니다.
+		//	if transaction reached this state, the transaction is considered as success one.
 
 		// Change state of secondary rows to stable
 		for (Entry<TRowKey, HaeinsaRowTransaction> rowKeyStateEntry : txStates.getMutationRowStates().entrySet()) {
@@ -317,7 +312,7 @@ public class HaeinsaTransaction {
 				table.applyMutations(rowTx, rowKey.getRow());
 				if (Bytes.equals(rowKey.getTableName(), primary.getTableName())
 						&& Bytes.equals(rowKey.getRow(), primary.getRow())) {
-					// primary row 일 때
+					//	in case of primary row
 					continue;
 				}
 				// make secondary rows from prewritten to stable
@@ -332,17 +327,16 @@ public class HaeinsaTransaction {
 	}
 
 	/**
-	 * 과거에 시도되었지만 완료되지 못한 Transaction 을 재현한 후에 이미 성공한 Transaction 이면 (
-	 * primaryRow 가 {@link TRowLockState#COMMITTED} 이면 ) {@link #makeStable()}
-	 * method 를 불러서 stable 시키고, 아직 commit 되지 못한 Transaction 일 경우엔
-	 * {@link #abort()} method 를 부른다.
-	 *
+	 * Reload information of failed transaction and complete it by calling {@link #makStable()}
+	 * if already completed one, ( when primaryRow have {@link TRowLockState#COMMITTED} state }
+	 * or abort by calling {@link #abort()} otherwise.
+	 * 
 	 * @throws IOException
 	 */
 	protected void recover() throws IOException {
 		HaeinsaRowTransaction primaryRowTx = createOrGetTableState(primary.getTableName()).createOrGetRowState(primary.getRow());
 		if (primaryRowTx.getCurrent().getState() == TRowLockState.PREWRITTEN) {
-			// prewritten 상태에서는 timeout 보다 primary이 시간이 더 지났으면 abort 시켜야 함.
+			// If primary row is in prewritten state, transaction can be aborted only after expiry.
 			if (primaryRowTx.getCurrent().getExpiry() < System.currentTimeMillis()) {
 				// if transaction is not expired, process recover
 			} else {
@@ -368,23 +362,23 @@ public class HaeinsaTransaction {
 	}
 
 	/**
-	 * Transaction 을 abort 시켜서 Transaction 을 시작하기 전의 상태로 되돌리는 method 이다.
-	 * Transaction 을 진행하던 Client 가 lock 을 가져오지 못하는 등의 이유로 취소 시킬 수 있고, 다른 Client
-	 * 가 시도하던 Transaction 이 실패하고 expiry 가 지난 후에 취소 시킬 수도 있다. abort 는 기본적으로
-	 * lazy-recovery 로 진행된다.
+	 * Method that abort transaction and make rows to state before transaction was started.
+	 * Transaction can be canceled by client which started it when failed to acquire lock of mutation row, 
+	 * or by other client which try to access any row of failed transaction which have past expiry.
+	 * Aborting failed transaction is basically processed by lazy-recovering.
 	 * <p>
-	 * 다른 Client 가 시도한 Transaction 을 rollback 하는 작업을 진행하는 경우에는 실패한 Transaction 의
-	 * 상태를 primary row 의 lock 에 담긴 secondary 정보와 secondary row 들의 lock 에 담긴 정보를
-	 * 통해서 복구되었다고 가정한다.
+	 * When try to roll back failed transaction started by other client, 
+	 * this method assume that state of failed transaction is properly loaded from 
+	 * locks of primary and secondary rows to {@link #txStates} of this instance.
 	 * <p>
-	 * 다음과 같은 순서로 abort 가 진행된다.
+	 * Aborting is executed by following order.
 	 * <p>
-	 * 1. primary row 를 abort 시킨다. (
-	 * {@link HaeinsaTableIfaceInternal#abortPrimary()} )
+	 * 1. Abort primary row by calling {@link HaeinsaTableIfaceInternal#abortPrimary(). 
 	 * <p>
-	 * 2. secondary row 들을 돌아가면서 prewritten 을 지우고 stable 로 바꾼다.
+	 * 2. Visit all secondary rows and change from prewritten to stable state.
+	 * Prewritten data on rows are removed at this state. 
 	 * <p>
-	 * 3. primary row 를 stable 로 바꾼다.
+	 * 3. Change primary row to stable state.
 	 *
 	 * @throws IOException ConflictException, HBase IOException.
 	 */
@@ -482,7 +476,7 @@ public class HaeinsaTransaction {
 		}
 
 		/**
-		 * TRowKey(table,row)로 Hash 정렬된 mutation Row 들을 return 한다.
+		 * Return mutation rows which is hash-sorted by TRowKey(table, row).
 		 *
 		 * @return
 		 */
@@ -503,7 +497,7 @@ public class HaeinsaTransaction {
 		}
 
 		/**
-		 * TRowKey(table,row)로 Hash 정렬된 read-only Row 들을 return 한다.
+		 * Return read-only rows which is hash-sorted by TRowKey(table, row).
 		 *
 		 * @return
 		 */

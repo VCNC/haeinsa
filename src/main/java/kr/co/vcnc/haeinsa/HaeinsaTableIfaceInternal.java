@@ -2,6 +2,7 @@ package kr.co.vcnc.haeinsa;
 
 import java.io.IOException;
 
+import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.HTableInterface;
 
 import kr.co.vcnc.haeinsa.exception.ConflictException;
@@ -10,7 +11,7 @@ import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
 
 /**
- * {@link HaeinsaTableIface}의 인터페이스외에 내부적으로 공유되어야할 인터페이스들을 모아둔 인터페이스
+ * Extended interface from {@link HaeinsaTableIface} which defines private methods that are used to implement transaction.
  */
 interface HaeinsaTableIfaceInternal extends HaeinsaTableIface {
 
@@ -44,17 +45,18 @@ interface HaeinsaTableIfaceInternal extends HaeinsaTableIface {
 	void checkSingleRowLock(HaeinsaRowTransaction rowState, byte[] row) throws IOException;
 
 	/**
-	 * rowState 값을 참조하여 row 에 prewrite 를 한다. {@link TRowLock} 의 version, state,
-	 * commitTimestamp, currentTimestamp 를 기록한다. rowState 의 첫 번째 mutation 이
-	 * HaeinsaPut 일 경우 그 put 들도 모아서 lock 을 {@link TRowLockState#PREWRITTEN} 으로
-	 * 변경할 때 함께 변경한다. mutation 들 중에서 아직 적용 되지 않은 mutation 들은
-	 * {@link TRowLock#mutations} 에 기록하고, prewrite 동안에 put 된 데이터는
-	 * {@link TRowLock#prewritten} 에 기록된다. 후자는 후에
-	 * {@link HaeinsaTransaction#abort()} 에서 기록된 데이터를 제거할 때 사용된다.
+	 * Prewrite specific row with rowState variable.
+	 * Put version, state, commitTimestamp, currentTimestamp fields of {@link TRowLock} to lock column of the row on HBase.
+	 * If first mutation in rowState is {@link HaeinsaPut}, then apply consequent Puts in the same RPC which changes lock to 
+	 * {@link TRowLockState#PREWRITTEN}. 
+	 * Remaining mutations which is not applied with first RPC is remained in {@link TRowLock#mutations}. 
+	 * This field will be used in {@link #applyMutations()} stage.
+	 * Columns written in prewritten stage will be recorded in {@link TRowLock#prewritten} field, 
+	 * which will be used in {@link HaeinsaTransaction#abort()} to clean up dirty data
+	 * if transaction failed. 
 	 * <p>
-	 * primary row 일 경우에는 secondaries 가 추가되고, secondary row 일 경우에는 primary 가
-	 * 추가된다.
-	 *
+	 * Add list of secondary rows in secondaries field if this row is primary row, add key of primary row in primary field otherwise.
+	 * 
 	 * @param rowState
 	 * @param row
 	 * @param isPrimary
@@ -63,18 +65,19 @@ interface HaeinsaTableIfaceInternal extends HaeinsaTableIface {
 	void prewrite(HaeinsaRowTransaction rowState, byte[] row, boolean isPrimary) throws IOException;
 
 	/**
-	 * {@link TRowLockState#PREWRITTEN} state 에서 Row 의 lock 에 적혀 있는 mutation 들을
-	 * 모두 적용해 주는 method 이다.
+	 * Apply all remained mutations to HBase row while {@link TRowLock} is in {@link TRowLockState#PREWRITTEN}. 
 	 * <p>
-	 * REMOVE 와 PUT 형태의 mutation 을 번갈아 가면서 적용하게 되며, PUT mutation 을 적용할 때만 HBase
-	 * 에 적힌 TRowLock 이 최신 값으로 변경된다.
+	 * Haeinsa groups consequent Puts or Removes to one HaeinsaMutation, 
+	 * and {@link TRowLock#mutations} save them in alternative order.
+	 * Apply Puts and Removes alternatively as same order which those mutations happen during transaction. 
+	 * {@link TRowLock} in HBase row is changed only when applying Puts.
 	 * <p>
-	 * mutation 의 종류가 {@link TMutationType#REMOVE} 일 경우에는 증가된 currentTimestamp 와
-	 * 줄어든 remaining 을 {@link TRowLock} 에 기록하지 못한다. 따라서 REMOVE mutation 에 실패한 후에
-	 * transaction 이 중단되는 경우, 다른 클라이언트가 받아서 recover 를 시도하면 currentTimestamp 가
-	 * 1만큼 작을 수 있다. 이 경우에도 단지 이미 delete 명령이 수행된 timestamp 에 해당 명령이 한 번 더 수행될 뿐
-	 * 정상적인 transaction 종료에 문제는 없다.
-	 *
+	 * So if transaction failed just after applying {@link TMutationType#REMOVE} to HBase,
+	 * increased {@link TRowLock#currentTimestmap} and remaining {@link TRowLock#mutations} fields are not changed on HBase.
+	 * If other client try to recover this transaction, currentTimestamp is smaller by 1 than actual currentTimestamp when transaction failed.
+	 * However this is not an issue for transaction consistency because new client will execute idempotent remove operations one more time 
+	 * on same timestamp which are already used during previous transaction attempt.
+	 * 
 	 * @param rowTxState
 	 * @param row
 	 * @throws IOException ConflictException, HBase IOException.
@@ -82,10 +85,10 @@ interface HaeinsaTableIfaceInternal extends HaeinsaTableIface {
 	void applyMutations(HaeinsaRowTransaction rowTxState, byte[] row) throws IOException;
 
 	/**
-	 * 특정 row 의 {@link TRowLock} 를 Stable 로 바꾼다. HBase 의 timestamp 가
-	 * commitTimestamp 인 곳에 쓰여진다. {@link TRowLock#version},
-	 * {@link TRowLock#state} 와 {@link TRowLock#commitTimestamp} 정보만 쓰여진다.
-	 *
+	 * Change specific row to {@link TRowLockState#STABLE} state.
+	 * Use commitTimestamp field of {@link TRowLock} as timestamp on HBase.
+	 * Only {@link TRowLock#version}, {@link TRowLock#state} and {@link TRowLock#commitTimestamp} fields are written.
+	 * 
 	 * @param tx
 	 * @param row
 	 * @throws IOException ConflictException, HBase IOException.
@@ -93,12 +96,12 @@ interface HaeinsaTableIfaceInternal extends HaeinsaTableIface {
 	void makeStable(HaeinsaRowTransaction rowTxState, byte[] row) throws IOException;
 
 	/**
-	 * 특정 primary row 의 state 를 {@link TRowLockState#COMMITTED} 로 바꾼다.
-	 * Transaction 이 정상적으로 수행되는 동안 해당 method 가 불릴 경우 state 가
-	 * {@link TRowLockState#PREWRITTEN} 에서 {@link TRowLockState#COMMITTED} 로 바뀌게
-	 * 되며, Transaction 이 stable 상태까지 도달하는 데 실패하고 {@link TRowLockState#COMMITTED}
-	 * 에서 중단된 경우 {@link HaeinsaTransaction} 에 의해서 불려서 primary row 의 state 를
-	 * {@link TRowLockState#COMMITTED} 를 {@link TRowLockState#COMMITTED} 로 바꾼다.
+	 * Change specific row to {@link TRowLockState#COMMITTED} state.
+	 * While normal transaction execution, if this method is called {@link TRowLock} is changed from
+	 * {@link TRowLockState#PREWRITTEN} to {@link TRowLockState#COMMITTED}.
+	 * If transaction failed after commit primary by this method, 
+	 * failed-over client will call this method again to extend lock expiry on primary row.
+	 * In this case, {@link TRowLock} is remained in {@link TRowLockState#COMMITTED}.
 	 *
 	 * @param tx
 	 * @param row
@@ -116,16 +119,13 @@ interface HaeinsaTableIfaceInternal extends HaeinsaTableIface {
 	TRowLock getRowLock(byte[] row) throws IOException;
 
 	/**
-	 * 중단되거나 lock 을 획득하는 데 실패한 Transaction 을 Transaction 을 시도하기 전의 상태로 rollback
-	 * 하기 위해서 primary row 의 lock 를 {@link TRowLockState#ABORTED} 로 바꾸는 method
-	 * 이다.
+	 * Change {@link TRowLock} to {@link TRowLockState#ABORTED} state to roll back 
+	 * failed or expired transaction to previous state when transaction have not started.
 	 * <p>
-	 * primary row 의 lock 은 {@link TRowLockState#PREWRITTEN} 상태에서
-	 * {@link TRowLockState#ABORTED} 로 바뀔 수도 있고, 하나의
-	 * {@link TRowLockState#ABORTED} state 를 가진 lock 에서 또 다른
-	 * {@link TRowLockState#ABORTED} 상태의 lock 으로 바뀔 수도 있다. 후자는 다른 클라이언트가 해당 row
-	 * 의 실패한 transaction 을 abort 하는 시도를 하다가 다시 실패한 경우에 해당한다.
-	 *
+	 * {@link TRowLock} can transform from {@link TRowLockState#PREWRITTEN} state to {@link TRowLockState#ABORTED}, 
+	 * or {@link TRowLockState#ABORTED} to another {@link TRowLockState#ABORTED}.
+	 * Later is when different client failed again during cleaning up aborted transaction. 
+	 * 
 	 * @param tx
 	 * @param row
 	 * @throws IOException ConflictException, HBase IOException.
@@ -133,13 +133,13 @@ interface HaeinsaTableIfaceInternal extends HaeinsaTableIface {
 	void abortPrimary(HaeinsaRowTransaction rowTxState, byte[] row) throws IOException;
 
 	/**
-	 * {@link TRowLockState#PREWRITTEN} 과정에서 해당 row 에 put 된 데이터를 지우는 역할을 한다.
-	 * {@link TRowLock#prewritten} 에 쓰여 있는 값을 읽어서 prewrite 시에 put 되었던 데이터를 알아낼 수
-	 * 있다. currentTimestamp 에 해당하는 값만 지정해서 지워야 한다.
+	 * Delete columns that are prewritten to the specific row during prewritten stage.
+	 * Haeinsa can infer prewritten columns to clean up by parsing prewritten field in {@link TRowLock}.
+	 * Should remove column which have {@link TRowLock#currentTimestmap} as timestamp.
+	 * This is possible by using {@link Delete#deleteColumn()} instead of {@link Delete#deleteColumns()}.
 	 * <p>
-	 * {@link HTableInterface#checkAndDelete()} 을 통해서 prewritten 들을 지우기 때문에
-	 * HBase 에 쓰여진 {@link TRowLock} 은 변하지 않는다. lock 을 소유하는데 실패하면
-	 * {@link ConflictException} 을 throw 한다.
+	 * Because Haeinsa uses {@link HTableInterface#checkAndDelete()} to delete prewrittens,
+	 * {@link TRowLock} is not changed. It will throw {@link ConflictException} if failed to acquire lock in checkAndDelete.
 	 *
 	 * @param rowTxState
 	 * @param row

@@ -79,8 +79,7 @@ public class HaeinsaColumnTracker {
 			return false;
 		}
 
-		// kv 의 column 이 minColumn 값이 정하는 requirement 를 만족시키고 있으면서 maxColumn
-		// requirement 는 없을 때
+		// If there is no maxColumn requirement and satisfy minColumn's.
 		if (this.maxColumn == null) {
 			return true;
 		}
@@ -96,36 +95,36 @@ public class HaeinsaColumnTracker {
 	}
 
 	/**
-	 * Argument로 넘긴 HaeinsaKeyValue가 scan 범위 안에 포함되는 지 판별해 준다. 다음 세 가지 경우가 있을
-	 * 수있다.
+	 * Check whether kv is inside range of scan. There are three possibilities. 
 	 * <ol>
-	 * <li>Scan 에 family가 전혀 지정되지 않은 경우 - qualifier범위에만 포함되면 된다.</li>
-	 * <li>Scan 에 family가 지정되어 있고, kv의 family 와 같지만 qualifier 는 지정되어 있지 않은 경우 -
-	 * kv와 family가 같고 qualifier가 Scan범위 안에 포함되면 된다.</li>
-	 * <li>Scan 에 family와 qualifier 가 함께 지정되어 있는 경우 - kv의 (family, qualifier)가
-	 * 같아야 한다.</li>
+	 * <li>If scan do not specify any column family - 
+	 * return true if kv is inside qualifier range.</li>
+	 * <li>If scan specify column families, but not any qualifiers. - 
+	 * return true when kv has same column family and is inside scan range.</li>
+	 * <li>If scan specify both column families and column qualifiers -  
+	 * return true only if kv satisfy both requirement.</li>
 	 * </ol>
-	 *
-	 * @param kv
+	 * 
+	 * @param kv HaeinsaKeyValue which will be checked.
 	 * @return
 	 */
 	public boolean isMatched(HaeinsaKeyValue kv) {
-		// familyMap 이 비어있다는 것은 scan 시에 특정 family 를 지정하지 않고
-		// 모든 (family, qualifier)를 scan 하는 것이라고 가정하여,
-		// isColumnInclusive(kv) 를 바로 호출한다.
+		// If familyMap is empty, then Haeinsa transaction assumes
+		// that programmer wants to scan all (family, qualifier) pairs 
+		// inside scan range, and call isColumnInclusive(kv) directly.
 		// { empty }
 		if (familyMap.isEmpty()) {
 			return isColumnInclusive(kv);
 		}
 
 		NavigableSet<byte[]> set = familyMap.get(kv.getFamily());
-		// 해당 family 는 설정 되어 있고, qualifier 는 설정되어 있지 않은 경우
+		// If column family is specified, but there are no qualifiers.
 		// { family -> null }
 		if (familyMap.containsKey(kv.getFamily()) && set == null) {
 			return isColumnInclusive(kv);
 		}
 
-		// 해당 family 가 familyMap 에 있고 qualifier 도 설정되어 있는 경우
+		// If both family and qualifier are specified.
 		// { family -> qualifier }
 		if (set.contains(kv.getQualifier())) {
 			return isColumnInclusive(kv);

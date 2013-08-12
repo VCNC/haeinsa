@@ -8,11 +8,7 @@ import javax.annotation.Nullable;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.HTableInterface;
-import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.client.Scan;
 
 /**
  * Wrapper of HTableInterface for Haeinsa. Some of methods in
@@ -49,78 +45,63 @@ public interface HaeinsaTableIface extends Closeable {
 	/**
 	 * Extracts certain cells from a given row.
 	 *
-	 * @param get The object that specifies what data to fetch and from which
-	 *        row.
+	 * @param tx HaeinsaTransaction which this operation is participated in. 
+	 * 			 It can be null if user don't want to execute get inside transaction. 
+	 * @param get The object that specifies what data to fetch and from which row.
 	 * @return The data coming from the specified row, if it exists. If the row
-	 *         specified doesn't exist, the {@link Result} instance returned
-	 *         won't contain any {@link KeyValue}, as indicated by
-	 *         {@link Result#isEmpty()}.
+	 *         specified doesn't exist, the {@link HaeinsaResult} instance returned
+	 *         won't contain any {@link HaeinsaKeyValue}, as indicated by
+	 *         {@link HaeinsaResult#isEmpty()}.
 	 * @throws IOException if a remote or network exception occurs.
-	 * @since 0.20.0
 	 */
 	HaeinsaResult get(@Nullable HaeinsaTransaction tx, HaeinsaGet get) throws IOException;
 
 	/**
-	 * Extracts certain cells from the given rows, in batch.
-	 *
-	 * @param gets The objects that specify what data to fetch and from which
-	 *        rows.
-	 *
-	 * @return The data coming from the specified rows, if it exists. If the row
-	 *         specified doesn't exist, the {@link Result} instance returned
-	 *         won't contain any {@link KeyValue}, as indicated by
-	 *         {@link Result#isEmpty()}. If there are any failures even after
-	 *         retries, there will be a null in the results array for those
-	 *         Gets, AND an exception will be thrown.
-	 * @throws IOException if a remote or network exception occurs.
-	 *
-	 * @since 0.90.0
-	 */
-	// Result[] get(Transaction tx, List<HaeinsaGet> gets) throws IOException;
-
-	/**
-	 * Returns a scanner on the current table as specified by the {@link Scan}
+	 * Returns a inter-row scanner on the current table as specified by the {@link HaeinsaScan}
 	 * object.
 	 *
-	 * @param scan A configured {@link Scan} object.
+	 * @param tx HaeinsaTransaction which this operation is participated in.
+	 * 			 It can be null if user don't want to execute scan inside transaction.
+	 * @param scan A configured {@link HaeinsaScan} object.
 	 * @return A scanner.
 	 * @throws IOException if a remote or network exception occurs.
-	 * @since 0.20.0
 	 */
 	HaeinsaResultScanner getScanner(@Nullable HaeinsaTransaction tx, HaeinsaScan scan) throws IOException;
 
 	/**
-	 * Returns a scanner on the current table as specified by the {@link Scan}
+	 * Returns a intra-row scanner on the current table as specified by the {@link HaeinsaIntraScan}
 	 * object.
 	 *
-	 * @param scan A configured {@link Scan} object.
+	 * @param tx HaeinsaTransaction which this operation is participated in.
+	 * 			 It can be null if user don't want to execute scan inside transaction.
+	 * @param scan A configured {@link HaeinsaIntraScan} object.
 	 * @return A scanner.
 	 * @throws IOException if a remote or network exception occurs.
-	 * @since 0.20.0
 	 */
 	HaeinsaResultScanner getScanner(@Nullable HaeinsaTransaction tx, HaeinsaIntraScan intraScan) throws IOException;
 
 	/**
-	 * Gets a scanner on the current table for the given family. Similar with
-	 * {@link HaeinsaTableIface#getScanner(HaeinsaTransaction, HaeinsaScan)}
-	 *
+	 * Gets a inter-row scanner on the current table for the given family. 
+	 * Similar with {@link HaeinsaTableIface#getScanner(HaeinsaTransaction, HaeinsaScan)}.
+	 *	 
+	 * @param tx HaeinsaTransaction which this operation is participated in.
+	 * 			 It can be null if user don't want to execute scan inside transaction.
 	 * @param family The column family to scan.
 	 * @return A scanner.
 	 * @throws IOException if a remote or network exception occurs.
-	 * @since 0.20.0
 	 */
 	HaeinsaResultScanner getScanner(@Nullable HaeinsaTransaction tx, byte[] family) throws IOException;
 
 	/**
-	 * Gets a scanner on the current table for the given family and qualifier.
-	 * Similar with
-	 * {@link HaeinsaTableIface#getScanner(HaeinsaTransaction, HaeinsaScan)}
+	 * Gets a inter-row scanner on the current table for the given family and qualifier.
+	 * Similar with {@link HaeinsaTableIface#getScanner(HaeinsaTransaction, HaeinsaScan)}.
 	 *
+	 * @param tx HaeinsaTransaction which this operation is participated in.
+	 * 			 It can be null if user don't want to execute scan inside transaction.
 	 * @param family The column family to scan.
 	 * @param qualifier The column qualifier to scan.
 	 * @return A scanner.
 	 * @throws IOException if a remote or network exception occurs.
-	 * @since 0.20.0
 	 */
 	HaeinsaResultScanner getScanner(@Nullable HaeinsaTransaction tx, byte[] family, byte[] qualifier)
 			throws IOException;
@@ -128,59 +109,45 @@ public interface HaeinsaTableIface extends Closeable {
 	/**
 	 * Puts some data in the table.
 	 * <p>
-	 * If {@link #isAutoFlush isAutoFlush} is false, the update is buffered
-	 * until the internal buffer is full.
+	 * The update is buffered in client until tx is commited.
 	 *
 	 * @param put The data to put.
 	 * @throws IOException if a remote or network exception occurs.
-	 * @since 0.20.0
 	 */
 	void put(HaeinsaTransaction tx, HaeinsaPut put) throws IOException;
 
 	/**
 	 * Puts some data in the table, in batch.
 	 * <p>
-	 * If {@link #isAutoFlush isAutoFlush} is false, the update is buffered
-	 * until the internal buffer is full.
-	 * <p>
-	 * This can be used for group commit, or for submitting user defined
-	 * batches. The writeBuffer will be periodically inspected while the List is
-	 * processed, so depending on the List size the writeBuffer may flush not at
-	 * all, or more than once.
-	 *
-	 * @param puts The list of mutations to apply. The batch put is done by
-	 *        aggregating the iteration of the Puts over the write buffer at the
-	 *        client-side for a single RPC call.
+	 * The updates are buffered in client until tx is commited.
+	 * 
+	 * @param puts The list of Puts to apply.
 	 * @throws IOException if a remote or network exception occurs.
-	 * @since 0.20.0
 	 */
 	void put(HaeinsaTransaction tx, List<HaeinsaPut> puts) throws IOException;
 
 	/**
 	 * Deletes the specified cells/row.
+	 * <p>
+	 * The update is buffered in client until tx is commited.
 	 *
 	 * @param delete The object that specifies what to delete.
 	 * @throws IOException if a remote or network exception occurs.
-	 * @since 0.20.0
 	 */
 	void delete(HaeinsaTransaction tx, HaeinsaDelete delete) throws IOException;
 
 	/**
 	 * Deletes the specified cells/rows in bulk.
+	 * <p>
+	 * The update is buffered in client until tx is commited.
 	 *
-	 * @param deletes List of things to delete. List gets modified by this
-	 *        method (in particular it gets re-ordered, so the order in which
-	 *        the elements are inserted in the list gives no guarantee as to the
-	 *        order in which the {@link Delete}s are executed).
-	 * @throws IOException if a remote or network exception occurs. In that case
-	 *         the {@code deletes} argument will contain the {@link Delete}
-	 *         instances that have not be successfully applied.
-	 * @since 0.20.1
+	 * @param deletes List of things to delete.
+	 * @throws IOException if a remote or network exception occurs.
 	 */
 	void delete(HaeinsaTransaction tx, List<HaeinsaDelete> deletes) throws IOException;
 
 	/**
-	 * Releases any resources help or pending changes in internal buffers.
+	 * Releases any resources related to table.
 	 *
 	 * @throws IOException if a remote or network exception occurs.
 	 */
