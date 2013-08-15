@@ -70,9 +70,9 @@ public class HaeinsaPut extends HaeinsaMutation {
 	public HaeinsaPut add(byte[] family, byte[] qualifier, byte[] value) {
 		NavigableSet<HaeinsaKeyValue> set = getKeyValueSet(family);
 		HaeinsaKeyValue kv = createPutKeyValue(family, qualifier, value);
-		// if new value is inserted for same family and qualifier pair, 
+		// if new value is inserted for same family and qualifier pair,
 		// replace previous HaeinsaKeyValue with new one.
-		// Manually remove old one and substitute with new one 
+		// Manually remove old one and substitute with new one
 		// because comparator of set only compare family and qualifier.
 		if (set.contains(kv)) {
 			set.remove(kv);

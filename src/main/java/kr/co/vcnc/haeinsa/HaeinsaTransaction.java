@@ -36,12 +36,12 @@ import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
 
 /**
- * Representation of single transaction in Haeinsa. 
- * It contains {@link HaeinsaTableTransaction}s to include information of overall transaction, 
+ * Representation of single transaction in Haeinsa.
+ * It contains {@link HaeinsaTableTransaction}s to include information of overall transaction,
  * and have reference to {@link HaeinsaTransactionManager} which created this instance.
  * <p>
  * HaeinsaTransaction can be generated via calling {@link HaeinsaTransactionManager#begin()}
- * or {@link HaeinsaTransactionManager#getTransaction()}. 
+ * or {@link HaeinsaTransactionManager#getTransaction()}.
  * Former is used when start new transaction, later is used when try to roll back or retry failed transaction.
  * <p>
  * One {@link HaeinsaTransaction} can't be used after calling {@link #commit()} or {@link #rollback()} is called.
@@ -65,8 +65,8 @@ public class HaeinsaTransaction {
 		 */
 		SINGLE_ROW_PUT_ONLY,
 		/**
-		 * When there is multiple rowTx and at least one of that include mutation, 
-		 * or there is only one rowTx and its mutation contains HaeinsaDelete. 
+		 * When there is multiple rowTx and at least one of that include mutation,
+		 * or there is only one rowTx and its mutation contains HaeinsaDelete.
 		 */
 		MULTI_ROW_MUTATIONS,
 		/**
@@ -112,10 +112,10 @@ public class HaeinsaTransaction {
 	}
 
 	/**
-	 * Bring {@link HaeinsaTableTransaction} which have name of tableName. 
-	 * If there is no {@link HaeinsaTableTransaction} have this name, 
+	 * Bring {@link HaeinsaTableTransaction} which have name of tableName.
+	 * If there is no {@link HaeinsaTableTransaction} have this name,
 	 * then create one instance for it and save inside {@link #tableStates} and return.
-	 * 
+	 *
 	 * @param tableName
 	 * @return
 	 */
@@ -299,7 +299,7 @@ public class HaeinsaTransaction {
 	 * Change states of {@link TRowLock} of all mutation rows to {@link TRowLockState#STABLE}.
 	 * This can be called by following two cases.
 	 * <p>
-	 * 1. In case of {@link #commitMultiRowsMutation()}, after changing primary row to 
+	 * 1. In case of {@link #commitMultiRowsMutation()}, after changing primary row to
 	 * {@link TRowLockState#COMMITTED} and applying all mutations in primary row and secondary rows.
 	 * <p>
 	 * 2. When try to {@link #recover()} failed transaction in the middle of execution.
@@ -313,8 +313,8 @@ public class HaeinsaTransaction {
 				.createOrGetRowState(primary.getRow());
 		// commit primary or get more time to commit this.
 		try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(primary.getTableName())) {
-			// commitPrimary can be happened two times, this is because recovering client need to 
-			// extend expiry during recovering. 
+			// commitPrimary can be happened two times, this is because recovering client need to
+			// extend expiry during recovering.
 			table.commitPrimary(primaryRowTx, primary.getRow());
 		}
 		//	if transaction reached this state, the transaction is considered as success one.
@@ -345,7 +345,7 @@ public class HaeinsaTransaction {
 	 * Reload information of failed transaction and complete it by calling {@link #makStable()}
 	 * if already completed one, ( when primaryRow have {@link TRowLockState#COMMITTED} state }
 	 * or abort by calling {@link #abort()} otherwise.
-	 * 
+	 *
 	 * @throws IOException
 	 */
 	protected void recover() throws IOException {
@@ -378,20 +378,20 @@ public class HaeinsaTransaction {
 
 	/**
 	 * Method that abort transaction and make rows to state before transaction was started.
-	 * Transaction can be canceled by client which started it when failed to acquire lock of mutation row, 
+	 * Transaction can be canceled by client which started it when failed to acquire lock of mutation row,
 	 * or by other client which try to access any row of failed transaction which have past expiry.
 	 * Aborting failed transaction is basically processed by lazy-recovering.
 	 * <p>
-	 * When try to roll back failed transaction started by other client, 
-	 * this method assume that state of failed transaction is properly loaded from 
+	 * When try to roll back failed transaction started by other client,
+	 * this method assume that state of failed transaction is properly loaded from
 	 * locks of primary and secondary rows to {@link #txStates} of this instance.
 	 * <p>
 	 * Aborting is executed by following order.
 	 * <p>
-	 * 1. Abort primary row by calling {@link HaeinsaTableIfaceInternal#abortPrimary(). 
+	 * 1. Abort primary row by calling {@link HaeinsaTableIfaceInternal#abortPrimary().
 	 * <p>
 	 * 2. Visit all secondary rows and change from prewritten to stable state.
-	 * Prewritten data on rows are removed at this state. 
+	 * Prewritten data on rows are removed at this state.
 	 * <p>
 	 * 3. Change primary row to stable state.
 	 *

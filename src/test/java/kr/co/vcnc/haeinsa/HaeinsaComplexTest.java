@@ -134,9 +134,9 @@ public class HaeinsaComplexTest {
 	}
 
 	/**
-	 * Test which execute multiple transactions by multiple threads concurrently which increase value of 
+	 * Test which execute multiple transactions by multiple threads concurrently which increase value of
 	 * single row randomly. Check result after transactions with value in local variable.
-	 * 
+	 *
 	 * @throws Exception
 	 */
 	@Test
@@ -226,9 +226,9 @@ public class HaeinsaComplexTest {
 	}
 
 	/**
-	 * Test serializability. 
-	 * Start with writing random value in row1 and row2. 
-	 * Execute transaction by multiple threads concurrently. 
+	 * Test serializability.
+	 * Start with writing random value in row1 and row2.
+	 * Execute transaction by multiple threads concurrently.
 	 * Each transaction will get value from DB and write new value on the row based on previous value.
 	 * Pseudo code is as follow
 	 * <pre>

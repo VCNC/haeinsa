@@ -1,3 +1,0 @@
-[submodule "external/repo"]
-	path = external/repo
-	url = https://stash.vcnc.co.kr/scm/maven/repo.git

@@ -45,6 +45,7 @@ import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValue.Type;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
@@ -91,7 +92,7 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 
 	/**
 	 * Get data from HBase without transaction.
-	 * {@link HaeinsaTransaction#commit()} to check or mutate lock column of the row scanned by this method. 
+	 * {@link HaeinsaTransaction#commit()} to check or mutate lock column of the row scanned by this method.
 	 * This method can be used when read performance is important or strict consistency of the result is not matter.
 	 *
 	 * @param get
@@ -157,7 +158,7 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 			hResult = scanner.next();
 		}
 		if (hResult == null) {
-			/* 
+			/*
 			 * if specific row is empty and there was no puts at all, initialize ClientScanner make empty scanners variable.
 			 * There will be no rowState associated to the row, and transaction will not operate normally.
 			 * Therefore, create rowState if there was no HBase operation accessed to the row before.
@@ -175,7 +176,7 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 
 	/**
 	 * Scan data from HBase without transaction.
-	 * {@link HaeinsaTransaction#commit()} to check or mutate lock column of the row scanned by this method. 
+	 * {@link HaeinsaTransaction#commit()} to check or mutate lock column of the row scanned by this method.
 	 * This method can be used when read performance is important or strict consistency of the result is not matter.
 	 *
 	 * @param scan
@@ -201,8 +202,8 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 	}
 
 	/**
-	 * Scan data inside single row (intraScan) without transaction. 
-	 * {@link HaeinsaTransaction#commit()} to check or mutate lock column of the row scanned by this method. 
+	 * Scan data inside single row (intraScan) without transaction.
+	 * {@link HaeinsaTransaction#commit()} to check or mutate lock column of the row scanned by this method.
 	 * This method can be used when read performance is important or strict consistency of the result is not matter.
 	 *
 	 * @param intraScan
@@ -227,13 +228,13 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 	}
 
 	/**
-	 * Haeinsa implementation of {@link Scan}. 
+	 * Haeinsa implementation of {@link Scan}.
 	 * Scan range of row inside defined by {@link HaeinsaScan} in the context of transaction(tx).
 	 * Return {@link #ClientScanner} which related to {@link HaeinsaTable} and {@link HaeinsaTransaction}.
 	 * <p>
 	 * Return {@link SimpleClientScanner} which do not support transaction if tx is null.
-	 * User can use this feature if specific scan operation does not require strong consistency 
-	 * or high performance is crucial because scan too wide range of rows. 
+	 * User can use this feature if specific scan operation does not require strong consistency
+	 * or high performance is crucial because scan too wide range of rows.
 	 */
 	@Override
 	public HaeinsaResultScanner getScanner(@Nullable HaeinsaTransaction tx, HaeinsaScan scan) throws IOException {
@@ -383,9 +384,9 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 	}
 
 	/**
-	 * Call {@link HaeinsaTransaction#recover()}. 
-	 * Abort or recover when there is failed transaction on the row, 
-	 * throw {@link ConflictException} when there is ongoing transaction. 
+	 * Call {@link HaeinsaTransaction#recover()}.
+	 * Abort or recover when there is failed transaction on the row,
+	 * throw {@link ConflictException} when there is ongoing transaction.
 	 *
 	 * @param tx
 	 * @param row
@@ -415,14 +416,14 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 	}
 
 	/**
-	 * Check rowState and whether it contains {@link TRowLock} already, create one if not. 
+	 * Check rowState and whether it contains {@link TRowLock} already, create one if not.
 	 * <p>
 	 * Get {@link TRowLock} of the row from HBase if rowState does not contains it.
 	 * If lock is not in stable state, try to recover it first by {@link HaeinsaTrasaction#recover()}.
 	 * <p>
-	 * By calling this method proper time, {@link RowTransaction} inside {@link HaeinsaTransaction} can have 
+	 * By calling this method proper time, {@link RowTransaction} inside {@link HaeinsaTransaction} can have
 	 * {@link TRowLock} of the row when this method was called first time in the context of the transaction.
-	 * 
+	 *
 	 * @param tx
 	 * @param row
 	 * @param tableState
@@ -578,7 +579,7 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 		byte[] currentRowLockBytes = TRowLocks.serialize(rowState.getCurrent());
 
 		if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, put)) {
-			// Consider as conflict because another transaction might acquire lock of this row.  
+			// Consider as conflict because another transaction might acquire lock of this row.
 			tx.abort();
 			throw new ConflictException("can't acquire row's lock");
 		} else {
@@ -748,7 +749,7 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 	}
 
 	/**
-	 * Implementation of {@link HaeinsaReulstScanner} which is used when scan without transaction. 
+	 * Implementation of {@link HaeinsaReulstScanner} which is used when scan without transaction.
 	 */
 	private class SimpleClientScanner implements HaeinsaResultScanner {
 		private final ResultScanner scanner;
@@ -796,10 +797,10 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 	/**
 	 * Contains scanners for single {@link HaeinsaTable} to help project puts/deletes to gets/scans in same transaction.
 	 * <p>
-	 * This projection of mutations is crucial to proper execution of transaction. 
-	 * For instance, consider single transaction such as T = {W1(X), R2(X), R3(Y), W4(X)}. 
+	 * This projection of mutations is crucial to proper execution of transaction.
+	 * For instance, consider single transaction such as T = {W1(X), R2(X), R3(Y), W4(X)}.
 	 * Haeinsa does not write mutations on HBase until commit() is called.
-	 * Therefore if R(X) get data only from HBase, R2(X) on transaction T cannot read data written by W1(X) 
+	 * Therefore if R(X) get data only from HBase, R2(X) on transaction T cannot read data written by W1(X)
 	 * and this is not expected behavior to programmers.
 	 * Haeinsa resolves this problem by projecting buffered mutations in client to get/scan operations executed in same transaction.
 	 */
@@ -833,7 +834,7 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 		 * @param tx
 		 * @param scanners
 		 * @param familyMap
-		 * @param lockInclusive - whether scanners contains {@link TRowLock} inside. 
+		 * @param lockInclusive - whether scanners contains {@link TRowLock} inside.
 		 * 		  If not, should bring from {@link RowTransaction} or get from HBase directly.
 		 */
 		public ClientScanner(HaeinsaTransaction tx, Iterable<HaeinsaKeyValueScanner> scanners,
@@ -847,7 +848,7 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 		 * @param scanners
 		 * @param familyMap
 		 * @param intraScan - To support to use {@link ColumnRangeFilter}
-		 * @param lockInclusive - whether scanners contains {@link TRowLock} inside. 
+		 * @param lockInclusive - whether scanners contains {@link TRowLock} inside.
 		 * 		  If not, should bring from {@link RowTransaction} or get from HBase directly.
 		 */
 		public ClientScanner(HaeinsaTransaction tx, Iterable<HaeinsaKeyValueScanner> scanners,
@@ -871,13 +872,13 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 
 		/**
 		 * Method to generate {@link #scanners} from {@link #scannerList}.
-		 * Only can be called one time for every ClientScanner. 
+		 * Only can be called one time for every ClientScanner.
 		 * <p>
 		 * The reason why there are different variables for {@link #scannerList} and {@link #scanners} is that
 		 * the way {@link #nextScanner()} implemented is removing {@link HaeinsaKeyValueScanner} one by one form scanners.
-		 * {@link #close()} method needs to close every {@link ClientScanner} when called, 
+		 * {@link #close()} method needs to close every {@link ClientScanner} when called,
 		 * so some other variable should preserve every scanner when ClientScanner created.
-		 * 
+		 *
 		 * @throws IOException
 		 */
 		private void initialize() throws IOException {
@@ -943,11 +944,11 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 		 * Return {@link TRowLock} for specific row from {@link IOException#scanners}.
 		 * Return null if there is no proper {@link TRowLock}.
 		 * <p>
-		 * If one of these {@link #scanners} has row key which is smaller than given row, 
+		 * If one of these {@link #scanners} has row key which is smaller than given row,
 		 * that {@link HaeinsaKeyValueScanner} is not peeked by this method and return null.
 		 * So proper operation is guaranteed only when every scanner in {@link #scanners} return
 		 * smaller or equal row key when {@link HaeinsaKeyValueScanner#peek()} is called.
-		 * 
+		 *
 		 * @param row
 		 * @return null if there is no TRowLock information inside scanners,
 		 *         return rowLock otherwise.
@@ -993,13 +994,13 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 							// So proper TRowLock value should be set.
 							if (currentRowLock == null) {
 								/*
-								 * HBase do not have TRowLock for this row. 
+								 * HBase do not have TRowLock for this row.
 								 * This is the case when Haeinsa accesses to this row first time.
-								 * (This can be because of lazy-migration from HBase-only code). 
-								 * 
-								 * HaeinsaRowTransaction can use TRowLock(ROW_LOCK_VERSION, 
+								 * (This can be because of lazy-migration from HBase-only code).
+								 *
+								 * HaeinsaRowTransaction can use TRowLock(ROW_LOCK_VERSION,
 								 * TRowLockState.STABLE, Long.MIN_VALUE) as initial TRowLock value.
-								 * This initial TRowLock will be override by proper value and applied to HBase 
+								 * This initial TRowLock will be override by proper value and applied to HBase
 								 * when commit() method is called.
 								 */
 								currentRowLock = TRowLocks.deserialize(null);
@@ -1050,8 +1051,9 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 							|| !(Bytes.equals(prevKV.getRow(), currentKV.getRow())
 									&& Bytes.equals(prevKV.getFamily(), currentKV.getFamily())
 									&& Bytes.equals(prevKV.getQualifier(), currentKV.getQualifier()))) {
-						// if reference of prevKV and currentKV is same, the currentKV have new row. 
-						// Ignore when prevKV and currentKV is different but row, family, qualifier of currentKv and prevKv is all same. ( not likely )
+						// if reference of prevKV and currentKV is same, the currentKV have new row.
+						// Ignore when prevKV and currentKV is different but row, family,
+						// qualifier of currentKv and prevKv is all same. (not likely)
 						if (!deleteTracker.isDeleted(currentKV, currentScanner.getSequenceID())
 								&& columnTracker.isMatched(currentKV)) {
 							// if currentKV is not deleted and inside scan range
@@ -1067,7 +1069,7 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 					prevKV = null;
 					maxSeqID = Long.MAX_VALUE;
 					if (sortedKVs.size() > 0) {
-						// If currentKV moved to next row and there are more than one KV satisfy scan requirement,  
+						// If currentKV moved to next row and there are more than one KV satisfy scan requirement,
 						// should return HaeinsaResult which aggregate HaeinsaKeyValue for previous row.
 						break;
 					}
@@ -1129,12 +1131,12 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 	/**
 	 * Implementation of {@link HaeinsaKeyValueScanner} which provides scanner interface which wrap
 	 * {@link KeyValue}s from {@link ResultScanner} by HBase {@link Scan} to {@link HaeinsaKeyValue}s.
-	 * This class is used if there are {@link HaeinsaScan} or {@link HaeinsaIntraScan} inside transaction. 
+	 * This class is used if there are {@link HaeinsaScan} or {@link HaeinsaIntraScan} inside transaction.
 	 * <p>
-	 * HBaseScanScanner can contain kev-values for single row like {@link ResultScanner}, 
-	 * or key-values of multiple rows. 
+	 * HBaseScanScanner can contain kev-values for single row like {@link ResultScanner},
+	 * or key-values of multiple rows.
 	 * <p>
-	 * HBaseScanScanner does not need sequenceID control because it will use {@link HBaseGetScanner} 
+	 * HBaseScanScanner does not need sequenceID control because it will use {@link HBaseGetScanner}
 	 * if rows from scan do not have stable state, and put result from get to lower sequenceID.
 	 * Therefore, {@link #getSequenceID()} always return Long.MAX_VALUE
 	 */
@@ -1228,29 +1230,29 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 	/**
 	 * Implementation of {@link HaeinsaKeyValueScanner} which provide scanner interface which wrap
 	 * {@link KeyValue}s from {@link ResultScanner} by HBase {@link Scan} to {@link HaeinsaKeyValue}s.
-	 * This class is used there is {@link HaeinsaScan} or {@link HaeinsaIntraScan} inside transaction. 
+	 * This class is used there is {@link HaeinsaScan} or {@link HaeinsaIntraScan} inside transaction.
 	 * <p>
-	 * HBaseScanScanner can contain kev-values for single row like {@link ResultScanner}, 
-	 * or key-values of multiple rows. 
+	 * HBaseScanScanner can contain kev-values for single row like {@link ResultScanner},
+	 * or key-values of multiple rows.
 	 * <p>
-	 * HBaseScanScanner does not need sequenceID control because it will use {@link HBaseGetScanner} 
+	 * HBaseScanScanner does not need sequenceID control because it will use {@link HBaseGetScanner}
 	 * if rows from scan do not have stable state, and put result from get to lower sequenceID.
 	 * Therefore, {@link #getSequenceID()} always return Long.MAX_VALUE
 	 */
-	
+
 	/**
 	 * Implementation of {@link HaeinsaKeyValueScanner} which provides scanner interface which wrap
-	 * {@link KeyValue}s from {@link Result} by HBase {@link Get} to {@link HaeinsaKeyValue}s. 
+	 * {@link KeyValue}s from {@link Result} by HBase {@link Get} to {@link HaeinsaKeyValue}s.
 	 * This class is used if there is {@link HaeinsaGet} inside transaction.
 	 * <p>
 	 * HBaseGetScanner can contain key-values for only single row link {@link Result}.
-	 * So {@link #peek()} method or {@link #next()} method will return value from same row. 
+	 * So {@link #peek()} method or {@link #next()} method will return value from same row.
 	 * <p>
 	 * HBaseGetScanner is now used in two cases.
 	 * First, inside {@link HaeinsaTable#get()}, {@link HaeinsaKeyValue}s returned by this class will
 	 * always have sequenceId of Long.MAX_VALUE.
-	 * Second is used inside {@link ClientScanner}. In this case, HBaseGetScanner recover failed transaction and 
-	 * get recovered data from HBase. 
+	 * Second is used inside {@link ClientScanner}. In this case, HBaseGetScanner recover failed transaction and
+	 * get recovered data from HBase.
 	 * Recovered {@link HaeinsaKeyValue} should have smaller sequenceId contained in ClientScanner so far
 	 * because it is more recent value.
 	 */

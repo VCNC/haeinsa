@@ -29,7 +29,7 @@ class HaeinsaRowTransaction {
 	// current RowLock saved in HBase. null if there is no lock at all.
 	private TRowLock current;
 	// mutations will be saved in order of executions.
-	// If this rowTransaction is created during recovering failed transaction by other client, 
+	// If this rowTransaction is created during recovering failed transaction by other client,
 	// following mutations variable is empty.
 	private final List<HaeinsaMutation> mutations = Lists.newArrayList();
 	private final HaeinsaTableTransaction tableTransaction;
