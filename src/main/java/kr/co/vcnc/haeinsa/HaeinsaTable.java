@@ -17,6 +17,7 @@ package kr.co.vcnc.haeinsa;
 
 import static kr.co.vcnc.haeinsa.HaeinsaConstants.LOCK_FAMILY;
 import static kr.co.vcnc.haeinsa.HaeinsaConstants.LOCK_QUALIFIER;
+import static kr.co.vcnc.haeinsa.HaeinsaConstants.RECOVER_MAX_RETRY_COUNT;
 import static kr.co.vcnc.haeinsa.HaeinsaConstants.ROW_LOCK_TIMEOUT;
 import static kr.co.vcnc.haeinsa.HaeinsaConstants.ROW_LOCK_VERSION;
 
@@ -211,7 +212,7 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 	 * @throws IOException IOException from HBase.
 	 */
 	private HaeinsaResultScanner getScannerWithoutTx(HaeinsaIntraScan intraScan) throws IOException {
-		Scan hScan = new Scan(intraScan.getRow(), Bytes.add(intraScan.getRow(), new byte[] { 0x00 }));
+		Scan hScan = new Scan(intraScan.getRow(), Bytes.add(intraScan.getRow(), new byte[]{0x00}));
 		hScan.setBatch(intraScan.getBatch());
 
 		for (byte[] family : intraScan.getFamilies()) {
@@ -438,7 +439,11 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 			// return rowState itself if rowState already exist and contains TRowLock
 			return rowState;
 		}
+		int recoverCount = 0;
 		while (true) {
+			if (recoverCount > HaeinsaConstants.RECOVER_MAX_RETRY_COUNT) {
+				throw new ConflictException("recover retry count is exceeded.");
+			}
 			TRowLock currentRowLock = getRowLock(row);
 			if (checkAndIsShouldRecover(currentRowLock)) {
 				recover(tx, row);
@@ -447,6 +452,7 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 				rowState.setCurrent(currentRowLock);
 				break;
 			}
+			recoverCount++;
 		}
 		return rowState;
 	}
