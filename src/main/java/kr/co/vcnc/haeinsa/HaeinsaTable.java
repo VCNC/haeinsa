@@ -447,12 +447,12 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 			TRowLock currentRowLock = getRowLock(row);
 			if (checkAndIsShouldRecover(currentRowLock)) {
 				recover(tx, row);
+				recoverCount++;
 			} else {
 				rowState = tableState.createOrGetRowState(row);
 				rowState.setCurrent(currentRowLock);
 				break;
 			}
-			recoverCount++;
 		}
 		return rowState;
 	}
