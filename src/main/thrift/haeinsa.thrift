@@ -67,4 +67,5 @@ struct TRowLock {
 	7: optional list<TRowKey> secondaries,
 	8: optional list<TCellKey> prewritten,
 	9: optional list<TMutation> mutations,
+	10: optional i64 prewriteTimestamp,
 }
