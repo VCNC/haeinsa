@@ -17,9 +17,11 @@ package kr.co.vcnc.haeinsa;
 
 
 import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import com.beust.jcommander.internal.Lists;
 import kr.co.vcnc.haeinsa.exception.ConflictException;
 
 import org.apache.hadoop.conf.Configuration;
@@ -94,8 +96,8 @@ public class HaeinsaUnitTest {
 	public void testTransaction() throws Exception {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
 		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
-
 		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
+		cleanTable(tm, "test");
 		HaeinsaTableIface testTable = tablePool.getTable("test");
 
 		// Test 2 puts tx
@@ -347,6 +349,7 @@ public class HaeinsaUnitTest {
 		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
 
 		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
+		cleanTable(tm, "test");
 		HaeinsaTableIface testTable = tablePool.getTable("test");
 		HaeinsaTransaction tx = tm.begin();
 
@@ -412,6 +415,7 @@ public class HaeinsaUnitTest {
 		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
 
 		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
+		cleanTable(tm, "test");
 		HaeinsaTableIface testTable = tablePool.getTable("test");
 
 		// Test 2 puts tx
@@ -454,12 +458,13 @@ public class HaeinsaUnitTest {
 		tablePool.close();
 	}
 
-	@Test(dependsOnMethods = { "testTransaction" })
+	@Test(dependsOnMethods = { "testMultiRowReadOnly" })
 	public void testConflictAndAbort() throws Exception {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
 		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
 
 		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
+		cleanTable(tm, "test");
 		HaeinsaTableIface testTable = tablePool.getTable("test");
 		HaeinsaTransaction tx = tm.begin();
 		HaeinsaTransaction tx2 = tm.begin();
@@ -533,12 +538,13 @@ public class HaeinsaUnitTest {
 		tablePool.close();
 	}
 
-	@Test(dependsOnMethods = { "testTransaction" })
+	@Test(dependsOnMethods = { "testConflictAndAbort" })
 	public void testConflictAndRecover() throws Exception {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
 		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
 
 		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
+		cleanTable(tm, "test");
 		HaeinsaTableIfaceInternal testTable = (HaeinsaTableIfaceInternal) tablePool.getTable("test");
 		HaeinsaTransaction tx = tm.begin();
 		HaeinsaTransaction tx2 = tm.begin();
@@ -649,10 +655,12 @@ public class HaeinsaUnitTest {
 	 *
 	 * @throws Exception
 	 */
-	@Test(dependsOnMethods = { "testTransaction" })
+	@Test(dependsOnMethods = { "testConflictAndRecover" })
 	public void testHBaseHaeinsaMigration() throws Exception {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
 		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
+		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
+		cleanTable(tm, "test");
 
 		HTablePool hbasePool = new HTablePool(CONF, 128, PoolType.Reusable);
 		HTableInterface hTestTable = hbasePool.getTable("test");
@@ -675,7 +683,6 @@ public class HaeinsaUnitTest {
 		Assert.assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row1")));
 		Assert.assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row2")));
 
-		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
 		HaeinsaTableIface testTable = tablePool.getTable("test");
 
 		HaeinsaTransaction tx = tm.begin();
@@ -914,12 +921,13 @@ public class HaeinsaUnitTest {
 	 *
 	 * @throws Exception
 	 */
-	@Test(dependsOnMethods = { "testTransaction" })
+	@Test(dependsOnMethods = { "testHBaseHaeinsaMigration" })
 	public void testMultipleMutations() throws Exception {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
 		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
 
 		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
+		cleanTable(tm, "test");
 		HaeinsaTableIface testTable = tablePool.getTable("test");
 
 		/*
@@ -1008,12 +1016,13 @@ public class HaeinsaUnitTest {
 	 *
 	 * @throws Exception
 	 */
-	@Test(dependsOnMethods = { "testTransaction" })
+	@Test(dependsOnMethods = { "testMultipleMutations" })
 	public void testHaeinsaTableWithoutTx() throws Exception {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
 		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
 
 		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
+		cleanTable(tm, "test");
 		HaeinsaTableIface testTable = tablePool.getTable("test");
 		HTablePool hbasePool = new HTablePool(CONF, 128, PoolType.Reusable);
 		HTableInterface hTestTable = hbasePool.getTable("test");
@@ -1175,5 +1184,26 @@ public class HaeinsaUnitTest {
 
 	private boolean checkLockChanged(HTableInterface table, byte[] row, byte[] oldLock) throws Exception {
 		return !Bytes.equals(getLock(table, row), oldLock);
+	}
+
+	private void cleanTable(HaeinsaTransactionManager tm, String tableName) throws Exception {
+		HaeinsaTableIface testTable = tm.getTablePool().getTable(tableName);
+		HaeinsaScan scan = new HaeinsaScan();
+		HaeinsaTransaction tx = tm.begin();
+		List<byte[]> rows = Lists.newArrayList();
+		try (HaeinsaResultScanner scanner = testTable.getScanner(tx, scan)) {
+			for (HaeinsaResult result : scanner) {
+				rows.add(result.getRow());
+			}
+		}
+
+		for (byte[] row : rows) {
+			HaeinsaDelete delete = new HaeinsaDelete(row);
+			delete.deleteFamily(Bytes.toBytes("data"));
+			testTable.delete(tx, delete);
+		}
+
+		tx.commit();
+		testTable.close();
 	}
 }
