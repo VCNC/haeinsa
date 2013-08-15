@@ -62,4 +62,6 @@ public final class HaeinsaConstants {
 	 * In this release, user can't control name of lock qualifier.
 	 */
 	public static final byte[] LOCK_QUALIFIER = Bytes.toBytes("lock");
+
+	public static final int RECOVER_MAX_RETRY_COUNT = 3;
 }
