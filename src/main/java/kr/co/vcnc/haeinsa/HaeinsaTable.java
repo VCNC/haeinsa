@@ -678,6 +678,7 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 		TRowLock newRowLock = rowTxState.getCurrent().deepCopy();
 		newRowLock.setCommitTimestamp(commitTimestamp);
 		newRowLock.setState(TRowLockState.COMMITTED);
+		newRowLock.setCurrentTimestmap(newRowLock.getCurrentTimestmap() + 1);
 		// make prewritten to null
 		newRowLock.setPrewrittenIsSet(false);
 		// extend expiry by ROW_LOCK_TIMEOUT
@@ -716,13 +717,14 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 		long commitTimestamp = transaction.getCommitTimestamp();
 		TRowLock newRowLock = rowTxState.getCurrent().deepCopy();
 		newRowLock.setCommitTimestamp(commitTimestamp);
+		newRowLock.setCurrentTimestmap(Math.min(newRowLock.getCommitTimestamp(), newRowLock.getCurrentTimestmap() + 1));
 		newRowLock.setState(TRowLockState.ABORTED);
 		newRowLock.setMutationsIsSet(false);
 		newRowLock.setExpiry(System.currentTimeMillis() + ROW_LOCK_TIMEOUT);
 
 		byte[] newRowLockBytes = TRowLocks.serialize(newRowLock);
 		Put put = new Put(row);
-		put.add(LOCK_FAMILY, LOCK_QUALIFIER, commitTimestamp, newRowLockBytes);
+		put.add(LOCK_FAMILY, LOCK_QUALIFIER, newRowLock.getCurrentTimestmap(), newRowLockBytes);
 
 		if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, put)) {
 			// Consider as conflict because another transaction might acquire lock of primary row.

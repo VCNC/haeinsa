@@ -159,8 +159,10 @@ public class HaeinsaTransaction {
 				maxCurrentCommitTimestamp = Math.max(maxCurrentCommitTimestamp, rowState.getCurrent().getCommitTimestamp());
 			}
 		}
+
+		// HBase compaction시에 같은 timestamp에 값을 쓰면 compaction후에 최신 값이 남이 있는 것이 보장되지 않는다.
 		setPrewriteTimestamp(maxCurrentCommitTimestamp + 1);
-		setCommitTimestamp(Math.max(getPrewriteTimestamp(), maxCurrentCommitTimestamp + maxIterationCount));
+		setCommitTimestamp(Math.max(getPrewriteTimestamp() + 2, maxCurrentCommitTimestamp + maxIterationCount + 2));
 
 		// setPrimary among mutationRowStates first, next among
 		// readOnlyRowStates
