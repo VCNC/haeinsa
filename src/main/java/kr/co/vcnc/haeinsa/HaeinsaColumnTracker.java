@@ -16,9 +16,9 @@
 package kr.co.vcnc.haeinsa;
 
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.NavigableSet;
 import java.util.TreeMap;
-import java.util.Map.Entry;
 
 import org.apache.hadoop.hbase.util.Bytes;
 
@@ -110,22 +110,22 @@ public class HaeinsaColumnTracker {
 	}
 
 	/**
-	 * Check whether kv is inside range of scan. There are three possibilities. 
+	 * Check whether kv is inside range of scan. There are three possibilities.
 	 * <ol>
-	 * <li>If scan do not specify any column family - 
+	 * <li>If scan do not specify any column family -
 	 * return true if kv is inside qualifier range.</li>
-	 * <li>If scan specify column families, but not any qualifiers. - 
+	 * <li>If scan specify column families, but not any qualifiers. -
 	 * return true when kv has same column family and is inside scan range.</li>
-	 * <li>If scan specify both column families and column qualifiers -  
+	 * <li>If scan specify both column families and column qualifiers -
 	 * return true only if kv satisfy both requirement.</li>
 	 * </ol>
-	 * 
+	 *
 	 * @param kv HaeinsaKeyValue which will be checked.
 	 * @return
 	 */
 	public boolean isMatched(HaeinsaKeyValue kv) {
 		// If familyMap is empty, then Haeinsa transaction assumes
-		// that programmer wants to scan all (family, qualifier) pairs 
+		// that programmer wants to scan all (family, qualifier) pairs
 		// inside scan range, and call isColumnInclusive(kv) directly.
 		// { empty }
 		if (familyMap.isEmpty()) {

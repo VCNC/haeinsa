@@ -60,8 +60,8 @@ public interface HaeinsaTableIface extends Closeable {
 	/**
 	 * Extracts certain cells from a given row.
 	 *
-	 * @param tx HaeinsaTransaction which this operation is participated in. 
-	 * 			 It can be null if user don't want to execute get inside transaction. 
+	 * @param tx HaeinsaTransaction which this operation is participated in.
+	 * 			 It can be null if user don't want to execute get inside transaction.
 	 * @param get The object that specifies what data to fetch and from which row.
 	 * @return The data coming from the specified row, if it exists. If the row
 	 *         specified doesn't exist, the {@link HaeinsaResult} instance returned
@@ -96,9 +96,9 @@ public interface HaeinsaTableIface extends Closeable {
 	HaeinsaResultScanner getScanner(@Nullable HaeinsaTransaction tx, HaeinsaIntraScan intraScan) throws IOException;
 
 	/**
-	 * Gets a inter-row scanner on the current table for the given family. 
+	 * Gets a inter-row scanner on the current table for the given family.
 	 * Similar with {@link HaeinsaTableIface#getScanner(HaeinsaTransaction, HaeinsaScan)}.
-	 *	 
+	 *
 	 * @param tx HaeinsaTransaction which this operation is participated in.
 	 * 			 It can be null if user don't want to execute scan inside transaction.
 	 * @param family The column family to scan.
@@ -135,7 +135,7 @@ public interface HaeinsaTableIface extends Closeable {
 	 * Puts some data in the table, in batch.
 	 * <p>
 	 * The updates are buffered in client until tx is commited.
-	 * 
+	 *
 	 * @param puts The list of Puts to apply.
 	 * @throws IOException if a remote or network exception occurs.
 	 */

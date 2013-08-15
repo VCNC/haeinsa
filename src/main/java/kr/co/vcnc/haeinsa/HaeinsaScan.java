@@ -241,7 +241,7 @@ public class HaeinsaScan {
 
 	/**
 	 * Set whether blocks should be cached for this Scan.
-	 * Generally caching block help next get/scan requests to the same block, 
+	 * Generally caching block help next get/scan requests to the same block,
 	 * but DB consume more memory which could cause longer jvm gc or cache churn.
 	 * CacheBlocks and caching are different configurations.
 	 * <p>
