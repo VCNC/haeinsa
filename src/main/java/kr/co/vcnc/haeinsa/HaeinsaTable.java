@@ -742,7 +742,8 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 			return;
 		}
 		byte[] currentRowLockBytes = TRowLocks.serialize(rowTxState.getCurrent());
-		long prewriteTimestamp = rowTxState.getCurrent().isSetPrewriteTimestamp() ? rowTxState.getCurrent().getPrewriteTimestamp() : rowTxState.getCurrent().getCurrentTimestmap();
+		long prewriteTimestamp = rowTxState.getCurrent().isSetPrewriteTimestamp() ?
+				rowTxState.getCurrent().getPrewriteTimestamp() : rowTxState.getCurrent().getCurrentTimestmap();
 		Delete delete = new Delete(row);
 		for (TCellKey cellKey : rowTxState.getCurrent().getPrewritten()) {
 			delete.deleteColumn(cellKey.getFamily(), cellKey.getQualifier(), prewriteTimestamp);
