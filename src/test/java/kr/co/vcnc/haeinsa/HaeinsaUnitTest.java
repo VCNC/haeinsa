@@ -480,7 +480,7 @@ public class HaeinsaUnitTest {
 		tx2.commit();
 		try {
 			tx.commit();
-			Assert.assertTrue(false);
+			Assert.fail();
 		} catch (Exception e) {
 			Assert.assertTrue(e instanceof ConflictException);
 		}
@@ -560,12 +560,12 @@ public class HaeinsaUnitTest {
 		HaeinsaTableTransaction tableState = tx2.createOrGetTableState(Bytes.toBytes("test"));
 		HaeinsaRowTransaction rowState = tableState.createOrGetRowState(Bytes.toBytes("ymkim"));
 		tx2.setPrewriteTimestamp(rowState.getCurrent().getCommitTimestamp() + 1);
-		tx2.setCommitTimestamp(rowState.getCurrent().getCommitTimestamp() + 1);
+		tx2.setCommitTimestamp(rowState.getCurrent().getCommitTimestamp() + 3);
 		testTable.prewrite(rowState, Bytes.toBytes("ymkim"), true);
 
 		try {
 			tx.commit();
-			Assert.assertTrue(false);
+			Assert.fail();
 		} catch (Exception e) {
 			Assert.assertTrue(e instanceof ConflictException);
 		}
@@ -582,33 +582,26 @@ public class HaeinsaUnitTest {
 			Assert.assertEquals(result.getRow(), Bytes.toBytes("ymkim"));
 			scanner.close();
 			tx.rollback();
-			Assert.assertTrue(false);
+			Assert.fail();
 		} catch (Exception e) {
 			Assert.assertTrue(e instanceof ConflictException);
 		}
 
 		Thread.sleep(HaeinsaConstants.ROW_LOCK_TIMEOUT + 100);
 
-		try {
-			tx = tm.begin();
-			HaeinsaScan scan = new HaeinsaScan();
-			HaeinsaResultScanner scanner = testTable.getScanner(tx, scan);
+		tx = tm.begin();
+		HaeinsaScan scan = new HaeinsaScan();
+		try (HaeinsaResultScanner scanner = testTable.getScanner(tx, scan)) {
 			HaeinsaResult result = scanner.next();
-
 			Assert.assertNull(result);
-			scanner.close();
-
-		} catch (Exception e) {
-			Assert.assertTrue(false);
 		}
 
 		tx = tm.begin();
-		HaeinsaScan scan = new HaeinsaScan();
-		HaeinsaResultScanner scanner = testTable.getScanner(tx, scan);
-		HaeinsaResult result = scanner.next();
-
-		Assert.assertNull(result);
-		scanner.close();
+		scan = new HaeinsaScan();
+		try (HaeinsaResultScanner scanner = testTable.getScanner(tx, scan)) {
+			HaeinsaResult result = scanner.next();
+			Assert.assertNull(result);
+		}
 
 		put = new HaeinsaPut(Bytes.toBytes("ymkim"));
 		put.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-1234-5678"));
@@ -621,17 +614,17 @@ public class HaeinsaUnitTest {
 
 		tx = tm.begin();
 		scan = new HaeinsaScan();
-		scanner = testTable.getScanner(tx, scan);
-		result = scanner.next();
-		HaeinsaResult result2 = scanner.next();
-		HaeinsaResult result3 = scanner.next();
+		try (HaeinsaResultScanner scanner = testTable.getScanner(tx, scan)) {
+			HaeinsaResult result = scanner.next();
+			HaeinsaResult result2 = scanner.next();
+			HaeinsaResult result3 = scanner.next();
 
-		Assert.assertNull(result3);
-		Assert.assertEquals(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber")), Bytes.toBytes("010-9876-5432"));
-		Assert.assertEquals(result.getRow(), Bytes.toBytes("kjwoo"));
-		Assert.assertEquals(result2.getValue(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber")), Bytes.toBytes("010-1234-5678"));
-		Assert.assertEquals(result2.getRow(), Bytes.toBytes("ymkim"));
-		scanner.close();
+			Assert.assertNull(result3);
+			Assert.assertEquals(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber")), Bytes.toBytes("010-9876-5432"));
+			Assert.assertEquals(result.getRow(), Bytes.toBytes("kjwoo"));
+			Assert.assertEquals(result2.getValue(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber")), Bytes.toBytes("010-1234-5678"));
+			Assert.assertEquals(result2.getRow(), Bytes.toBytes("ymkim"));
+		}
 		tx.rollback();
 
 		tx = tm.begin();
