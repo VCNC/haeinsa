@@ -395,7 +395,7 @@ public class HaeinsaTransaction {
 	 * Prewritten data on rows are removed at this state.</li>
 	 * <li>Change primary row to stable state.</li>
 	 * </ol>
-	 * 
+	 *
 	 * @throws IOException ConflictException, HBase IOException.
 	 */
 	protected void abort() throws IOException {
