@@ -559,6 +559,7 @@ public class HaeinsaUnitTest {
 		testTable.put(tx2, put);
 		HaeinsaTableTransaction tableState = tx2.createOrGetTableState(Bytes.toBytes("test"));
 		HaeinsaRowTransaction rowState = tableState.createOrGetRowState(Bytes.toBytes("ymkim"));
+		tx2.classifyAndSortRows(false);
 		tx2.setPrewriteTimestamp(rowState.getCurrent().getCommitTimestamp() + 1);
 		tx2.setCommitTimestamp(rowState.getCurrent().getCommitTimestamp() + 3);
 		testTable.prewrite(rowState, Bytes.toBytes("ymkim"), true);
