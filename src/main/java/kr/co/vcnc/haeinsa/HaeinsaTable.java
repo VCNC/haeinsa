@@ -35,6 +35,7 @@ import java.util.Set;
 import javax.annotation.Nullable;
 
 import kr.co.vcnc.haeinsa.exception.ConflictException;
+import kr.co.vcnc.haeinsa.exception.RecoverableConflictException;
 import kr.co.vcnc.haeinsa.thrift.TRowLocks;
 import kr.co.vcnc.haeinsa.thrift.generated.TCellKey;
 import kr.co.vcnc.haeinsa.thrift.generated.TKeyValue;
@@ -64,12 +65,15 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Implementation of {@link HaeinsaTableIface}. It works with
  * {@link HaeinsaTransaction} to provide transaction on HBase.
  */
 class HaeinsaTable implements HaeinsaTableIfaceInternal {
+	private static final Logger LOGGER = LoggerFactory.getLogger(HaeinsaTable.class);
 	private final HTableInterface table;
 
 	public HaeinsaTable(HTableInterface table) {
@@ -396,8 +400,12 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 	private void recover(HaeinsaTransaction tx, byte[] row) throws IOException {
 		HaeinsaTransaction previousTx = tx.getManager().getTransaction(getTableName(), row);
 		if (previousTx != null) {
-			// 해당 row 에 아직 종료되지 않은 Transaction 이 남아 있는 경우
-			previousTx.recover();
+			try {
+				// 해당 row 에 아직 종료되지 않은 Transaction 이 남아 있는 경우
+				previousTx.recover();
+			} catch (RecoverableConflictException e) {
+				LOGGER.warn(e.getMessage(), e);
+			}
 		}
 	}
 
@@ -533,6 +541,8 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 	public void checkSingleRowLock(HaeinsaRowTransaction rowState, byte[] row) throws IOException {
 		TRowLock currentRowLock = getRowLock(row);
 		if (!rowState.getCurrent().equals(currentRowLock)) {
+			HaeinsaTransaction tx = rowState.getTableTransaction().getTransaction();
+			tx.abort();
 			throw new ConflictException("this row is modified, checkSingleRow failed");
 		}
 	}
@@ -666,6 +676,7 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 
 		if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, put)) {
 			// Consider as success because another transaction might already stabilize this row.
+			throw new RecoverableConflictException("can't make stable");
 		} else {
 			rowTxState.setCurrent(newRowLock);
 		}
