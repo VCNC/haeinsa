@@ -441,7 +441,7 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 		}
 		int recoverCount = 0;
 		while (true) {
-			if (recoverCount > HaeinsaConstants.RECOVER_MAX_RETRY_COUNT) {
+			if (recoverCount > RECOVER_MAX_RETRY_COUNT) {
 				throw new ConflictException("recover retry count is exceeded.");
 			}
 			TRowLock currentRowLock = getRowLock(row);
