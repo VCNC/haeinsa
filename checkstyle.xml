@@ -74,7 +74,6 @@
 		<module name="NoFinalizer" />
 		<module name="SuperFinalize" />
 		<module name="PackageDeclaration" />
-		<module name="ExplicitInitialization" />
 		<module name="DefaultComesLast" />
 		<module name="UnnecessaryParentheses" />
 		<!-- configure imports -->
