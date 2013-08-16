@@ -89,7 +89,7 @@ public interface HaeinsaTableIface extends Closeable {
 	 *
 	 * @param tx HaeinsaTransaction which this operation is participated in.
 	 * 			 It can be null if user don't want to execute scan inside transaction.
-	 * @param scan A configured {@link HaeinsaIntraScan} object.
+	 * @param intraScan A configured {@link HaeinsaIntraScan} object.
 	 * @return A scanner.
 	 * @throws IOException if a remote or network exception occurs.
 	 */

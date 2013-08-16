@@ -211,8 +211,7 @@ public class HaeinsaTablePool implements Closeable {
 	 *
 	 * @param table table
 	 */
-	private void returnTable(HaeinsaTableIfaceInternal table)
-			throws IOException {
+	private void returnTable(HaeinsaTableIfaceInternal table) throws IOException {
 		// this is the old putTable method renamed and made private
 		String tableName = Bytes.toString(table.getTableName());
 		if (tables.size(tableName) >= maxSize) {

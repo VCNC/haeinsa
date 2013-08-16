@@ -51,15 +51,14 @@ class HaeinsaTableTransaction {
 	 * Returned rowTransaction is always saved in rowStates.
 	 * <p>
 	 * There are three possible states of TRowLock of {@link HaeinsaRowTransaction} which returned by this method.
-	 * <p>
-	 * 1. When get {@link HaeinsaRowTransaction} which is already contained in rowStates
-	 * - Should not change {@link HaeinsaRowTransaction#current} manually.
-	 * <p>
-	 * 2. When rowTransaction is newly created by this method and {@link TRowLock} associated with the row exists
+	 * <ol>
+	 * <li>When get {@link HaeinsaRowTransaction} which is already contained in rowStates
+	 * - Should not change {@link HaeinsaRowTransaction#current} manually.</li>
+	 * <li>When rowTransaction is newly created by this method and {@link TRowLock} associated with the row exists
 	 * - Use {@link HaeinsaRowTransaction#setCurrent()} to set current field of rowTransaction.
-	 * <p>
-	 * 3. When rowTransaction is newly created by this method and there is no associated {@link TRowLock}
-	 * - Use {@link TRowLocks#serialize(null)} method to set default {@link TRowLock} to current field of rowTransaction.
+	 * <li>When rowTransaction is newly created by this method and there is no associated {@link TRowLock}</li>
+	 * - Use {@link TRowLocks#serialize(null)} method to set default {@link TRowLock} to current field of rowTransaction.</li>
+	 * </ol>
 	 *
 	 * @param row
 	 * @return RowTransaction - {@link HaeinsaRowTransaction} which contained in

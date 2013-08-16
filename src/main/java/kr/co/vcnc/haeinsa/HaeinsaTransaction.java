@@ -389,14 +389,13 @@ public class HaeinsaTransaction {
 	 * locks of primary and secondary rows to {@link #txStates} of this instance.
 	 * <p>
 	 * Aborting is executed by following order.
-	 * <p>
-	 * 1. Abort primary row by calling {@link HaeinsaTableIfaceInternal#abortPrimary().
-	 * <p>
-	 * 2. Visit all secondary rows and change from prewritten to stable state.
-	 * Prewritten data on rows are removed at this state.
-	 * <p>
-	 * 3. Change primary row to stable state.
-	 *
+	 * <ol>
+	 * <li>Abort primary row by calling {@link HaeinsaTableIfaceInternal#abortPrimary()}.</li>
+	 * <li>Visit all secondary rows and change from prewritten to stable state.
+	 * Prewritten data on rows are removed at this state.</li>
+	 * <li>Change primary row to stable state.</li>
+	 * </ol>
+	 * 
 	 * @throws IOException ConflictException, HBase IOException.
 	 */
 	protected void abort() throws IOException {
