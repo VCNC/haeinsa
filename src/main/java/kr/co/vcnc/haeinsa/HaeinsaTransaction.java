@@ -579,7 +579,7 @@ public class HaeinsaTransaction {
 		@Override
 		public int compare(TRowKey o1, TRowKey o2) {
 			int hash1 = HASH.newHasher().putBytes(o1.getTableName()).putBytes(o1.getRow()).hash().asInt();
-			int hash2 = HASH.newHasher().putBytes(o1.getTableName()).putBytes(o1.getRow()).hash().asInt();
+			int hash2 = HASH.newHasher().putBytes(o2.getTableName()).putBytes(o2.getRow()).hash().asInt();
 			if (hash1 > hash2) {
 				return 1;
 			} else if (hash1 == hash2) {
