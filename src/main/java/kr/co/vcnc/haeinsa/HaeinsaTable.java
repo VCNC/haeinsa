@@ -723,7 +723,7 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 		newRowLock.setCommitTimestamp(commitTimestamp);
 		// if tx is already aborted, we can't change current timestamp.
 		if (rowTxState.getCurrent().getState() != TRowLockState.ABORTED) {
-			newRowLock.setCurrentTimestmap(Math.min(newRowLock.getCommitTimestamp(), newRowLock.getCurrentTimestmap() + 1));
+			newRowLock.setCurrentTimestmap(newRowLock.getCurrentTimestmap() + 1);
 		}
 		newRowLock.setState(TRowLockState.ABORTED);
 		newRowLock.setMutationsIsSet(false);
