@@ -1040,7 +1040,9 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 								Result result = table.get(get);
 								maxSeqID--;
 								HBaseGetScanner getScanner = new HBaseGetScanner(result, maxSeqID);
-								scanners.add(getScanner);
+								if (getScanner.peek() != null) {
+									scanners.add(getScanner);
+								}
 								continue;
 							} else {
 								// when currentRowLock is stable
