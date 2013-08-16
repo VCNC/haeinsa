@@ -679,7 +679,10 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 		TRowLock newRowLock = rowTxState.getCurrent().deepCopy();
 		newRowLock.setCommitTimestamp(commitTimestamp);
 		newRowLock.setState(TRowLockState.COMMITTED);
-		newRowLock.setCurrentTimestmap(newRowLock.getCurrentTimestmap() + 1);
+		// if tx is already committed, we can't change current timestamp.
+		if (rowTxState.getCurrent().getState() != TRowLockState.COMMITTED) {
+			newRowLock.setCurrentTimestmap(newRowLock.getCurrentTimestmap() + 1);
+		}
 		// make prewritten to null
 		newRowLock.setPrewrittenIsSet(false);
 		// extend expiry by ROW_LOCK_TIMEOUT
@@ -718,7 +721,10 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 		long commitTimestamp = transaction.getCommitTimestamp();
 		TRowLock newRowLock = rowTxState.getCurrent().deepCopy();
 		newRowLock.setCommitTimestamp(commitTimestamp);
-		newRowLock.setCurrentTimestmap(Math.min(newRowLock.getCommitTimestamp(), newRowLock.getCurrentTimestmap() + 1));
+		// if tx is already aborted, we can't change current timestamp.
+		if (rowTxState.getCurrent().getState() != TRowLockState.ABORTED) {
+			newRowLock.setCurrentTimestmap(newRowLock.getCurrentTimestmap() + 1);
+		}
 		newRowLock.setState(TRowLockState.ABORTED);
 		newRowLock.setMutationsIsSet(false);
 		newRowLock.setExpiry(System.currentTimeMillis() + ROW_LOCK_TIMEOUT);
