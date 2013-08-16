@@ -525,8 +525,8 @@ public class HaeinsaTransaction {
 		}
 
 		public void classifyAndSortRows(boolean onRecovery) {
-			mutationRowStates = Maps.newTreeMap();
-			readOnlyRowStates = Maps.newTreeMap();
+			mutationRowStates = Maps.newTreeMap(comparator);
+			readOnlyRowStates = Maps.newTreeMap(comparator);
 			if (!onRecovery) {
 				for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : tableStates.entrySet()) {
 					for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()) {
