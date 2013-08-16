@@ -19,7 +19,6 @@ import java.io.IOException;
 import java.util.Comparator;
 import java.util.Map.Entry;
 import java.util.NavigableMap;
-import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import kr.co.vcnc.haeinsa.exception.ConflictException;
@@ -147,6 +146,8 @@ public class HaeinsaTransaction {
 		if (!used.compareAndSet(false, true)) {
 			throw new IllegalStateException("this transaction is already used.");
 		}
+		boolean onRecovery = false;
+		txStates.classifyAndSortRows(onRecovery);
 		long maxCurrentCommitTimestamp = System.currentTimeMillis();
 		long maxIterationCount = Long.MIN_VALUE;
 
@@ -351,6 +352,8 @@ public class HaeinsaTransaction {
 	 * @throws IOException
 	 */
 	protected void recover() throws IOException {
+		boolean onRecovery = true;
+		txStates.classifyAndSortRows(onRecovery);
 		HaeinsaRowTransaction primaryRowTx = createOrGetTableState(primary.getTableName()).createOrGetRowState(primary.getRow());
 		if (primaryRowTx.getCurrent().getState() == TRowLockState.PREWRITTEN) {
 			// If primary row is in prewritten state, transaction can be aborted only after expiry.
@@ -429,6 +432,14 @@ public class HaeinsaTransaction {
 	}
 
 	/**
+	 * for unit test code
+	 * @param onRecovery onRecovery
+	 */
+	void classifyAndSortRows(boolean onRecovery) {
+		txStates.classifyAndSortRows(onRecovery);
+	}
+
+	/**
 	 * Container which contain {byte[] : {@link HaeinsaTableTransaction} map.
 	 * <p>
 	 * This class is not Thread-safe. This class will separate each
@@ -441,6 +452,8 @@ public class HaeinsaTransaction {
 	private static class HaeinsaTransactionState {
 		private final NavigableMap<byte[], HaeinsaTableTransaction> tableStates = Maps.newTreeMap(Bytes.BYTES_COMPARATOR);
 		private final Comparator<TRowKey> comparator = new HashComparator();
+		private NavigableMap<TRowKey, HaeinsaRowTransaction> mutationRowStates = null;
+		private NavigableMap<TRowKey, HaeinsaRowTransaction> readOnlyRowStates = null;
 
 		public NavigableMap<byte[], HaeinsaTableTransaction> getTableStates() {
 			return tableStates;
@@ -497,19 +510,8 @@ public class HaeinsaTransaction {
 		 * @return
 		 */
 		public NavigableMap<TRowKey, HaeinsaRowTransaction> getMutationRowStates() {
-			TreeMap<TRowKey, HaeinsaRowTransaction> map = Maps.newTreeMap(comparator);
-			for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : tableStates.entrySet()) {
-				for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()) {
-					HaeinsaRowTransaction rowState = rowStateEntry.getValue();
-					TRowKey rowKey = new TRowKey();
-					rowKey.setTableName(tableStateEntry.getKey());
-					rowKey.setRow(rowStateEntry.getKey());
-					if (isMutationRow(rowState)) {
-						map.put(rowKey, rowState);
-					}
-				}
-			}
-			return map;
+			Preconditions.checkNotNull(mutationRowStates, "Should call classifyAndSortRows first.");
+			return mutationRowStates;
 		}
 
 		/**
@@ -518,34 +520,38 @@ public class HaeinsaTransaction {
 		 * @return
 		 */
 		public NavigableMap<TRowKey, HaeinsaRowTransaction> getReadOnlyRowStates() {
-			TreeMap<TRowKey, HaeinsaRowTransaction> map = Maps.newTreeMap(comparator);
-			for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : tableStates.entrySet()) {
-				for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()) {
-					HaeinsaRowTransaction rowState = rowStateEntry.getValue();
-					TRowKey rowKey = new TRowKey();
-					rowKey.setTableName(tableStateEntry.getKey());
-					rowKey.setRow(rowStateEntry.getKey());
-					if (!isMutationRow(rowState)) {
-						map.put(rowKey, rowState);
+			Preconditions.checkNotNull(readOnlyRowStates, "Should call classifyAndSortRows first.");
+			return readOnlyRowStates;
+		}
+
+		public void classifyAndSortRows(boolean onRecovery) {
+			mutationRowStates = Maps.newTreeMap();
+			readOnlyRowStates = Maps.newTreeMap();
+			if (!onRecovery) {
+				for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : tableStates.entrySet()) {
+					for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()) {
+						HaeinsaRowTransaction rowState = rowStateEntry.getValue();
+						TRowKey rowKey = new TRowKey();
+						rowKey.setTableName(tableStateEntry.getKey());
+						rowKey.setRow(rowStateEntry.getKey());
+						if (rowState.getMutations().size() > 0) {
+							mutationRowStates.put(rowKey, rowState);
+						} else {
+							readOnlyRowStates.put(rowKey, rowState);
+						}
+					}
+				}
+			} else {
+				for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : tableStates.entrySet()) {
+					for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()) {
+						HaeinsaRowTransaction rowState = rowStateEntry.getValue();
+						TRowKey rowKey = new TRowKey();
+						rowKey.setTableName(tableStateEntry.getKey());
+						rowKey.setRow(rowStateEntry.getKey());
+						mutationRowStates.put(rowKey, rowState);
 					}
 				}
 			}
-			return map;
-		}
-
-		/**
-		 * Return true if number of mutations is bigger than 0 or TRowLockState
-		 * is not STABLE.
-		 * <p>
-		 * Former case means that row is mutation row on normal transaction
-		 * phase. Later case means that row was aborted during last normal
-		 * transaction phase, which means that row was mutation row previously.
-		 *
-		 * @param rowTx
-		 * @return
-		 */
-		private boolean isMutationRow(HaeinsaRowTransaction rowTx) {
-			return rowTx.getMutations().size() > 0 || rowTx.getCurrent().getState() != TRowLockState.STABLE;
 		}
 	}
 
