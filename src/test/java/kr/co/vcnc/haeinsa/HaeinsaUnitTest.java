@@ -480,7 +480,7 @@ public class HaeinsaUnitTest {
 		tx2.commit();
 		try {
 			tx.commit();
-			Assert.assertTrue(false);
+			Assert.fail();
 		} catch (Exception e) {
 			Assert.assertTrue(e instanceof ConflictException);
 		}
@@ -565,7 +565,7 @@ public class HaeinsaUnitTest {
 
 		try {
 			tx.commit();
-			Assert.assertTrue(false);
+			Assert.fail();
 		} catch (Exception e) {
 			Assert.assertTrue(e instanceof ConflictException);
 		}
@@ -582,7 +582,7 @@ public class HaeinsaUnitTest {
 			Assert.assertEquals(result.getRow(), Bytes.toBytes("ymkim"));
 			scanner.close();
 			tx.rollback();
-			Assert.assertTrue(false);
+			Assert.fail();
 		} catch (Exception e) {
 			Assert.assertTrue(e instanceof ConflictException);
 		}
