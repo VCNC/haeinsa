@@ -125,7 +125,7 @@ interface HaeinsaTableIfaceInternal extends HaeinsaTableIface {
 	void commitPrimary(HaeinsaRowTransaction rowTxState, byte[] row) throws IOException;
 
 	/**
-	 * get {@link TRowLock} from HBase.
+	 * get {@link TRowLock} from HBase. This method never returns null.
 	 *
 	 * @param row row
 	 * @return row lock

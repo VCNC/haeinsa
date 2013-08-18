@@ -20,9 +20,13 @@ import java.nio.ByteBuffer;
 
 import javax.annotation.Nullable;
 
+import kr.co.vcnc.haeinsa.exception.DanglingRowLockException;
+import kr.co.vcnc.haeinsa.thrift.TRowLocks;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowKey;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
+
+import com.google.common.base.Objects;
 
 /**
  * Manager class of {@link HaeinsaTransaction}.
@@ -71,46 +75,94 @@ public class HaeinsaTransactionManager {
 	 */
 	@Nullable
 	protected HaeinsaTransaction getTransaction(byte[] tableName, byte[] row) throws IOException {
-		TRowLock startUnstableRowLock = getUnstableRowLock(tableName, row);
+		TRowLock unstableRowLock = getUnstableRowLock(tableName, row);
 
-		if (startUnstableRowLock == null) {
-			// There is no on-going transaction on row.
+		if (unstableRowLock == null) {
+			// There is no on-going transaction on the row.
 			return null;
 		}
 
 		TRowLock primaryRowLock = null;
 		TRowKey primaryRowKey = null;
-		if (!startUnstableRowLock.isSetPrimary()) {
+		if (TRowLocks.isPrimary(unstableRowLock)) {
 			// this row is primary row, because primary field is not set.
 			primaryRowKey = new TRowKey(ByteBuffer.wrap(tableName), ByteBuffer.wrap(row));
-			primaryRowLock = startUnstableRowLock;
+			primaryRowLock = unstableRowLock;
 		} else {
-			primaryRowKey = startUnstableRowLock.getPrimary();
-			primaryRowLock = getUnstableRowLock(primaryRowKey.getTableName(), primaryRowKey.getRow());
-		}
-		if (primaryRowLock == null) {
-			return null;
+			primaryRowKey = unstableRowLock.getPrimary();
+			primaryRowLock = getRowLock(primaryRowKey.getTableName(), primaryRowKey.getRow());
+
+			TRowKey rowKey = new TRowKey().setTableName(tableName).setRow(row);
+			if (!TRowLocks.isSecondaryOf(primaryRowLock, rowKey, unstableRowLock)) {
+				checkDanglingRowLockOrThrow(tableName, row, unstableRowLock);
+				return null;
+			}
 		}
 		return getTransactionFromPrimary(primaryRowKey, primaryRowLock);
 	}
 
 	/**
-	 * @param tableName
-	 * @param row
+	 * Get Unstable state of {@link TRowLock} from given row. Returns null if
+	 * {@link TRowLock} is {@link TRowLockState#STABLE}.
+	 *
+	 * @param tableName Table name of the row
+	 * @param row Row key of the row
 	 * @return null if TRowLock is {@link TRowLockState#STABLE}, otherwise
 	 *         return rowLock from HBase.
-	 * @throws IOException
+	 * @throws IOException When error occurs in HBase.
 	 */
 	private TRowLock getUnstableRowLock(byte[] tableName, byte[] row) throws IOException {
+		TRowLock rowLock = getRowLock(tableName, row);
+		if (rowLock.getState() == TRowLockState.STABLE) {
+			return null;
+		} else {
+			return rowLock;
+		}
+	}
+
+	/**
+	 * Get {@link TRowLock} from given row.
+	 *
+	 * @param tableName Table name of the row
+	 * @param row Row key of the row
+	 * @return RowLock of given row from HBase
+	 * @throws IOException When error occurs in HBase.
+	 */
+	private TRowLock getRowLock(byte[] tableName, byte[] row) throws IOException {
 		TRowLock rowLock = null;
 		try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(tableName)) {
 			// access to HBase
 			rowLock = table.getRowLock(row);
 		}
-		if (rowLock.getState() == TRowLockState.STABLE) {
-			return null;
-		} else {
-			return rowLock;
+		return rowLock;
+	}
+
+	/**
+	 * Check if given {@link TRowLock} is dangling RowLock. RowLock is in
+	 * dangling if the RowLock is secondary lock and the primary of the RowLock
+	 * doesn't have the RowLock as secondary.
+	 *
+	 * @param tableName TableName of Transaction to check dangling RowLock.
+	 * @param row Row of Transaction to check dangling RowLock.
+	 * @param rowLock RowLock to check if it is dangling
+	 * @throws IOException When error occurs. Especially throw
+	 *         {@link DanglingRowLockException}if given RowLock is dangling.
+	 */
+	private void checkDanglingRowLockOrThrow(byte[] tableName, byte[] row, TRowLock rowLock) throws IOException {
+		TRowLock previousRowLock = rowLock;
+		TRowLock currentRowLock = getRowLock(tableName, row);
+
+		// It is not a dangling RowLock if RowLock is changed.
+		if (Objects.equal(previousRowLock, currentRowLock)) {
+			if (!TRowLocks.isPrimary(currentRowLock)) {
+				TRowKey primaryRowKey = currentRowLock.getPrimary();
+				TRowLock primaryRowLock = getRowLock(primaryRowKey.getTableName(), primaryRowKey.getRow());
+
+				TRowKey secondaryRowKey = new TRowKey().setTableName(tableName).setRow(row);
+				if (!TRowLocks.isSecondaryOf(primaryRowLock, secondaryRowKey, currentRowLock)) {
+					throw new DanglingRowLockException(secondaryRowKey, "Primary lock doesn't have rowLock as secondary.");
+				}
+			}
 		}
 	}
 

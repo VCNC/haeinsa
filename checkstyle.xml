@@ -56,9 +56,6 @@
 		<module name="LeftCurly" />
 		<module name="RightCurly" />
 		<module name="NeedBraces" />
-		<module name="AvoidNestedBlocks">
-			<property name="allowInSwitchCase" value="true" />
-		</module>
 		<module name="EmptyBlock">
 			<property name="option" value="text" />
 		</module>

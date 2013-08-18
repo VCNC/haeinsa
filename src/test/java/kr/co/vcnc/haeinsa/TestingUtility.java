@@ -70,7 +70,7 @@ public final class TestingUtility {
 	public static void cleanTable(Configuration conf, String tableName) throws Exception {
 		HTablePool hbasePool = new HTablePool(conf, 128, PoolType.Reusable);
 		HTableInterface hTestTable = hbasePool.getTable("test");
-		
+
 		Scan scan = new Scan();
 		List<byte[]> rows = Lists.newArrayList();
 		try (ResultScanner scanner = hTestTable.getScanner(scan)) {
