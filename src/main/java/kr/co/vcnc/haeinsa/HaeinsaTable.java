@@ -65,6 +65,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -179,57 +180,24 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 		return hResult;
 	}
 
-	/**
-	 * Scan data from HBase without transaction.
-	 * {@link HaeinsaTransaction#commit()} to check or mutate lock column of the row scanned by this method.
-	 * This method can be used when read performance is important or strict consistency of the result is not matter.
-	 *
-	 * @param scan
-	 * @return
-	 * @throws IOException IOException from HBase.
-	 */
-	private HaeinsaResultScanner getScannerWithoutTx(HaeinsaScan scan) throws IOException {
-		Scan hScan = new Scan(scan.getStartRow(), scan.getStopRow());
-		hScan.setCaching(scan.getCaching());
-		hScan.setCacheBlocks(scan.getCacheBlocks());
-
-		for (Entry<byte[], NavigableSet<byte[]>> entry : scan.getFamilyMap().entrySet()) {
-			if (entry.getValue() == null) {
-				hScan.addFamily(entry.getKey());
-			} else {
-				for (byte[] qualifier : entry.getValue()) {
-					hScan.addColumn(entry.getKey(), qualifier);
-				}
-			}
-		}
-		final ResultScanner scanner = table.getScanner(hScan);
-		return new SimpleClientScanner(scanner);
+	@Override
+	public HaeinsaResultScanner getScanner(@Nullable HaeinsaTransaction tx, byte[] family) throws IOException {
+		Preconditions.checkNotNull(family);
+	
+		HaeinsaScan scan = new HaeinsaScan();
+		scan.addFamily(family);
+		return getScanner(tx, scan);
 	}
 
-	/**
-	 * Scan data inside single row (intraScan) without transaction.
-	 * {@link HaeinsaTransaction#commit()} to check or mutate lock column of the row scanned by this method.
-	 * This method can be used when read performance is important or strict consistency of the result is not matter.
-	 *
-	 * @param intraScan
-	 * @return
-	 * @throws IOException IOException from HBase.
-	 */
-	private HaeinsaResultScanner getScannerWithoutTx(HaeinsaIntraScan intraScan) throws IOException {
-		Scan hScan = new Scan(intraScan.getRow(), Bytes.add(intraScan.getRow(), new byte[]{0x00}));
-		hScan.setBatch(intraScan.getBatch());
-
-		for (byte[] family : intraScan.getFamilies()) {
-			hScan.addFamily(family);
-		}
-
-		ColumnRangeFilter rangeFilter = new ColumnRangeFilter(
-				intraScan.getMinColumn(), intraScan.isMinColumnInclusive(),
-				intraScan.getMaxColumn(), intraScan.isMaxColumnInclusive());
-		hScan.setFilter(rangeFilter);
-
-		final ResultScanner scanner = table.getScanner(hScan);
-		return new SimpleClientScanner(scanner);
+	@Override
+	public HaeinsaResultScanner getScanner(@Nullable HaeinsaTransaction tx, byte[] family, byte[] qualifier)
+			throws IOException {
+		Preconditions.checkNotNull(family);
+		Preconditions.checkNotNull(qualifier);
+	
+		HaeinsaScan scan = new HaeinsaScan();
+		scan.addColumn(family, qualifier);
+		return getScanner(tx, scan);
 	}
 
 	/**
@@ -299,6 +267,33 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 	}
 
 	/**
+	 * Scan data from HBase without transaction.
+	 * {@link HaeinsaTransaction#commit()} to check or mutate lock column of the row scanned by this method.
+	 * This method can be used when read performance is important or strict consistency of the result is not matter.
+	 *
+	 * @param scan
+	 * @return
+	 * @throws IOException IOException from HBase.
+	 */
+	private HaeinsaResultScanner getScannerWithoutTx(HaeinsaScan scan) throws IOException {
+		Scan hScan = new Scan(scan.getStartRow(), scan.getStopRow());
+		hScan.setCaching(scan.getCaching());
+		hScan.setCacheBlocks(scan.getCacheBlocks());
+	
+		for (Entry<byte[], NavigableSet<byte[]>> entry : scan.getFamilyMap().entrySet()) {
+			if (entry.getValue() == null) {
+				hScan.addFamily(entry.getKey());
+			} else {
+				for (byte[] qualifier : entry.getValue()) {
+					hScan.addColumn(entry.getKey(), qualifier);
+				}
+			}
+		}
+		final ResultScanner scanner = table.getScanner(hScan);
+		return new SimpleClientScanner(scanner);
+	}
+
+	/**
 	 * Haeinsa implementation of {@link ColumnRangeFilter}.
 	 * Scan range of column inside single row defined by {@link HaeinsaIntraScan} in the context of transaction(tx).
 	 * Return {@link #ClientScanner} which related to {@link HaeinsaTable} and {@link HaeinsaTransaction}.
@@ -346,67 +341,30 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 		return new ClientScanner(tx, scanners, hScan.getFamilyMap(), intraScan, false);
 	}
 
-	@Override
-	public HaeinsaResultScanner getScanner(@Nullable HaeinsaTransaction tx, byte[] family) throws IOException {
-		Preconditions.checkNotNull(family);
-
-		HaeinsaScan scan = new HaeinsaScan();
-		scan.addFamily(family);
-		return getScanner(tx, scan);
-	}
-
-	@Override
-	public HaeinsaResultScanner getScanner(@Nullable HaeinsaTransaction tx, byte[] family, byte[] qualifier)
-			throws IOException {
-		Preconditions.checkNotNull(family);
-		Preconditions.checkNotNull(qualifier);
-
-		HaeinsaScan scan = new HaeinsaScan();
-		scan.addColumn(family, qualifier);
-		return getScanner(tx, scan);
-	}
-
 	/**
-	 * Check whether specific row need recover by checking {@link TRowLock}.
-	 * Return true only if rowLock is NOT in {@link TRowLockState#STABLE} state and lock is expired.
-	 * Return false if rowLock is in {@link TRowLockState#STABLE} state.
-	 * Throw {@link ConflictException} if rowLock is not in stable state and not expired yet.
+	 * Scan data inside single row (intraScan) without transaction.
+	 * {@link HaeinsaTransaction#commit()} to check or mutate lock column of the row scanned by this method.
+	 * This method can be used when read performance is important or strict consistency of the result is not matter.
 	 *
-	 * @param rowLock
-	 * @return true - when lock is established but expired. / false - when there
-	 *         is no lock ( {@link TRowLockState#STABLE} )
-	 * @throws IOException {@link ConflictException} if lock is established and
-	 *         not expired.
+	 * @param intraScan
+	 * @return
+	 * @throws IOException IOException from HBase.
 	 */
-	private boolean checkAndIsShouldRecover(TRowLock rowLock) throws IOException {
-		if (rowLock.getState() != TRowLockState.STABLE) {
-			if (rowLock.isSetExpiry() && rowLock.getExpiry() < System.currentTimeMillis()) {
-				return true;
-			}
-			throw new ConflictException("this row is unstable and not expired yet.");
+	private HaeinsaResultScanner getScannerWithoutTx(HaeinsaIntraScan intraScan) throws IOException {
+		Scan hScan = new Scan(intraScan.getRow(), Bytes.add(intraScan.getRow(), new byte[]{0x00}));
+		hScan.setBatch(intraScan.getBatch());
+	
+		for (byte[] family : intraScan.getFamilies()) {
+			hScan.addFamily(family);
 		}
-		return false;
-	}
-
-	/**
-	 * Call {@link HaeinsaTransaction#recover()}.
-	 * Abort or recover when there is failed transaction on the row,
-	 * throw {@link ConflictException} when there is ongoing transaction.
-	 *
-	 * @param tx
-	 * @param row
-	 * @throws IOException ConflictException, HBase IOException
-	 */
-	private void recover(HaeinsaTransaction tx, byte[] row) throws IOException {
-		HaeinsaTransaction previousTx = tx.getManager().getTransaction(getTableName(), row);
-		if (previousTx != null) {
-			try {
-				// 해당 row 에 아직 종료되지 않은 Transaction 이 남아 있는 경우
-				previousTx.recover();
-			} catch (RecoverableConflictException e) {
-				LOGGER.warn(e.getMessage(), e);
-			}
-		}
+	
+		ColumnRangeFilter rangeFilter = new ColumnRangeFilter(
+				intraScan.getMinColumn(), intraScan.isMinColumnInclusive(),
+				intraScan.getMaxColumn(), intraScan.isMaxColumnInclusive());
+		hScan.setFilter(rangeFilter);
+	
+		final ResultScanner scanner = table.getScanner(hScan);
+		return new SimpleClientScanner(scanner);
 	}
 
 	@Override
@@ -463,6 +421,49 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 			}
 		}
 		return rowState;
+	}
+
+	/**
+	 * Check whether specific row need recover by checking {@link TRowLock}.
+	 * Return true only if rowLock is NOT in {@link TRowLockState#STABLE} state and lock is expired.
+	 * Return false if rowLock is in {@link TRowLockState#STABLE} state.
+	 * Throw {@link ConflictException} if rowLock is not in stable state and not expired yet.
+	 *
+	 * @param rowLock
+	 * @return true - when lock is established but expired. / false - when there
+	 *         is no lock ( {@link TRowLockState#STABLE} )
+	 * @throws IOException {@link ConflictException} if lock is established and
+	 *         not expired.
+	 */
+	private boolean checkAndIsShouldRecover(TRowLock rowLock) throws IOException {
+		if (rowLock.getState() != TRowLockState.STABLE) {
+			if (rowLock.isSetExpiry() && rowLock.getExpiry() < System.currentTimeMillis()) {
+				return true;
+			}
+			throw new ConflictException("this row is unstable and not expired yet.");
+		}
+		return false;
+	}
+
+	/**
+	 * Call {@link HaeinsaTransaction#recover()}.
+	 * Abort or recover when there is failed transaction on the row,
+	 * throw {@link ConflictException} when there is ongoing transaction.
+	 *
+	 * @param tx
+	 * @param row
+	 * @throws IOException ConflictException, HBase IOException
+	 */
+	private void recover(HaeinsaTransaction tx, byte[] row) throws IOException {
+		HaeinsaTransaction previousTx = tx.getManager().getTransaction(getTableName(), row);
+		if (previousTx != null) {
+			try {
+				// 해당 row 에 아직 종료되지 않은 Transaction 이 남아 있는 경우
+				previousTx.recover();
+			} catch (RecoverableConflictException e) {
+				LOGGER.warn(e.getMessage(), e);
+			}
+		}
 	}
 
 	@Override
