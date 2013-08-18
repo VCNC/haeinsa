@@ -41,7 +41,7 @@ public class HaeinsaTablePool implements Closeable {
 	private final PoolType poolType;
 	private final Configuration config;
 	// null if use default factory
-	private final HTableInterfaceFactory tableFactory;
+	private final HaeinsaTableIfaceFactory tableFactory;
 
 	/**
 	 * Default Constructor. Default HBaseConfiguration and no limit on pool
@@ -69,7 +69,7 @@ public class HaeinsaTablePool implements Closeable {
 	 * @param maxSize maximum number of references to keep for each table
 	 * @param tableFactory table factory
 	 */
-	public HaeinsaTablePool(final Configuration config, final int maxSize, final HTableInterfaceFactory tableFactory) {
+	public HaeinsaTablePool(final Configuration config, final int maxSize, final HaeinsaTableIfaceFactory tableFactory) {
 		this(config, maxSize, tableFactory, PoolType.Reusable);
 	}
 
@@ -100,12 +100,12 @@ public class HaeinsaTablePool implements Closeable {
 	 *        {@link PoolType#ThreadLocal}
 	 */
 	public HaeinsaTablePool(final Configuration config, final int maxSize,
-			final HTableInterfaceFactory tableFactory, PoolType poolType) {
+			final HaeinsaTableIfaceFactory tableFactory, PoolType poolType) {
 		// Make a new configuration instance so I can safely cleanup when
 		// done with the pool.
 		this.config = config == null ? new Configuration() : config;
 		this.maxSize = maxSize;
-		this.tableFactory = tableFactory == null ? new HTableFactory() : tableFactory;
+		this.tableFactory = tableFactory == null ? new DefaultHaeinsaTableIfaceFactory(new HTableFactory()) : tableFactory;
 		if (poolType == null) {
 			this.poolType = PoolType.Reusable;
 		} else {
@@ -223,17 +223,12 @@ public class HaeinsaTablePool implements Closeable {
 		tables.put(tableName, table);
 	}
 
-	protected HaeinsaTable createHTable(String tableName) {
-		return new HaeinsaTable(this.tableFactory.createHTableInterface(config, Bytes.toBytes(tableName)));
+	protected HaeinsaTableIfaceInternal createHTable(String tableName) {
+		return (HaeinsaTableIfaceInternal) this.tableFactory.createHaeinsaTableIface(config, Bytes.toBytes(tableName));
 	}
 
 	private void release(HaeinsaTableIface table) throws IOException {
-		if (table instanceof HaeinsaTable) {
-			HaeinsaTable privateTable = (HaeinsaTable) table;
-			this.tableFactory.releaseHTableInterface(privateTable.getHTable());
-		} else {
-			table.close();
-		}
+		this.tableFactory.releaseHaeinsaTableIface(table);
 	}
 
 	/**
