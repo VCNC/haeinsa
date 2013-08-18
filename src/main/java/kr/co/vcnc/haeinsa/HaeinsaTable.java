@@ -35,6 +35,7 @@ import java.util.Set;
 import javax.annotation.Nullable;
 
 import kr.co.vcnc.haeinsa.exception.ConflictException;
+import kr.co.vcnc.haeinsa.exception.NotExpiredYetException;
 import kr.co.vcnc.haeinsa.exception.RecoverableConflictException;
 import kr.co.vcnc.haeinsa.thrift.TRowLocks;
 import kr.co.vcnc.haeinsa.thrift.generated.TCellKey;
@@ -375,7 +376,7 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 	 * @param rowLock
 	 * @return true - when lock is established but expired. / false - when there
 	 *         is no lock ( {@link TRowLockState#STABLE} )
-	 * @throws IOException {@link ConflictException} if lock is established and
+	 * @throws IOException {@link NotExpiredYetException} if lock is established and
 	 *         not expired.
 	 */
 	private boolean checkAndIsShouldRecover(TRowLock rowLock) throws IOException {
@@ -383,7 +384,7 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 			if (rowLock.isSetExpiry() && rowLock.getExpiry() < System.currentTimeMillis()) {
 				return true;
 			}
-			throw new ConflictException("this row is unstable and not expired yet.");
+			throw new NotExpiredYetException("this row is unstable and not expired yet.");
 		}
 		return false;
 	}
@@ -438,7 +439,7 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 	 * @param tableState
 	 * @param rowState
 	 * @return
-	 * @throws IOException ConflictionException, HBase IOException
+	 * @throws IOException ConflictException, HBase IOException
 	 */
 	private HaeinsaRowTransaction checkOrRecoverLock(HaeinsaTransaction tx,
 			byte[] row, HaeinsaTableTransaction tableState,
@@ -453,13 +454,20 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 				throw new ConflictException("recover retry count is exceeded.");
 			}
 			TRowLock currentRowLock = getRowLock(row);
-			if (checkAndIsShouldRecover(currentRowLock)) {
-				recover(tx, row);
+			try {
+				if (checkAndIsShouldRecover(currentRowLock)) {
+					recover(tx, row);
+					recoverCount++;
+				} else {
+					rowState = tableState.createOrGetRowState(row);
+					rowState.setCurrent(currentRowLock);
+					break;
+				}
+			} catch (NotExpiredYetException e) {
 				recoverCount++;
-			} else {
-				rowState = tableState.createOrGetRowState(row);
-				rowState.setCurrent(currentRowLock);
-				break;
+				if (recoverCount > RECOVER_MAX_RETRY_COUNT) {
+					throw e;
+				}
 			}
 		}
 		return rowState;
