@@ -74,7 +74,7 @@ import org.slf4j.LoggerFactory;
  * Implementation of {@link HaeinsaTableIface}. It works with
  * {@link HaeinsaTransaction} to provide transaction on HBase.
  */
-class HaeinsaTable implements HaeinsaTableIfaceInternal {
+public class HaeinsaTable implements HaeinsaTableIfaceInternal {
 	private static final Logger LOGGER = LoggerFactory.getLogger(HaeinsaTable.class);
 	private final HTableInterface table;
 
