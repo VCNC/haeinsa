@@ -1171,8 +1171,8 @@ public class HaeinsaUnitTest {
 		HTableInterface hTestTable = hbasePool.getTable("test");
 
 		{
-			TRowKey primaryRowKey = new TRowKey().setTableName(testTable.getTableName()).setRow(Bytes.toBytes("james"));
-			TRowKey danglingRowKey = new TRowKey().setTableName(testTable.getTableName()).setRow(Bytes.toBytes("brad"));
+			TRowKey primaryRowKey = new TRowKey().setTableName(testTable.getTableName()).setRow(Bytes.toBytes("James"));
+			TRowKey danglingRowKey = new TRowKey().setTableName(testTable.getTableName()).setRow(Bytes.toBytes("Brad"));
 			TRowLock danglingRowLock = new TRowLock(HaeinsaConstants.ROW_LOCK_VERSION, TRowLockState.PREWRITTEN, 1376526618707L)
 					.setCurrentTimestmap(1376526618705L)
 					.setExpiry(1376526623706L)
@@ -1196,12 +1196,12 @@ public class HaeinsaUnitTest {
 		}
 
 		{
-			TRowKey primaryRowKey = new TRowKey().setTableName(testTable.getTableName()).setRow(Bytes.toBytes("james"));
+			TRowKey primaryRowKey = new TRowKey().setTableName(testTable.getTableName()).setRow(Bytes.toBytes("Andrew"));
 			TRowLock primaryRowLock = new TRowLock(HaeinsaConstants.ROW_LOCK_VERSION, TRowLockState.STABLE, System.currentTimeMillis());
-			TRowKey danglingRowKey = new TRowKey().setTableName(testTable.getTableName()).setRow(Bytes.toBytes("brad"));
-			TRowLock danglingRowLock = new TRowLock(HaeinsaConstants.ROW_LOCK_VERSION, TRowLockState.PREWRITTEN, 1376526618707L)
-					.setCurrentTimestmap(1376526618705L)
-					.setExpiry(1376526623706L)
+			TRowKey danglingRowKey = new TRowKey().setTableName(testTable.getTableName()).setRow(Bytes.toBytes("Alpaca"));
+			TRowLock danglingRowLock = new TRowLock(HaeinsaConstants.ROW_LOCK_VERSION, TRowLockState.PREWRITTEN, 1376526618717L)
+					.setCurrentTimestmap(1376526618715L)
+					.setExpiry(1376526623716L)
 					.setPrimary(primaryRowKey);
 
 			Put hPut = new Put(danglingRowKey.getRow());
@@ -1210,7 +1210,8 @@ public class HaeinsaUnitTest {
 			hTestTable.put(hPut);
 
 			hPut = new Put(primaryRowKey.getRow());
-			hPut.add(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER, TRowLocks.serialize(primaryRowLock));
+			hPut.add(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER,
+					primaryRowLock.getCommitTimestamp(), TRowLocks.serialize(primaryRowLock));
 			hTestTable.put(hPut);
 
 			HaeinsaTransaction tx = tm.begin();
