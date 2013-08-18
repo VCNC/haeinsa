@@ -76,10 +76,7 @@ public class HaeinsaComplexTest {
 
 	@AfterMethod
 	public void clearTable() throws Exception {
-		final ExecutorService threadPool = Executors.newCachedThreadPool();
-		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
-		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
-		TestingUtility.cleanTable(tm, "test");
+		TestingUtility.cleanTable(CONF, "test");
 	}
 
 	/**
