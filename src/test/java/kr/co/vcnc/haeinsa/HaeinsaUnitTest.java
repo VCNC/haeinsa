@@ -1174,7 +1174,7 @@ public class HaeinsaUnitTest {
 			TRowKey primaryRowKey = new TRowKey().setTableName(testTable.getTableName()).setRow(Bytes.toBytes("james"));
 			TRowKey danglingRowKey = new TRowKey().setTableName(testTable.getTableName()).setRow(Bytes.toBytes("brad"));
 			TRowLock danglingRowLock = new TRowLock(HaeinsaConstants.ROW_LOCK_VERSION, TRowLockState.PREWRITTEN, 1376526618707L)
-					.setCurrentTimestmap(1376526618707L)
+					.setCurrentTimestmap(1376526618705L)
 					.setExpiry(1376526623706L)
 					.setPrimary(primaryRowKey);
 
@@ -1200,7 +1200,7 @@ public class HaeinsaUnitTest {
 			TRowLock primaryRowLock = new TRowLock(HaeinsaConstants.ROW_LOCK_VERSION, TRowLockState.STABLE, System.currentTimeMillis());
 			TRowKey danglingRowKey = new TRowKey().setTableName(testTable.getTableName()).setRow(Bytes.toBytes("brad"));
 			TRowLock danglingRowLock = new TRowLock(HaeinsaConstants.ROW_LOCK_VERSION, TRowLockState.PREWRITTEN, 1376526618707L)
-					.setCurrentTimestmap(1376526618707L)
+					.setCurrentTimestmap(1376526618705L)
 					.setExpiry(1376526623706L)
 					.setPrimary(primaryRowKey);
 
