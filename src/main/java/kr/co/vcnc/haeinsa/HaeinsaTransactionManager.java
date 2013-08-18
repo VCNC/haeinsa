@@ -84,7 +84,7 @@ public class HaeinsaTransactionManager {
 
 		TRowLock primaryRowLock = null;
 		TRowKey primaryRowKey = null;
-		if (!TRowLocks.isPrimary(unstableRowLock)) {
+		if (TRowLocks.isPrimary(unstableRowLock)) {
 			// this row is primary row, because primary field is not set.
 			primaryRowKey = new TRowKey(ByteBuffer.wrap(tableName), ByteBuffer.wrap(row));
 			primaryRowLock = unstableRowLock;
