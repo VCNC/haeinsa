@@ -46,13 +46,7 @@ public final class TestingUtility {
 	 * @return instance of {@link HaeinsaTablePool}
 	 */
 	public static HaeinsaTablePool createHaeinsaTablePool(Configuration conf, final ExecutorService threadPool) {
-		return new HaeinsaTablePool(conf, 128, new HTableInterfaceFactory() {
-
-			@Override
-			public void releaseHTableInterface(HTableInterface table) throws IOException {
-				table.close();
-			}
-
+		return new HaeinsaTablePool(conf, 128, new DefaultHaeinsaTableIfaceFactory(new HTableInterfaceFactory() {
 			@Override
 			public HTableInterface createHTableInterface(Configuration config, byte[] tableName) {
 				try {
@@ -64,7 +58,11 @@ public final class TestingUtility {
 				}
 				return null;
 			}
-		});
+			@Override
+			public void releaseHTableInterface(HTableInterface table) throws IOException {
+				table.close();
+			}
+		}));
 	}
 
 	public static void cleanTable(Configuration conf, String tableName) throws Exception {

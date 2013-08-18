@@ -3,7 +3,6 @@ package kr.co.vcnc.haeinsa;
 import java.io.IOException;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.client.HTableInterfaceFactory;
 
 /**
  * Factory of HaeinsaTable
@@ -18,7 +17,6 @@ public interface HaeinsaTableIfaceFactory {
 	 * @return HaeinsaTableIface instance.
 	 */
 	HaeinsaTableIface createHaeinsaTableIface(Configuration config, byte[] tableName);
-
 
 	/**
 	 * Release the HaeinsaTable resource represented by the table.

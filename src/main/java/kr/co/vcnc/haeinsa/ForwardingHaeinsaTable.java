@@ -22,7 +22,7 @@ public class ForwardingHaeinsaTable extends ForwardingObject implements HaeinsaT
 	 */
 	public ForwardingHaeinsaTable(HaeinsaTableIface haeinsaTable) {
 		Preconditions.checkArgument(haeinsaTable instanceof HaeinsaTableIfaceInternal);
-		this.delegate = (HaeinsaTableIfaceInternal)haeinsaTable;
+		this.delegate = (HaeinsaTableIfaceInternal) haeinsaTable;
 	}
 
 	@Override
