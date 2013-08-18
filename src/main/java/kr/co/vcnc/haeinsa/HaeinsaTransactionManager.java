@@ -94,7 +94,7 @@ public class HaeinsaTransactionManager {
 
 			TRowKey rowKey = new TRowKey().setTableName(tableName).setRow(row);
 			if (!TRowLocks.isSecondaryOf(primaryRowLock, rowKey, unstableRowLock)) {
-				checkDanglingRowLock(tableName, row, unstableRowLock);
+				checkDanglingRowLockOrThrow(tableName, row, unstableRowLock);
 				return null;
 			}
 		}
@@ -148,7 +148,7 @@ public class HaeinsaTransactionManager {
 	 * @throws IOException When error occurs. Especially throw
 	 *         {@link DanglingRowLockException}if given RowLock is dangling.
 	 */
-	private void checkDanglingRowLock(byte[] tableName, byte[] row, TRowLock rowLock) throws IOException {
+	private void checkDanglingRowLockOrThrow(byte[] tableName, byte[] row, TRowLock rowLock) throws IOException {
 		TRowLock previousRowLock = rowLock;
 		TRowLock currentRowLock = getRowLock(tableName, row);
 
