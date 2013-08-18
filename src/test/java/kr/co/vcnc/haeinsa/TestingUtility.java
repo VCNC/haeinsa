@@ -21,11 +21,17 @@ import java.util.concurrent.ExecutorService;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.ZooKeeperConnectionException;
+import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.HTableInterfaceFactory;
+import org.apache.hadoop.hbase.client.HTablePool;
+import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.ResultScanner;
+import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.PoolMap.PoolType;
 
 import com.beust.jcommander.internal.Lists;
 
@@ -61,24 +67,25 @@ public final class TestingUtility {
 		});
 	}
 
-	public static void cleanTable(HaeinsaTransactionManager tm, String tableName) throws Exception {
-		HaeinsaTableIface testTable = tm.getTablePool().getTable(tableName);
-		HaeinsaScan scan = new HaeinsaScan();
-		HaeinsaTransaction tx = tm.begin();
+	public static void cleanTable(Configuration conf, String tableName) throws Exception {
+		HTablePool hbasePool = new HTablePool(conf, 128, PoolType.Reusable);
+		HTableInterface hTestTable = hbasePool.getTable("test");
+		
+		Scan scan = new Scan();
 		List<byte[]> rows = Lists.newArrayList();
-		try (HaeinsaResultScanner scanner = testTable.getScanner(tx, scan)) {
-			for (HaeinsaResult result : scanner) {
+		try (ResultScanner scanner = hTestTable.getScanner(scan)) {
+			for (Result result : scanner) {
 				rows.add(result.getRow());
 			}
 		}
 
 		for (byte[] row : rows) {
-			HaeinsaDelete delete = new HaeinsaDelete(row);
+			Delete delete = new Delete(row);
 			delete.deleteFamily(Bytes.toBytes("data"));
-			testTable.delete(tx, delete);
+			hTestTable.delete(delete);
 		}
 
-		tx.commit();
-		testTable.close();
+		hbasePool.close();
+		hTestTable.close();
 	}
 }

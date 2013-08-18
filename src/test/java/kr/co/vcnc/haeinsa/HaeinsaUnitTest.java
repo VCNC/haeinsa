@@ -21,6 +21,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import kr.co.vcnc.haeinsa.exception.ConflictException;
+import kr.co.vcnc.haeinsa.exception.DanglingRowLockException;
+import kr.co.vcnc.haeinsa.thrift.TRowLocks;
+import kr.co.vcnc.haeinsa.thrift.generated.TRowKey;
+import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
+import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -93,10 +98,7 @@ public class HaeinsaUnitTest {
 
 	@AfterMethod
 	public void clearTable() throws Exception {
-		final ExecutorService threadPool = Executors.newCachedThreadPool();
-		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
-		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
-		TestingUtility.cleanTable(tm, "test");
+		TestingUtility.cleanTable(CONF, "test");
 	}
 
 	@Test
@@ -1150,6 +1152,76 @@ public class HaeinsaUnitTest {
 		// lock at { row-put-e } changed
 		row = Bytes.toBytes("row-put-e");
 		Assert.assertTrue(checkLockChanged(hTestTable, row, oldLockPut));
+
+		// release resources
+		testTable.close();
+		tablePool.close();
+		hTestTable.close();
+		hbasePool.close();
+	}
+
+	@Test(dependsOnMethods = { "testHaeinsaTableWithoutTx" })
+	public void testDanglingRowLockException() throws Exception {
+		final ExecutorService threadPool = Executors.newCachedThreadPool();
+		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
+
+		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
+		HaeinsaTableIface testTable = tablePool.getTable("test");
+		HTablePool hbasePool = new HTablePool(CONF, 128, PoolType.Reusable);
+		HTableInterface hTestTable = hbasePool.getTable("test");
+
+		{
+			TRowKey primaryRowKey = new TRowKey().setTableName(testTable.getTableName()).setRow(Bytes.toBytes("james"));
+			TRowKey danglingRowKey = new TRowKey().setTableName(testTable.getTableName()).setRow(Bytes.toBytes("brad"));
+			TRowLock danglingRowLock = new TRowLock(HaeinsaConstants.ROW_LOCK_VERSION, TRowLockState.PREWRITTEN, 1376526618707L)
+					.setCurrentTimestmap(1376526618707L)
+					.setExpiry(1376526623706L)
+					.setPrimary(primaryRowKey);
+			
+			Put hPut = new Put(danglingRowKey.getRow());
+			hPut.add(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER, danglingRowLock.getCurrentTimestmap(), TRowLocks.serialize(danglingRowLock));
+			hTestTable.put(hPut);
+			
+			HaeinsaTransaction tx = tm.begin();
+			HaeinsaPut put = new HaeinsaPut(Bytes.toBytes("brad"));
+			put.add(Bytes.toBytes("data"), Bytes.toBytes("balance"), Bytes.toBytes(1000));
+			try {
+				testTable.put(tx, put);
+				tx.commit();
+				Assert.fail();
+			} catch (DanglingRowLockException e) {
+				Assert.assertEquals(e.getDanglingRowKey(), danglingRowKey);
+			}
+		}
+		
+		{
+			TRowKey primaryRowKey = new TRowKey().setTableName(testTable.getTableName()).setRow(Bytes.toBytes("james"));
+			TRowLock primaryRowLock = new TRowLock(HaeinsaConstants.ROW_LOCK_VERSION, TRowLockState.STABLE, System.currentTimeMillis());
+			TRowKey danglingRowKey = new TRowKey().setTableName(testTable.getTableName()).setRow(Bytes.toBytes("brad"));
+			TRowLock danglingRowLock = new TRowLock(HaeinsaConstants.ROW_LOCK_VERSION, TRowLockState.PREWRITTEN, 1376526618707L)
+					.setCurrentTimestmap(1376526618707L)
+					.setExpiry(1376526623706L)
+					.setPrimary(primaryRowKey);
+			
+			Put hPut = new Put(danglingRowKey.getRow());
+			hPut.add(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER, danglingRowLock.getCurrentTimestmap(), TRowLocks.serialize(danglingRowLock));
+			hTestTable.put(hPut);
+			
+			hPut = new Put(primaryRowKey.getRow());
+			hPut.add(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER, TRowLocks.serialize(primaryRowLock));
+			hTestTable.put(hPut);
+			
+			HaeinsaTransaction tx = tm.begin();
+			HaeinsaPut put = new HaeinsaPut(Bytes.toBytes("brad"));
+			put.add(Bytes.toBytes("data"), Bytes.toBytes("balance"), Bytes.toBytes(1000));
+			try {
+				testTable.put(tx, put);
+				tx.commit();
+				Assert.fail();
+			} catch (DanglingRowLockException e) {
+				Assert.assertEquals(e.getDanglingRowKey(), danglingRowKey);
+			}
+		}
 
 		// release resources
 		testTable.close();
