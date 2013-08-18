@@ -16,6 +16,7 @@
 package kr.co.vcnc.haeinsa;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 
 import org.apache.hadoop.conf.Configuration;
@@ -24,6 +25,9 @@ import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.HTableInterfaceFactory;
+import org.apache.hadoop.hbase.util.Bytes;
+
+import com.beust.jcommander.internal.Lists;
 
 public final class TestingUtility {
 
@@ -57,4 +61,24 @@ public final class TestingUtility {
 		});
 	}
 
+	public static void cleanTable(HaeinsaTransactionManager tm, String tableName) throws Exception {
+		HaeinsaTableIface testTable = tm.getTablePool().getTable(tableName);
+		HaeinsaScan scan = new HaeinsaScan();
+		HaeinsaTransaction tx = tm.begin();
+		List<byte[]> rows = Lists.newArrayList();
+		try (HaeinsaResultScanner scanner = testTable.getScanner(tx, scan)) {
+			for (HaeinsaResult result : scanner) {
+				rows.add(result.getRow());
+			}
+		}
+
+		for (byte[] row : rows) {
+			HaeinsaDelete delete = new HaeinsaDelete(row);
+			delete.deleteFamily(Bytes.toBytes("data"));
+			testTable.delete(tx, delete);
+		}
+
+		tx.commit();
+		testTable.close();
+	}
 }
