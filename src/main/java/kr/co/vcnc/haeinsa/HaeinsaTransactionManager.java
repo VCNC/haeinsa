@@ -17,7 +17,6 @@ package kr.co.vcnc.haeinsa;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 
 import javax.annotation.Nullable;
 
@@ -28,7 +27,6 @@ import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
 
 import com.google.common.base.Objects;
-import com.google.common.base.Preconditions;
 
 /**
  * Manager class of {@link HaeinsaTransaction}.
@@ -93,7 +91,7 @@ public class HaeinsaTransactionManager {
 		} else {
 			primaryRowKey = unstableRowLock.getPrimary();
 			primaryRowLock = getRowLock(primaryRowKey.getTableName(), primaryRowKey.getRow());
-			
+
 			TRowKey rowKey = new TRowKey().setTableName(tableName).setRow(row);
 			if (!TRowLocks.isSecondaryOf(primaryRowLock, rowKey, unstableRowLock)) {
 				checkDanglingRowLock(tableName, row, unstableRowLock);

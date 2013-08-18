@@ -30,8 +30,6 @@ import org.apache.thrift.TSerializer;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 
-import com.google.common.base.Preconditions;
-
 /**
  * Static class for TRowLock (Thrift class) Provide static method to
  * serialize/deserialize with TCompactProtocol of Thrift
@@ -76,16 +74,16 @@ public final class TRowLocks {
 			throw new IOException(e.getMessage(), e);
 		}
 	}
-	
+
 	public static boolean isPrimary(TRowLock rowLock) {
 		return !rowLock.isSetPrimary();
 	}
-	
+
 	public static boolean isSecondaryOf(TRowLock primaryRowLock, TRowKey secondaryRowKey, TRowLock secondaryRowLock) {
 		return primaryRowLock.getCommitTimestamp() == secondaryRowLock.getCommitTimestamp()
 				&& containRowKeyAsSecondary(primaryRowLock, secondaryRowKey);
 	}
-	
+
 	/**
 	 * Check if given rowLock has secondaryRowKey in secondaries.
 	 *

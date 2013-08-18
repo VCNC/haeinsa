@@ -1177,11 +1177,12 @@ public class HaeinsaUnitTest {
 					.setCurrentTimestmap(1376526618707L)
 					.setExpiry(1376526623706L)
 					.setPrimary(primaryRowKey);
-			
+
 			Put hPut = new Put(danglingRowKey.getRow());
-			hPut.add(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER, danglingRowLock.getCurrentTimestmap(), TRowLocks.serialize(danglingRowLock));
+			hPut.add(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER,
+					danglingRowLock.getCurrentTimestmap(), TRowLocks.serialize(danglingRowLock));
 			hTestTable.put(hPut);
-			
+
 			HaeinsaTransaction tx = tm.begin();
 			HaeinsaPut put = new HaeinsaPut(Bytes.toBytes("brad"));
 			put.add(Bytes.toBytes("data"), Bytes.toBytes("balance"), Bytes.toBytes(1000));
@@ -1193,7 +1194,7 @@ public class HaeinsaUnitTest {
 				Assert.assertEquals(e.getDanglingRowKey(), danglingRowKey);
 			}
 		}
-		
+
 		{
 			TRowKey primaryRowKey = new TRowKey().setTableName(testTable.getTableName()).setRow(Bytes.toBytes("james"));
 			TRowLock primaryRowLock = new TRowLock(HaeinsaConstants.ROW_LOCK_VERSION, TRowLockState.STABLE, System.currentTimeMillis());
@@ -1202,15 +1203,16 @@ public class HaeinsaUnitTest {
 					.setCurrentTimestmap(1376526618707L)
 					.setExpiry(1376526623706L)
 					.setPrimary(primaryRowKey);
-			
+
 			Put hPut = new Put(danglingRowKey.getRow());
-			hPut.add(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER, danglingRowLock.getCurrentTimestmap(), TRowLocks.serialize(danglingRowLock));
+			hPut.add(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER,
+					danglingRowLock.getCurrentTimestmap(), TRowLocks.serialize(danglingRowLock));
 			hTestTable.put(hPut);
-			
+
 			hPut = new Put(primaryRowKey.getRow());
 			hPut.add(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER, TRowLocks.serialize(primaryRowLock));
 			hTestTable.put(hPut);
-			
+
 			HaeinsaTransaction tx = tm.begin();
 			HaeinsaPut put = new HaeinsaPut(Bytes.toBytes("brad"));
 			put.add(Bytes.toBytes("data"), Bytes.toBytes("balance"), Bytes.toBytes(1000));
