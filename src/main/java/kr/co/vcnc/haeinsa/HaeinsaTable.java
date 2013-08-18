@@ -183,7 +183,7 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 	@Override
 	public HaeinsaResultScanner getScanner(@Nullable HaeinsaTransaction tx, byte[] family) throws IOException {
 		Preconditions.checkNotNull(family);
-	
+
 		HaeinsaScan scan = new HaeinsaScan();
 		scan.addFamily(family);
 		return getScanner(tx, scan);
@@ -194,7 +194,7 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 			throws IOException {
 		Preconditions.checkNotNull(family);
 		Preconditions.checkNotNull(qualifier);
-	
+
 		HaeinsaScan scan = new HaeinsaScan();
 		scan.addColumn(family, qualifier);
 		return getScanner(tx, scan);
@@ -279,7 +279,7 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 		Scan hScan = new Scan(scan.getStartRow(), scan.getStopRow());
 		hScan.setCaching(scan.getCaching());
 		hScan.setCacheBlocks(scan.getCacheBlocks());
-	
+
 		for (Entry<byte[], NavigableSet<byte[]>> entry : scan.getFamilyMap().entrySet()) {
 			if (entry.getValue() == null) {
 				hScan.addFamily(entry.getKey());
@@ -353,16 +353,16 @@ class HaeinsaTable implements HaeinsaTableIfaceInternal {
 	private HaeinsaResultScanner getScannerWithoutTx(HaeinsaIntraScan intraScan) throws IOException {
 		Scan hScan = new Scan(intraScan.getRow(), Bytes.add(intraScan.getRow(), new byte[]{0x00}));
 		hScan.setBatch(intraScan.getBatch());
-	
+
 		for (byte[] family : intraScan.getFamilies()) {
 			hScan.addFamily(family);
 		}
-	
+
 		ColumnRangeFilter rangeFilter = new ColumnRangeFilter(
 				intraScan.getMinColumn(), intraScan.isMinColumnInclusive(),
 				intraScan.getMaxColumn(), intraScan.isMaxColumnInclusive());
 		hScan.setFilter(rangeFilter);
-	
+
 		final ResultScanner scanner = table.getScanner(hScan);
 		return new SimpleClientScanner(scanner);
 	}
