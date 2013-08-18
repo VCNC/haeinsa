@@ -72,30 +72,6 @@ public interface HaeinsaTableIface extends Closeable {
 	HaeinsaResult get(@Nullable HaeinsaTransaction tx, HaeinsaGet get) throws IOException;
 
 	/**
-	 * Returns a inter-row scanner on the current table as specified by the {@link HaeinsaScan}
-	 * object.
-	 *
-	 * @param tx HaeinsaTransaction which this operation is participated in.
-	 * 			 It can be null if user don't want to execute scan inside transaction.
-	 * @param scan A configured {@link HaeinsaScan} object.
-	 * @return A scanner.
-	 * @throws IOException if a remote or network exception occurs.
-	 */
-	HaeinsaResultScanner getScanner(@Nullable HaeinsaTransaction tx, HaeinsaScan scan) throws IOException;
-
-	/**
-	 * Returns a intra-row scanner on the current table as specified by the {@link HaeinsaIntraScan}
-	 * object.
-	 *
-	 * @param tx HaeinsaTransaction which this operation is participated in.
-	 * 			 It can be null if user don't want to execute scan inside transaction.
-	 * @param intraScan A configured {@link HaeinsaIntraScan} object.
-	 * @return A scanner.
-	 * @throws IOException if a remote or network exception occurs.
-	 */
-	HaeinsaResultScanner getScanner(@Nullable HaeinsaTransaction tx, HaeinsaIntraScan intraScan) throws IOException;
-
-	/**
 	 * Gets a inter-row scanner on the current table for the given family.
 	 * Similar with {@link HaeinsaTableIface#getScanner(HaeinsaTransaction, HaeinsaScan)}.
 	 *
@@ -120,6 +96,30 @@ public interface HaeinsaTableIface extends Closeable {
 	 */
 	HaeinsaResultScanner getScanner(@Nullable HaeinsaTransaction tx, byte[] family, byte[] qualifier)
 			throws IOException;
+
+	/**
+	 * Returns a inter-row scanner on the current table as specified by the {@link HaeinsaScan}
+	 * object.
+	 *
+	 * @param tx HaeinsaTransaction which this operation is participated in.
+	 * 			 It can be null if user don't want to execute scan inside transaction.
+	 * @param scan A configured {@link HaeinsaScan} object.
+	 * @return A scanner.
+	 * @throws IOException if a remote or network exception occurs.
+	 */
+	HaeinsaResultScanner getScanner(@Nullable HaeinsaTransaction tx, HaeinsaScan scan) throws IOException;
+
+	/**
+	 * Returns a intra-row scanner on the current table as specified by the {@link HaeinsaIntraScan}
+	 * object.
+	 *
+	 * @param tx HaeinsaTransaction which this operation is participated in.
+	 * 			 It can be null if user don't want to execute scan inside transaction.
+	 * @param intraScan A configured {@link HaeinsaIntraScan} object.
+	 * @return A scanner.
+	 * @throws IOException if a remote or network exception occurs.
+	 */
+	HaeinsaResultScanner getScanner(@Nullable HaeinsaTransaction tx, HaeinsaIntraScan intraScan) throws IOException;
 
 	/**
 	 * Puts some data in the table.
