@@ -22,6 +22,7 @@ import java.util.Arrays;
 import javax.annotation.Nullable;
 
 import kr.co.vcnc.haeinsa.exception.DanglingRowLockException;
+import kr.co.vcnc.haeinsa.thrift.TRowLocks;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowKey;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
@@ -79,23 +80,25 @@ public class HaeinsaTransactionManager {
 		TRowLock unstableRowLock = getUnstableRowLock(tableName, row);
 
 		if (unstableRowLock == null) {
-			// There is no on-going transaction on row.
+			// There is no on-going transaction on the row.
 			return null;
 		}
 
 		TRowLock primaryRowLock = null;
 		TRowKey primaryRowKey = null;
-		if (!unstableRowLock.isSetPrimary()) {
+		if (!TRowLocks.isPrimary(unstableRowLock)) {
 			// this row is primary row, because primary field is not set.
 			primaryRowKey = new TRowKey(ByteBuffer.wrap(tableName), ByteBuffer.wrap(row));
 			primaryRowLock = unstableRowLock;
 		} else {
 			primaryRowKey = unstableRowLock.getPrimary();
-			primaryRowLock = getUnstableRowLock(primaryRowKey.getTableName(), primaryRowKey.getRow());
-		}
-		if (primaryRowLock == null) {
-			checkDanglingRowLock(tableName, row, unstableRowLock);
-			return null;
+			primaryRowLock = getRowLock(primaryRowKey.getTableName(), primaryRowKey.getRow());
+			
+			TRowKey rowKey = new TRowKey().setTableName(tableName).setRow(row);
+			if (!TRowLocks.isSecondaryOf(primaryRowLock, rowKey, unstableRowLock)) {
+				checkDanglingRowLock(tableName, row, unstableRowLock);
+				return null;
+			}
 		}
 		return getTransactionFromPrimary(primaryRowKey, primaryRowLock);
 	}
@@ -153,45 +156,16 @@ public class HaeinsaTransactionManager {
 
 		// It is not a dangling RowLock if RowLock is changed.
 		if (Objects.equal(previousRowLock, currentRowLock)) {
-			if (currentRowLock.isSetPrimary()) {
+			if (!TRowLocks.isPrimary(currentRowLock)) {
 				TRowKey primaryRowKey = currentRowLock.getPrimary();
 				TRowLock primaryRowLock = getRowLock(primaryRowKey.getTableName(), primaryRowKey.getRow());
 
-				TRowKey rowKey = new TRowKey().setTableName(tableName).setRow(row);
-				if (!containsSecondaryRowLock(primaryRowLock, rowKey)) {
-					throw new DanglingRowLockException(rowKey, "Primary lock doesn't have rowLock as secondary.");
+				TRowKey secondaryRowKey = new TRowKey().setTableName(tableName).setRow(row);
+				if (!TRowLocks.isSecondaryOf(primaryRowLock, secondaryRowKey, currentRowLock)) {
+					throw new DanglingRowLockException(secondaryRowKey, "Primary lock doesn't have rowLock as secondary.");
 				}
 			}
 		}
-	}
-
-	/**
-	 * Check if given rowLock has secondaryRowKey in secondaries.
-	 *
-	 * @param rowLock given RowLock
-	 * @param secondaryRowKey secondaryRowKey to check if given RowLock contains as secondary.
-	 * @return true if given rowLock contains given secondaryRowKey as secondary.
-	 */
-	private boolean containsSecondaryRowLock(TRowLock rowLock, TRowKey secondaryRowKey) {
-		Preconditions.checkNotNull(rowLock);
-		Preconditions.checkNotNull(secondaryRowKey);
-
-		// Check if secondaries of rowLock contains secondaryRowKey as element.
-		if (rowLock.isSetSecondaries()) {
-			for (TRowKey rowKey : rowLock.getSecondaries()) {
-				boolean match = rowKey != null
-						&& rowKey.isSetTableName()
-						&& secondaryRowKey.isSetTableName()
-						&& Arrays.equals(rowKey.getTableName(), secondaryRowKey.getTableName())
-						&& rowKey.isSetRow()
-						&& secondaryRowKey.isSetRow()
-						&& Arrays.equals(rowKey.getRow(), secondaryRowKey.getRow());
-				if (match) {
-					return true;
-				}
-			}
-		}
-		return false;
 	}
 
 	/**

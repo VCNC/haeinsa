@@ -18,7 +18,9 @@ package kr.co.vcnc.haeinsa.thrift;
 import static kr.co.vcnc.haeinsa.HaeinsaConstants.ROW_LOCK_VERSION;
 
 import java.io.IOException;
+import java.util.Arrays;
 
+import kr.co.vcnc.haeinsa.thrift.generated.TRowKey;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
 
@@ -27,6 +29,8 @@ import org.apache.thrift.TException;
 import org.apache.thrift.TSerializer;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
+
+import com.google.common.base.Preconditions;
 
 /**
  * Static class for TRowLock (Thrift class) Provide static method to
@@ -71,5 +75,40 @@ public final class TRowLocks {
 		} catch (TException e) {
 			throw new IOException(e.getMessage(), e);
 		}
+	}
+	
+	public static boolean isPrimary(TRowLock rowLock) {
+		return !rowLock.isSetPrimary();
+	}
+	
+	public static boolean isSecondaryOf(TRowLock primaryRowLock, TRowKey secondaryRowKey, TRowLock secondaryRowLock) {
+		return primaryRowLock.getCommitTimestamp() == secondaryRowLock.getCommitTimestamp()
+				&& containRowKeyAsSecondary(primaryRowLock, secondaryRowKey);
+	}
+	
+	/**
+	 * Check if given rowLock has secondaryRowKey in secondaries.
+	 *
+	 * @param primaryRowLock given RowLock
+	 * @param secondaryRowKey secondaryRowKey to check if given RowLock contains as secondary.
+	 * @return true if given rowLock contains given secondaryRowKey as secondary.
+	 */
+	public static boolean containRowKeyAsSecondary(TRowLock primaryRowLock, TRowKey secondaryRowKey) {
+		// Check if secondaries of rowLock contains secondaryRowKey as element.
+		if (primaryRowLock.isSetSecondaries()) {
+			for (TRowKey rowKey : primaryRowLock.getSecondaries()) {
+				boolean match = rowKey != null
+						&& rowKey.isSetTableName()
+						&& secondaryRowKey.isSetTableName()
+						&& Arrays.equals(rowKey.getTableName(), secondaryRowKey.getTableName())
+						&& rowKey.isSetRow()
+						&& secondaryRowKey.isSetRow()
+						&& Arrays.equals(rowKey.getRow(), secondaryRowKey.getRow());
+				if (match) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 }
