@@ -17,12 +17,15 @@ package kr.co.vcnc.haeinsa;
 
 
 import java.util.Iterator;
-import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import com.beust.jcommander.internal.Lists;
 import kr.co.vcnc.haeinsa.exception.ConflictException;
+import kr.co.vcnc.haeinsa.exception.DanglingRowLockException;
+import kr.co.vcnc.haeinsa.thrift.TRowLocks;
+import kr.co.vcnc.haeinsa.thrift.generated.TRowKey;
+import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
+import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -39,6 +42,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.PoolMap.PoolType;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
+import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
@@ -92,12 +96,16 @@ public class HaeinsaUnitTest {
 		CLUSTER.shutdown();
 	}
 
+	@AfterMethod
+	public void clearTable() throws Exception {
+		TestingUtility.cleanTable(CONF, "test");
+	}
+
 	@Test
 	public void testTransaction() throws Exception {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
 		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
 		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
-		cleanTable(tm, "test");
 		HaeinsaTableIface testTable = tablePool.getTable("test");
 
 		// Test 2 puts tx
@@ -349,7 +357,6 @@ public class HaeinsaUnitTest {
 		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
 
 		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
-		cleanTable(tm, "test");
 		HaeinsaTableIface testTable = tablePool.getTable("test");
 		HaeinsaTransaction tx = tm.begin();
 
@@ -415,7 +422,6 @@ public class HaeinsaUnitTest {
 		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
 
 		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
-		cleanTable(tm, "test");
 		HaeinsaTableIface testTable = tablePool.getTable("test");
 
 		// Test 2 puts tx
@@ -464,7 +470,6 @@ public class HaeinsaUnitTest {
 		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
 
 		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
-		cleanTable(tm, "test");
 		HaeinsaTableIface testTable = tablePool.getTable("test");
 		HaeinsaTransaction tx = tm.begin();
 		HaeinsaTransaction tx2 = tm.begin();
@@ -544,7 +549,6 @@ public class HaeinsaUnitTest {
 		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
 
 		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
-		cleanTable(tm, "test");
 		HaeinsaTableIfaceInternal testTable = (HaeinsaTableIfaceInternal) tablePool.getTable("test");
 		HaeinsaTransaction tx = tm.begin();
 		HaeinsaTransaction tx2 = tm.begin();
@@ -654,7 +658,6 @@ public class HaeinsaUnitTest {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
 		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
 		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
-		cleanTable(tm, "test");
 
 		HTablePool hbasePool = new HTablePool(CONF, 128, PoolType.Reusable);
 		HTableInterface hTestTable = hbasePool.getTable("test");
@@ -921,7 +924,6 @@ public class HaeinsaUnitTest {
 		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
 
 		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
-		cleanTable(tm, "test");
 		HaeinsaTableIface testTable = tablePool.getTable("test");
 
 		/*
@@ -1016,7 +1018,6 @@ public class HaeinsaUnitTest {
 		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
 
 		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
-		cleanTable(tm, "test");
 		HaeinsaTableIface testTable = tablePool.getTable("test");
 		HTablePool hbasePool = new HTablePool(CONF, 128, PoolType.Reusable);
 		HTableInterface hTestTable = hbasePool.getTable("test");
@@ -1159,6 +1160,76 @@ public class HaeinsaUnitTest {
 		hbasePool.close();
 	}
 
+	@Test(dependsOnMethods = { "testHaeinsaTableWithoutTx" })
+	public void testDanglingRowLockException() throws Exception {
+		final ExecutorService threadPool = Executors.newCachedThreadPool();
+		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
+
+		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
+		HaeinsaTableIface testTable = tablePool.getTable("test");
+		HTablePool hbasePool = new HTablePool(CONF, 128, PoolType.Reusable);
+		HTableInterface hTestTable = hbasePool.getTable("test");
+
+		{
+			TRowKey primaryRowKey = new TRowKey().setTableName(testTable.getTableName()).setRow(Bytes.toBytes("james"));
+			TRowKey danglingRowKey = new TRowKey().setTableName(testTable.getTableName()).setRow(Bytes.toBytes("brad"));
+			TRowLock danglingRowLock = new TRowLock(HaeinsaConstants.ROW_LOCK_VERSION, TRowLockState.PREWRITTEN, 1376526618707L)
+					.setCurrentTimestmap(1376526618707L)
+					.setExpiry(1376526623706L)
+					.setPrimary(primaryRowKey);
+			
+			Put hPut = new Put(danglingRowKey.getRow());
+			hPut.add(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER, danglingRowLock.getCurrentTimestmap(), TRowLocks.serialize(danglingRowLock));
+			hTestTable.put(hPut);
+			
+			HaeinsaTransaction tx = tm.begin();
+			HaeinsaPut put = new HaeinsaPut(Bytes.toBytes("brad"));
+			put.add(Bytes.toBytes("data"), Bytes.toBytes("balance"), Bytes.toBytes(1000));
+			try {
+				testTable.put(tx, put);
+				tx.commit();
+				Assert.fail();
+			} catch (DanglingRowLockException e) {
+				Assert.assertEquals(e.getDanglingRowKey(), danglingRowKey);
+			}
+		}
+		
+		{
+			TRowKey primaryRowKey = new TRowKey().setTableName(testTable.getTableName()).setRow(Bytes.toBytes("james"));
+			TRowLock primaryRowLock = new TRowLock(HaeinsaConstants.ROW_LOCK_VERSION, TRowLockState.STABLE, System.currentTimeMillis());
+			TRowKey danglingRowKey = new TRowKey().setTableName(testTable.getTableName()).setRow(Bytes.toBytes("brad"));
+			TRowLock danglingRowLock = new TRowLock(HaeinsaConstants.ROW_LOCK_VERSION, TRowLockState.PREWRITTEN, 1376526618707L)
+					.setCurrentTimestmap(1376526618707L)
+					.setExpiry(1376526623706L)
+					.setPrimary(primaryRowKey);
+			
+			Put hPut = new Put(danglingRowKey.getRow());
+			hPut.add(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER, danglingRowLock.getCurrentTimestmap(), TRowLocks.serialize(danglingRowLock));
+			hTestTable.put(hPut);
+			
+			hPut = new Put(primaryRowKey.getRow());
+			hPut.add(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER, TRowLocks.serialize(primaryRowLock));
+			hTestTable.put(hPut);
+			
+			HaeinsaTransaction tx = tm.begin();
+			HaeinsaPut put = new HaeinsaPut(Bytes.toBytes("brad"));
+			put.add(Bytes.toBytes("data"), Bytes.toBytes("balance"), Bytes.toBytes(1000));
+			try {
+				testTable.put(tx, put);
+				tx.commit();
+				Assert.fail();
+			} catch (DanglingRowLockException e) {
+				Assert.assertEquals(e.getDanglingRowKey(), danglingRowKey);
+			}
+		}
+
+		// release resources
+		testTable.close();
+		tablePool.close();
+		hTestTable.close();
+		hbasePool.close();
+	}
+
 	/**
 	 * return true if TRowLock exist in specific ( table, row )
 	 *
@@ -1178,26 +1249,5 @@ public class HaeinsaUnitTest {
 
 	private boolean checkLockChanged(HTableInterface table, byte[] row, byte[] oldLock) throws Exception {
 		return !Bytes.equals(getLock(table, row), oldLock);
-	}
-
-	private void cleanTable(HaeinsaTransactionManager tm, String tableName) throws Exception {
-		HaeinsaTableIface testTable = tm.getTablePool().getTable(tableName);
-		HaeinsaScan scan = new HaeinsaScan();
-		HaeinsaTransaction tx = tm.begin();
-		List<byte[]> rows = Lists.newArrayList();
-		try (HaeinsaResultScanner scanner = testTable.getScanner(tx, scan)) {
-			for (HaeinsaResult result : scanner) {
-				rows.add(result.getRow());
-			}
-		}
-
-		for (byte[] row : rows) {
-			HaeinsaDelete delete = new HaeinsaDelete(row);
-			delete.deleteFamily(Bytes.toBytes("data"));
-			testTable.delete(tx, delete);
-		}
-
-		tx.commit();
-		testTable.close();
 	}
 }

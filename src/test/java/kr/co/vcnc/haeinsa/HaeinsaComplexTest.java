@@ -32,6 +32,7 @@ import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
+import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
@@ -71,6 +72,11 @@ public class HaeinsaComplexTest {
 	@AfterClass
 	public static void tearDownHBase() throws Exception {
 		CLUSTER.shutdown();
+	}
+
+	@AfterMethod
+	public void clearTable() throws Exception {
+		TestingUtility.cleanTable(CONF, "test");
 	}
 
 	/**
