@@ -157,11 +157,9 @@ public class HaeinsaTransactionManager {
 				TRowKey primaryRowKey = currentRowLock.getPrimary();
 				TRowLock primaryRowLock = getRowLock(primaryRowKey.getTableName(), primaryRowKey.getRow());
 
-				if (primaryRowLock.isSetSecondaries()) {
-					TRowKey rowKey = new TRowKey().setTableName(tableName).setRow(row);
-					if (!containsSecondaryRowLock(primaryRowLock, rowKey)) {
-						throw new DanglingRowLockException(rowKey, "Primary lock doesn't have rowLock as secondary.");
-					}
+				TRowKey rowKey = new TRowKey().setTableName(tableName).setRow(row);
+				if (!containsSecondaryRowLock(primaryRowLock, rowKey)) {
+					throw new DanglingRowLockException(rowKey, "Primary lock doesn't have rowLock as secondary.");
 				}
 			}
 		}
