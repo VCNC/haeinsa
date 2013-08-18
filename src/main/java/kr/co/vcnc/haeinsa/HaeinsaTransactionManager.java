@@ -71,21 +71,21 @@ public class HaeinsaTransactionManager {
 	 */
 	@Nullable
 	protected HaeinsaTransaction getTransaction(byte[] tableName, byte[] row) throws IOException {
-		TRowLock startUnstableRowLock = getUnstableRowLock(tableName, row);
+		TRowLock unstableRowLock = getUnstableRowLock(tableName, row);
 
-		if (startUnstableRowLock == null) {
+		if (unstableRowLock == null) {
 			// There is no on-going transaction on row.
 			return null;
 		}
 
 		TRowLock primaryRowLock = null;
 		TRowKey primaryRowKey = null;
-		if (!startUnstableRowLock.isSetPrimary()) {
+		if (!unstableRowLock.isSetPrimary()) {
 			// this row is primary row, because primary field is not set.
 			primaryRowKey = new TRowKey(ByteBuffer.wrap(tableName), ByteBuffer.wrap(row));
-			primaryRowLock = startUnstableRowLock;
+			primaryRowLock = unstableRowLock;
 		} else {
-			primaryRowKey = startUnstableRowLock.getPrimary();
+			primaryRowKey = unstableRowLock.getPrimary();
 			primaryRowLock = getUnstableRowLock(primaryRowKey.getTableName(), primaryRowKey.getRow());
 		}
 		if (primaryRowLock == null) {
