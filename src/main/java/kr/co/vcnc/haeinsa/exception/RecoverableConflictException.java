@@ -15,6 +15,12 @@
  */
 package kr.co.vcnc.haeinsa.exception;
 
+/**
+ * This exception will occur when transaction fails on making row state to
+ * stable. Since failure of the operation can be recovered by next access, this
+ * exception can be ignored. This class extends {@link ConflictException},
+ * because this occurs on failure of write by other transaction.
+ */
 public class RecoverableConflictException extends ConflictException {
 
 	private static final long serialVersionUID = 3720142235607540830L;
