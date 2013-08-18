@@ -1184,7 +1184,7 @@ public class HaeinsaUnitTest {
 			hTestTable.put(hPut);
 
 			HaeinsaTransaction tx = tm.begin();
-			HaeinsaPut put = new HaeinsaPut(Bytes.toBytes("brad"));
+			HaeinsaPut put = new HaeinsaPut(danglingRowKey.getRow());
 			put.add(Bytes.toBytes("data"), Bytes.toBytes("balance"), Bytes.toBytes(1000));
 			try {
 				testTable.put(tx, put);
@@ -1215,7 +1215,7 @@ public class HaeinsaUnitTest {
 			hTestTable.put(hPut);
 
 			HaeinsaTransaction tx = tm.begin();
-			HaeinsaPut put = new HaeinsaPut(Bytes.toBytes("brad"));
+			HaeinsaPut put = new HaeinsaPut(danglingRowKey.getRow());
 			put.add(Bytes.toBytes("data"), Bytes.toBytes("balance"), Bytes.toBytes(1000));
 			try {
 				testTable.put(tx, put);
