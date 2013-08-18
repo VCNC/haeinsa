@@ -15,6 +15,10 @@
  */
 package kr.co.vcnc.haeinsa.exception;
 
+/**
+ * Exception when row's lock in transaction isn't expired yet during execution.
+ * This exception extends {@link ConflictException}
+ */
 public class NotExpiredYetException extends ConflictException {
 
 	private static final long serialVersionUID = -5160271558362505568L;
