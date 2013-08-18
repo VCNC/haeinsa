@@ -101,23 +101,6 @@ public class HaeinsaTransactionManager {
 	}
 
 	/**
-	 * Get {@link TRowLock} from given row.
-	 *
-	 * @param tableName Table name of the row
-	 * @param row Row key of the row
-	 * @return RowLock of given row from HBase
-	 * @throws IOException When error occurs in HBase.
-	 */
-	private TRowLock getRowLock(byte[] tableName, byte[] row) throws IOException {
-		TRowLock rowLock = null;
-		try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(tableName)) {
-			// access to HBase
-			rowLock = table.getRowLock(row);
-		}
-		return rowLock;
-	}
-
-	/**
 	 * Get Unstable state of {@link TRowLock} from given row. Returns null if
 	 * {@link TRowLock} is {@link TRowLockState#STABLE}.
 	 *
@@ -134,6 +117,23 @@ public class HaeinsaTransactionManager {
 		} else {
 			return rowLock;
 		}
+	}
+
+	/**
+	 * Get {@link TRowLock} from given row.
+	 *
+	 * @param tableName Table name of the row
+	 * @param row Row key of the row
+	 * @return RowLock of given row from HBase
+	 * @throws IOException When error occurs in HBase.
+	 */
+	private TRowLock getRowLock(byte[] tableName, byte[] row) throws IOException {
+		TRowLock rowLock = null;
+		try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(tableName)) {
+			// access to HBase
+			rowLock = table.getRowLock(row);
+		}
+		return rowLock;
 	}
 
 	/**
