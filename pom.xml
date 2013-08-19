@@ -42,13 +42,6 @@
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 	</properties>
 
-	<pluginRepositories>
-		<pluginRepository>
-			<id>dtrott</id>
-			<url>http://maven.davidtrott.com/repository</url>
-		</pluginRepository>
-	</pluginRepositories>
-
 	<dependencies>
 		<dependency>
 			<groupId>org.apache.hbase</groupId>
@@ -293,7 +286,7 @@
 					<plugin>
 						<groupId>org.apache.thrift.tools</groupId>
 						<artifactId>maven-thrift-plugin</artifactId>
-						<version>0.1.10</version>
+						<version>0.1.11</version>
 						<configuration>
 							<thriftExecutable>${project.basedir}/tools/mac/thrift</thriftExecutable>
 						</configuration>
