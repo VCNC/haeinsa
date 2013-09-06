@@ -27,6 +27,7 @@ import kr.co.vcnc.haeinsa.thrift.generated.TRowKey;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
 
+import org.apache.hadoop.hbase.client.RowLock;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.google.common.base.Preconditions;
@@ -34,6 +35,7 @@ import com.google.common.collect.ComparisonChain;
 import com.google.common.collect.Maps;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -120,7 +122,7 @@ public class HaeinsaTransaction {
 	 * then create one instance for it and save inside {@link #tableStates} and return.
 	 *
 	 * @param tableName
-	 * @return
+	 * @return instance of {@link HaeinsaTableTransaction}
 	 */
 	protected HaeinsaTableTransaction createOrGetTableState(byte[] tableName) {
 		HaeinsaTableTransaction tableTxState = txStates.getTableStates().get(tableName);
@@ -139,24 +141,28 @@ public class HaeinsaTransaction {
 	}
 
 	/**
-	 * Commit transaction to HBase. It start to prewrite data in HBase and try
-	 * to change {@link TRowLock}s. After {@link #commit()} is called, user
-	 * cannot use this instance again.
+	 * Commit transaction to HBase. Once succeed, data will applied to HBase
+	 * permanently. If the transaction conflict with other concurrent
+	 * transaction, entire data will be failed, and throw
+	 * {@link ConflictException}.
+	 * <p>
+	 * Once this method is invoked, this instance is not usable anymore.
+	 * If  invoked twice, {@link IllegalStateException} will thrown.
 	 *
-	 * @throws IOException ConflictException, HBase IOException.
+	 * @throws IOException Error during executing HBase operation or {@link ConflictException} during commit operation.
 	 */
 	public void commit() throws IOException {
-		// check if this transaction is used.
+		// Check if this transaction already used.
 		if (!used.compareAndSet(false, true)) {
 			throw new IllegalStateException("this transaction is already used.");
 		}
 		boolean onRecovery = false;
 		txStates.classifyAndSortRows(onRecovery);
+
+		// Determine maxCurrentCommitTimestamp and maxIterationCount, from all participating rows of transaction.
+		// It is used in determining prewriteTimestamp and commmitTimestamp of the transaction.
 		long maxCurrentCommitTimestamp = System.currentTimeMillis();
 		long maxIterationCount = Long.MIN_VALUE;
-
-		// determine commitTimestamp & determine primary row
-		// fill mutationRowStates & readOnlyRowStates from rowStates
 		for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : txStates.getTableStates().entrySet()) {
 			for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()) {
 				HaeinsaRowTransaction rowState = rowStateEntry.getValue();
@@ -165,25 +171,30 @@ public class HaeinsaTransaction {
 			}
 		}
 
-		// HBase compaction시에 같은 timestamp에 값을 쓰면 compaction후에 최신 값이 남이 있는 것이 보장되지 않는다.
+		// The prewriteTimestamp of the transaction should bigger than any other commitTimestamps of rows in the transaction.
+		// Written data can be disappear randomly if write with same timestamp during major compaction.
+		// (It is because of algorithm which is used for determining newest data in multiple HFiles during major compaction)
+		// That's why we have to add 1 to maxCurrentCommitTimestamp.
 		setPrewriteTimestamp(maxCurrentCommitTimestamp + 1);
+
+		// CommitTimestamp should bigger than all of timestamps which are used in the transaction.
+		// If some row contains multiple mutations, several timestamps are used in applying mutations to row sequentially.
+		// So, we have to determine commitTimestamp properly.
 		setCommitTimestamp(Math.max(getPrewriteTimestamp() + 2, maxCurrentCommitTimestamp + maxIterationCount + 2));
 
-		// setPrimary among mutationRowStates first, next among
-		// readOnlyRowStates
 		TRowKey primaryRowKey = null;
 		NavigableMap<TRowKey, HaeinsaRowTransaction> mutationRowStates = txStates.getMutationRowStates();
 		NavigableMap<TRowKey, HaeinsaRowTransaction> readOnlyRowStates = txStates.getReadOnlyRowStates();
+
+		// Mutation row is preferred to be primary row than read-only row.
 		if (mutationRowStates.size() > 0) {
-			// if there is any mutation row, choose first one among muation row.
 			primaryRowKey = mutationRowStates.firstKey();
 		} else if (readOnlyRowStates.size() > 0) {
-			// if there is no mutation row at all, choose first one among
-			// read-only row.
 			primaryRowKey = readOnlyRowStates.firstKey();
 		}
-		// primaryRowKey can be null at this point, which means there is no
-		// rowStates at all.
+
+		// primaryRowKey can be null at this point, which means there is no rowStates at all.
+		// Than determineCommitMethod whill return NOTHING.
 		setPrimary(primaryRowKey);
 
 		CommitMethod method = txStates.determineCommitMethod();
