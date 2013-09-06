@@ -494,9 +494,14 @@ public class HaeinsaUnitTest {
 		
 		HaeinsaTableTransaction tableState = tx2.createOrGetTableState(Bytes.toBytes("HaeinsaUnitTest.testConflictAndRecover.test"));
 		HaeinsaRowTransaction rowState = tableState.createOrGetRowState(Bytes.toBytes("ymkim"));
+
+		// currentCommitTimestamp is System.currentTimeMillis(),
+		// since this access is very first time of the row.
+		// It was initially Long.MIN_VALUE but it become System.currentTimeMillis()
+		long currentCommitTimestamp = System.currentTimeMillis();
 		tx2.classifyAndSortRows(false);
-		tx2.setPrewriteTimestamp(rowState.getCurrent().getCommitTimestamp() + 1);
-		tx2.setCommitTimestamp(rowState.getCurrent().getCommitTimestamp() + 3);
+		tx2.setPrewriteTimestamp(currentCommitTimestamp + 1);
+		tx2.setCommitTimestamp(currentCommitTimestamp + 3);
 		testInternalTable.prewrite(rowState, Bytes.toBytes("ymkim"), true);
 
 		try {
