@@ -487,11 +487,11 @@ public class HaeinsaUnitTest {
 		put1.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-9876-5432"));
 		HaeinsaPut put2 = new HaeinsaPut(Bytes.toBytes("kjwoo"));
 		put2.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-1234-5678"));
-		
+
 		testTable.put(tx1, put1);
 		testTable.put(tx1, put2);
 		testTable.put(tx2, put1);
-		
+
 		HaeinsaTableTransaction tableState = tx2.createOrGetTableState(Bytes.toBytes("HaeinsaUnitTest.testConflictAndRecover.test"));
 		HaeinsaRowTransaction rowState = tableState.createOrGetRowState(Bytes.toBytes("ymkim"));
 

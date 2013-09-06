@@ -71,7 +71,7 @@ public final class HaeinsaTestingCluster {
 		ensureTableCreated(tableName);
 		return hbaseTablePool.getTable(tableName);
 	}
-	
+
 	private synchronized void ensureTableCreated(String tableName) throws Exception {
 		if (createdTableNames.contains(tableName)) {
 			return;
@@ -90,7 +90,7 @@ public final class HaeinsaTestingCluster {
 		tableDesc.addFamily(rawColumnDesc);
 		admin.createTable(tableDesc);
 		admin.close();
-		
+
 		createdTableNames.add(tableName);
 	}
 
