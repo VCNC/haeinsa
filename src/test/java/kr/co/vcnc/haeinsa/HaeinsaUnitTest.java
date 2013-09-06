@@ -15,10 +15,7 @@
  */
 package kr.co.vcnc.haeinsa;
 
-
 import java.util.Iterator;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import kr.co.vcnc.haeinsa.exception.ConflictException;
 import kr.co.vcnc.haeinsa.exception.DanglingRowLockException;
@@ -27,22 +24,11 @@ import kr.co.vcnc.haeinsa.thrift.generated.TRowKey;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.HBaseTestingUtility;
-import org.apache.hadoop.hbase.HColumnDescriptor;
-import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.MiniHBaseCluster;
 import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTableInterface;
-import org.apache.hadoop.hbase.client.HTablePool;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.hbase.util.PoolMap.PoolType;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
@@ -52,61 +38,18 @@ import org.testng.annotations.Test;
  * HaeinsaWithoutTx test, and HBase migration test.
  */
 public class HaeinsaUnitTest {
-	private static MiniHBaseCluster CLUSTER;
-	private static Configuration CONF;
+	private static HaeinsaTestingCluster CLUSTER;
 
 	@BeforeClass
 	public static void setUpHbase() throws Exception {
-		Configuration conf = HBaseConfiguration.create();
-		HBaseTestingUtility utility = new HBaseTestingUtility(conf);
-		utility.cleanupTestDir();
-		CLUSTER = utility.startMiniCluster();
-		CONF = CLUSTER.getConfiguration();
-		HBaseAdmin admin = new HBaseAdmin(CONF);
-
-		// Table -> ColumnFamily
-		// { test } -> { !lock!, data, meta }
-		HTableDescriptor tableDesc = new HTableDescriptor("test");
-		HColumnDescriptor lockColumnDesc = new HColumnDescriptor(HaeinsaConstants.LOCK_FAMILY);
-		lockColumnDesc.setMaxVersions(1);
-		lockColumnDesc.setInMemory(true);
-		tableDesc.addFamily(lockColumnDesc);
-		HColumnDescriptor dataColumnDesc = new HColumnDescriptor("data");
-		tableDesc.addFamily(dataColumnDesc);
-		HColumnDescriptor metaColumnDesc = new HColumnDescriptor("meta");
-		tableDesc.addFamily(metaColumnDesc);
-		admin.createTable(tableDesc);
-
-		// Table -> ColumnFamily
-		// { log } -> { !lock!, raw }
-		HTableDescriptor logDesc = new HTableDescriptor("log");
-		lockColumnDesc = new HColumnDescriptor(HaeinsaConstants.LOCK_FAMILY);
-		lockColumnDesc.setMaxVersions(1);
-		lockColumnDesc.setInMemory(true);
-		logDesc.addFamily(lockColumnDesc);
-		HColumnDescriptor rawColumnDesc = new HColumnDescriptor("raw");
-		logDesc.addFamily(rawColumnDesc);
-		admin.createTable(logDesc);
-
-		admin.close();
-	}
-
-	@AfterClass
-	public static void tearDownHBase() throws Exception {
-		CLUSTER.shutdown();
-	}
-
-	@AfterMethod
-	public void clearTable() throws Exception {
-		TestingUtility.cleanTable(CONF, "test");
+		CLUSTER = HaeinsaTestingCluster.getInstance();
 	}
 
 	@Test
 	public void testTransaction() throws Exception {
-		final ExecutorService threadPool = Executors.newCachedThreadPool();
-		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
-		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
-		HaeinsaTableIface testTable = tablePool.getTable("test");
+		final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
+		final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable("HaeinsaUnitTest.testTransaction.test");
+		final HaeinsaTableIface logTable = CLUSTER.getHaeinsaTable("HaeinsaUnitTest.testTransaction.log");
 
 		// Test 2 puts tx
 		HaeinsaTransaction tx = tm.begin();
@@ -266,7 +209,6 @@ public class HaeinsaUnitTest {
 
 		// test Table-cross transaction & multi-Column transaction
 		tx = tm.begin();
-		HaeinsaTableIface logTable = tablePool.getTable("log");
 		put = new HaeinsaPut(Bytes.toBytes("previousTime"));
 		put.add(Bytes.toBytes("raw"), Bytes.toBytes("time-0"), Bytes.toBytes("log-value-1"));
 		logTable.put(tx, put);
@@ -348,16 +290,13 @@ public class HaeinsaUnitTest {
 
 		testTable.close();
 		logTable.close();
-		tablePool.close();
 	}
 
-	@Test(dependsOnMethods = { "testTransaction" })
+	@Test
 	public void testMultiPutAndMultiDelete() throws Exception {
-		final ExecutorService threadPool = Executors.newCachedThreadPool();
-		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
+		final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
+		final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable("HaeinsaUnitTest.testMultiPutAndMultiDelete.test");
 
-		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
-		HaeinsaTableIface testTable = tablePool.getTable("test");
 		HaeinsaTransaction tx = tm.begin();
 
 		HaeinsaPut put = new HaeinsaPut(Bytes.toBytes("ymkim"));
@@ -413,16 +352,12 @@ public class HaeinsaUnitTest {
 		scanner.close();
 
 		testTable.close();
-		tablePool.close();
 	}
 
-	@Test(dependsOnMethods = { "testMultiPutAndMultiDelete" })
+	@Test
 	public void testMultiRowReadOnly() throws Exception {
-		final ExecutorService threadPool = Executors.newCachedThreadPool();
-		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
-
-		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
-		HaeinsaTableIface testTable = tablePool.getTable("test");
+		final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
+		final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable("HaeinsaUnitTest.testMultiRowReadOnly.test");
 
 		// Test 2 puts tx
 		HaeinsaTransaction tx = tm.begin();
@@ -461,16 +396,13 @@ public class HaeinsaUnitTest {
 		scanner.close();
 
 		testTable.close();
-		tablePool.close();
 	}
 
-	@Test(dependsOnMethods = { "testMultiRowReadOnly" })
+	@Test
 	public void testConflictAndAbort() throws Exception {
-		final ExecutorService threadPool = Executors.newCachedThreadPool();
-		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
+		final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
+		final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable("HaeinsaUnitTest.testConflictAndAbort.test");
 
-		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
-		HaeinsaTableIface testTable = tablePool.getTable("test");
 		HaeinsaTransaction tx = tm.begin();
 		HaeinsaTransaction tx2 = tm.begin();
 
@@ -540,53 +472,52 @@ public class HaeinsaUnitTest {
 		tx.commit();
 
 		testTable.close();
-		tablePool.close();
 	}
 
-	@Test(dependsOnMethods = { "testConflictAndAbort" })
+	@Test
 	public void testConflictAndRecover() throws Exception {
-		final ExecutorService threadPool = Executors.newCachedThreadPool();
-		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
+		final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
+		final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable("HaeinsaUnitTest.testConflictAndRecover.test");
+		final HaeinsaTableIfaceInternal testInternalTable = (HaeinsaTableIfaceInternal) testTable;
 
-		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
-		HaeinsaTableIfaceInternal testTable = (HaeinsaTableIfaceInternal) tablePool.getTable("test");
-		HaeinsaTransaction tx = tm.begin();
+		HaeinsaTransaction tx1 = tm.begin();
 		HaeinsaTransaction tx2 = tm.begin();
 
-		HaeinsaPut put = new HaeinsaPut(Bytes.toBytes("ymkim"));
-		put.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-9876-5432"));
+		HaeinsaPut put1 = new HaeinsaPut(Bytes.toBytes("ymkim"));
+		put1.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-9876-5432"));
 		HaeinsaPut put2 = new HaeinsaPut(Bytes.toBytes("kjwoo"));
 		put2.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-1234-5678"));
-		testTable.put(tx, put);
-		testTable.put(tx, put2);
-
-		testTable.put(tx2, put);
-		HaeinsaTableTransaction tableState = tx2.createOrGetTableState(Bytes.toBytes("test"));
+		
+		testTable.put(tx1, put1);
+		testTable.put(tx1, put2);
+		testTable.put(tx2, put1);
+		
+		HaeinsaTableTransaction tableState = tx2.createOrGetTableState(Bytes.toBytes("HaeinsaUnitTest.testConflictAndRecover.test"));
 		HaeinsaRowTransaction rowState = tableState.createOrGetRowState(Bytes.toBytes("ymkim"));
 		tx2.classifyAndSortRows(false);
 		tx2.setPrewriteTimestamp(rowState.getCurrent().getCommitTimestamp() + 1);
 		tx2.setCommitTimestamp(rowState.getCurrent().getCommitTimestamp() + 3);
-		testTable.prewrite(rowState, Bytes.toBytes("ymkim"), true);
+		testInternalTable.prewrite(rowState, Bytes.toBytes("ymkim"), true);
 
 		try {
-			tx.commit();
+			tx1.commit();
 			Assert.fail();
 		} catch (Exception e) {
 			Assert.assertTrue(e instanceof ConflictException);
 		}
 
-		tx = tm.begin();
+		tx1 = tm.begin();
 		try {
 			HaeinsaScan scan = new HaeinsaScan();
-			HaeinsaResultScanner scanner = testTable.getScanner(tx, scan);
-			HaeinsaResult result = scanner.next();
+			HaeinsaResultScanner scanner = testTable.getScanner(tx1, scan);
+			HaeinsaResult result1 = scanner.next();
 			HaeinsaResult result2 = scanner.next();
 
 			Assert.assertNull(result2);
-			Assert.assertEquals(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber")), Bytes.toBytes("010-9876-5432"));
-			Assert.assertEquals(result.getRow(), Bytes.toBytes("ymkim"));
+			Assert.assertEquals(result1.getValue(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber")), Bytes.toBytes("010-9876-5432"));
+			Assert.assertEquals(result1.getRow(), Bytes.toBytes("ymkim"));
 			scanner.close();
-			tx.rollback();
+			tx1.rollback();
 			Assert.fail();
 		} catch (Exception e) {
 			Assert.assertTrue(e instanceof ConflictException);
@@ -594,32 +525,32 @@ public class HaeinsaUnitTest {
 
 		Thread.sleep(HaeinsaConstants.ROW_LOCK_TIMEOUT + 100);
 
-		tx = tm.begin();
+		tx1 = tm.begin();
 		HaeinsaScan scan = new HaeinsaScan();
-		try (HaeinsaResultScanner scanner = testTable.getScanner(tx, scan)) {
+		try (HaeinsaResultScanner scanner = testTable.getScanner(tx1, scan)) {
 			HaeinsaResult result = scanner.next();
 			Assert.assertNull(result);
 		}
 
-		tx = tm.begin();
+		tx1 = tm.begin();
 		scan = new HaeinsaScan();
-		try (HaeinsaResultScanner scanner = testTable.getScanner(tx, scan)) {
+		try (HaeinsaResultScanner scanner = testTable.getScanner(tx1, scan)) {
 			HaeinsaResult result = scanner.next();
 			Assert.assertNull(result);
 		}
 
-		put = new HaeinsaPut(Bytes.toBytes("ymkim"));
-		put.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-1234-5678"));
+		put1 = new HaeinsaPut(Bytes.toBytes("ymkim"));
+		put1.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-1234-5678"));
 		put2 = new HaeinsaPut(Bytes.toBytes("kjwoo"));
 		put2.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-9876-5432"));
-		testTable.put(tx, put);
-		testTable.put(tx, put2);
+		testTable.put(tx1, put1);
+		testTable.put(tx1, put2);
 
-		tx.commit();
+		tx1.commit();
 
-		tx = tm.begin();
+		tx1 = tm.begin();
 		scan = new HaeinsaScan();
-		try (HaeinsaResultScanner scanner = testTable.getScanner(tx, scan)) {
+		try (HaeinsaResultScanner scanner = testTable.getScanner(tx1, scan)) {
 			HaeinsaResult result = scanner.next();
 			HaeinsaResult result2 = scanner.next();
 			HaeinsaResult result3 = scanner.next();
@@ -630,22 +561,21 @@ public class HaeinsaUnitTest {
 			Assert.assertEquals(result2.getValue(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber")), Bytes.toBytes("010-1234-5678"));
 			Assert.assertEquals(result2.getRow(), Bytes.toBytes("ymkim"));
 		}
-		tx.rollback();
+		tx1.rollback();
 
-		tx = tm.begin();
+		tx1 = tm.begin();
 		HaeinsaDelete delete1 = new HaeinsaDelete(Bytes.toBytes("ymkim"));
 		delete1.deleteFamily(Bytes.toBytes("data"));
 
 		HaeinsaDelete delete2 = new HaeinsaDelete(Bytes.toBytes("kjwoo"));
 		delete2.deleteColumns(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"));
 
-		testTable.delete(tx, delete1);
-		testTable.delete(tx, delete2);
+		testTable.delete(tx1, delete1);
+		testTable.delete(tx1, delete2);
 
-		tx.commit();
+		tx1.commit();
 
 		testTable.close();
-		tablePool.close();
 	}
 
 	/**
@@ -653,14 +583,11 @@ public class HaeinsaUnitTest {
 	 *
 	 * @throws Exception
 	 */
-	@Test(dependsOnMethods = { "testConflictAndRecover" })
+	@Test
 	public void testHBaseHaeinsaMigration() throws Exception {
-		final ExecutorService threadPool = Executors.newCachedThreadPool();
-		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
-		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
-
-		HTablePool hbasePool = new HTablePool(CONF, 128, PoolType.Reusable);
-		HTableInterface hTestTable = hbasePool.getTable("test");
+		final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
+		final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable("HaeinsaUnitTest.testHBaseHaeinsaMigration.test");
+		final HTableInterface hTestTable = CLUSTER.getHbaseTable("HaeinsaUnitTest.testHBaseHaeinsaMigration.test");
 
 		/*
 		 * - HBase operation
@@ -679,8 +606,6 @@ public class HaeinsaUnitTest {
 		// no lock at { row1, row2 }
 		Assert.assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row1")));
 		Assert.assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row2")));
-
-		HaeinsaTableIface testTable = tablePool.getTable("test");
 
 		HaeinsaTransaction tx = tm.begin();
 		HaeinsaGet get = new HaeinsaGet(Bytes.toBytes("row1"));
@@ -909,8 +834,6 @@ public class HaeinsaUnitTest {
 		// release all resources
 		hTestTable.close();
 		testTable.close();
-		tablePool.close();
-		hbasePool.close();
 	}
 
 	/**
@@ -918,13 +841,10 @@ public class HaeinsaUnitTest {
 	 *
 	 * @throws Exception
 	 */
-	@Test(dependsOnMethods = { "testHBaseHaeinsaMigration" })
+	@Test
 	public void testMultipleMutations() throws Exception {
-		final ExecutorService threadPool = Executors.newCachedThreadPool();
-		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
-
-		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
-		HaeinsaTableIface testTable = tablePool.getTable("test");
+		final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
+		final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable("HaeinsaUnitTest.testMultipleMutations.test");
 
 		/*
 		 * - beginTransaction
@@ -1003,7 +923,6 @@ public class HaeinsaUnitTest {
 		tx.rollback();
 
 		testTable.close();
-		tablePool.close();
 	}
 
 	/**
@@ -1012,15 +931,11 @@ public class HaeinsaUnitTest {
 	 *
 	 * @throws Exception
 	 */
-	@Test(dependsOnMethods = { "testMultipleMutations" })
+	@Test
 	public void testHaeinsaTableWithoutTx() throws Exception {
-		final ExecutorService threadPool = Executors.newCachedThreadPool();
-		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
-
-		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
-		HaeinsaTableIface testTable = tablePool.getTable("test");
-		HTablePool hbasePool = new HTablePool(CONF, 128, PoolType.Reusable);
-		HTableInterface hTestTable = hbasePool.getTable("test");
+		final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
+		final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable("HaeinsaUnitTest.testHaeinsaTableWithoutTx.test");
+		final HTableInterface hTestTable = CLUSTER.getHbaseTable("HaeinsaUnitTest.testHaeinsaTableWithoutTx.test");
 
 		/*
 		 * - beginTransaction
@@ -1155,20 +1070,14 @@ public class HaeinsaUnitTest {
 
 		// release resources
 		testTable.close();
-		tablePool.close();
 		hTestTable.close();
-		hbasePool.close();
 	}
 
-	@Test(dependsOnMethods = { "testHaeinsaTableWithoutTx" })
+	@Test
 	public void testDanglingRowLockException() throws Exception {
-		final ExecutorService threadPool = Executors.newCachedThreadPool();
-		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
-
-		HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
-		HaeinsaTableIface testTable = tablePool.getTable("test");
-		HTablePool hbasePool = new HTablePool(CONF, 128, PoolType.Reusable);
-		HTableInterface hTestTable = hbasePool.getTable("test");
+		final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
+		final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable("HaeinsaUnitTest.testDanglingRowLockException.test");
+		final HTableInterface hTestTable = CLUSTER.getHbaseTable("HaeinsaUnitTest.testDanglingRowLockException.test");
 
 		{
 			TRowKey primaryRowKey = new TRowKey().setTableName(testTable.getTableName()).setRow(Bytes.toBytes("James"));
@@ -1228,9 +1137,7 @@ public class HaeinsaUnitTest {
 
 		// release resources
 		testTable.close();
-		tablePool.close();
 		hTestTable.close();
-		hbasePool.close();
 	}
 
 	/**
