@@ -27,6 +27,7 @@
 		<property name="ignoreCase" value="true" />
 		<property name="message" value="unmaintainable Javadoc tags: @author, @version, or (non-Javadoc)" />
 	</module>
+	<module name="FileTabCharacter"/>
 	<!-- Force UNIX line separator -->
 	<module name="io.netty.build.checkstyle.NewlineCheck" />
 	<!-- Trailing whitespace -->
