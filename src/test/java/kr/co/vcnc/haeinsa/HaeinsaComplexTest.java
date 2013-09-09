@@ -22,17 +22,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.HBaseTestingUtility;
-import org.apache.hadoop.hbase.HColumnDescriptor;
-import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.MiniHBaseCluster;
-import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
@@ -43,40 +34,11 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
  * test, concurrent random increment test, and serializability test.
  */
 public class HaeinsaComplexTest {
-	private static MiniHBaseCluster CLUSTER;
-	private static Configuration CONF;
+	private static HaeinsaTestingCluster CLUSTER;
 
 	@BeforeClass
 	public static void setUpHbase() throws Exception {
-		Configuration conf = HBaseConfiguration.create();
-		HBaseTestingUtility utility = new HBaseTestingUtility(conf);
-		utility.cleanupTestDir();
-		CLUSTER = utility.startMiniCluster();
-		CONF = CLUSTER.getConfiguration();
-		HBaseAdmin admin = new HBaseAdmin(CONF);
-
-		// Table -> ColumnFamily
-		// { test } -> { !lock!, data }
-		HTableDescriptor tableDesc = new HTableDescriptor("test");
-		HColumnDescriptor lockColumnDesc = new HColumnDescriptor(HaeinsaConstants.LOCK_FAMILY);
-		lockColumnDesc.setMaxVersions(1);
-		lockColumnDesc.setInMemory(true);
-		tableDesc.addFamily(lockColumnDesc);
-		HColumnDescriptor dataColumnDesc = new HColumnDescriptor("data");
-		tableDesc.addFamily(dataColumnDesc);
-		admin.createTable(tableDesc);
-
-		admin.close();
-	}
-
-	@AfterClass
-	public static void tearDownHBase() throws Exception {
-		CLUSTER.shutdown();
-	}
-
-	@AfterMethod
-	public void clearTable() throws Exception {
-		TestingUtility.cleanTable(CONF, "test");
+		CLUSTER = HaeinsaTestingCluster.getInstance();
 	}
 
 	/**
@@ -86,11 +48,9 @@ public class HaeinsaComplexTest {
 	 */
 	@Test
 	public void testSimepleIncrement() throws Exception {
-		final ExecutorService threadPool = Executors.newCachedThreadPool();
-		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
+		final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
+		final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable("HaeinsaComplexTest.testSimepleIncrement.test");
 
-		final HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
-		HaeinsaTableIface testTable = tablePool.getTable("test");
 		HaeinsaTransaction tx;
 
 		final AtomicLong count = new AtomicLong(0);
@@ -135,8 +95,6 @@ public class HaeinsaComplexTest {
 		Assert.assertEquals(count.get(), maxIter);
 
 		testTable.close();
-		tablePool.close();
-		threadPool.shutdown();
 	}
 
 	/**
@@ -147,11 +105,9 @@ public class HaeinsaComplexTest {
 	 */
 	@Test
 	public void testConcurrentRandomIncrement() throws Exception {
-		final ExecutorService threadPool = Executors.newCachedThreadPool();
-		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
+		final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
+		final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable("HaeinsaComplexTest.testConcurrentRandomIncrement.test");
 
-		final HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
-		final HaeinsaTableIface testTable = tablePool.getTable("test");
 		HaeinsaTransaction tx;
 
 		final AtomicLong count = new AtomicLong(0);
@@ -226,8 +182,6 @@ public class HaeinsaComplexTest {
 
 		// release resources
 		testTable.close();
-		tablePool.close();
-		threadPool.shutdown();
 		service.shutdown();
 	}
 
@@ -248,11 +202,9 @@ public class HaeinsaComplexTest {
 	 */
 	@Test
 	public void testSerializability() throws Exception {
-		final ExecutorService threadPool = Executors.newCachedThreadPool();
-		final HaeinsaTablePool tablePool = TestingUtility.createHaeinsaTablePool(CONF, threadPool);
+		final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
+		final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable("HaeinsaComplexTest.testSerializability.test");
 
-		final HaeinsaTransactionManager tm = new HaeinsaTransactionManager(tablePool);
-		final HaeinsaTableIface testTable = tablePool.getTable("test");
 		HaeinsaTransaction tx;
 
 		// some random initial value
@@ -344,8 +296,6 @@ public class HaeinsaComplexTest {
 
 		// release resources
 		testTable.close();
-		tablePool.close();
-		threadPool.shutdown();
 		service.shutdown();
 	}
 
