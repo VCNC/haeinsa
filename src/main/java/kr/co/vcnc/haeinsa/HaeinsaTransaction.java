@@ -146,12 +146,12 @@ public class HaeinsaTransaction {
 	 * {@link ConflictException}.
 	 * <p>
 	 * Once this method is invoked, this instance is not usable anymore.
-	 * If  invoked twice, {@link IllegalStateException} will thrown.
+	 * If invoked twice, {@link IllegalStateException} will thrown.
 	 *
 	 * @throws IOException Error during executing HBase operation or {@link ConflictException} during commit operation.
 	 */
 	public void commit() throws IOException {
-		// Check if this transaction already used.
+		// Check whether this transaction already used.
 		if (!used.compareAndSet(false, true)) {
 			throw new IllegalStateException("this transaction is already used.");
 		}
