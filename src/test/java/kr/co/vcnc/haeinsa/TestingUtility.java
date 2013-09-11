@@ -27,31 +27,33 @@ import org.apache.hadoop.hbase.client.HTableInterfaceFactory;
 
 public final class TestingUtility {
 
-	private TestingUtility() {}
+    private TestingUtility() {
+    }
 
-	/**
-	 * Create {@link HaeinsaTablePool} instance for testing
-	 *
-	 * @param threadPool instance of {@link ExecutorService} to use
-	 * @return instance of {@link HaeinsaTablePool}
-	 */
-	public static HaeinsaTablePool createHaeinsaTablePool(Configuration conf, final ExecutorService threadPool) {
-		return new HaeinsaTablePool(conf, 128, new DefaultHaeinsaTableIfaceFactory(new HTableInterfaceFactory() {
-			@Override
-			public HTableInterface createHTableInterface(Configuration config, byte[] tableName) {
-				try {
-					return new HTable(tableName, HConnectionManager.getConnection(config), threadPool);
-				} catch (ZooKeeperConnectionException e) {
-					e.printStackTrace();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-				return null;
-			}
-			@Override
-			public void releaseHTableInterface(HTableInterface table) throws IOException {
-				table.close();
-			}
-		}));
-	}
+    /**
+     * Create {@link HaeinsaTablePool} instance for testing
+     *
+     * @param threadPool instance of {@link ExecutorService} to use
+     * @return instance of {@link HaeinsaTablePool}
+     */
+    public static HaeinsaTablePool createHaeinsaTablePool(Configuration conf, final ExecutorService threadPool) {
+        return new HaeinsaTablePool(conf, 128, new DefaultHaeinsaTableIfaceFactory(new HTableInterfaceFactory() {
+            @Override
+            public HTableInterface createHTableInterface(Configuration config, byte[] tableName) {
+                try {
+                    return new HTable(tableName, HConnectionManager.getConnection(config), threadPool);
+                } catch (ZooKeeperConnectionException e) {
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                return null;
+            }
+
+            @Override
+            public void releaseHTableInterface(HTableInterface table) throws IOException {
+                table.close();
+            }
+        }));
+    }
 }

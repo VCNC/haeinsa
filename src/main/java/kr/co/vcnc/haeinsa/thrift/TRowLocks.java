@@ -37,76 +37,77 @@ import org.apache.thrift.protocol.TProtocolFactory;
  * TRowLock(commitTimestamp = Long.MIN_VALUE) <=> byte[] null
  */
 public final class TRowLocks {
-	private static final TProtocolFactory PROTOCOL_FACTORY = new TCompactProtocol.Factory();
+    private static final TProtocolFactory PROTOCOL_FACTORY = new TCompactProtocol.Factory();
 
-	private static TSerializer createSerializer() {
-		return new TSerializer(PROTOCOL_FACTORY);
-	}
+    private static TSerializer createSerializer() {
+        return new TSerializer(PROTOCOL_FACTORY);
+    }
 
-	private static TDeserializer createDeserializer() {
-		return new TDeserializer(PROTOCOL_FACTORY);
-	}
+    private static TDeserializer createDeserializer() {
+        return new TDeserializer(PROTOCOL_FACTORY);
+    }
 
-	private TRowLocks() {}
+    private TRowLocks() {
+    }
 
-	public static TRowLock deserialize(byte[] rowLockBytes) throws IOException {
-		if (rowLockBytes == null) {
-			return new TRowLock(ROW_LOCK_VERSION, TRowLockState.STABLE, Long.MIN_VALUE);
-		}
-		TRowLock rowLock = new TRowLock();
-		TDeserializer deserializer = createDeserializer();
-		try {
-			deserializer.deserialize(rowLock, rowLockBytes);
-			return rowLock;
-		} catch (TException e) {
-			throw new IOException(e.getMessage(), e);
-		}
-	}
+    public static TRowLock deserialize(byte[] rowLockBytes) throws IOException {
+        if (rowLockBytes == null) {
+            return new TRowLock(ROW_LOCK_VERSION, TRowLockState.STABLE, Long.MIN_VALUE);
+        }
+        TRowLock rowLock = new TRowLock();
+        TDeserializer deserializer = createDeserializer();
+        try {
+            deserializer.deserialize(rowLock, rowLockBytes);
+            return rowLock;
+        } catch (TException e) {
+            throw new IOException(e.getMessage(), e);
+        }
+    }
 
-	public static byte[] serialize(TRowLock rowLock) throws IOException {
-		if (rowLock.getCommitTimestamp() == Long.MIN_VALUE) {
-			return null;
-		}
-		TSerializer serializer = createSerializer();
-		try {
-			return serializer.serialize(rowLock);
-		} catch (TException e) {
-			throw new IOException(e.getMessage(), e);
-		}
-	}
+    public static byte[] serialize(TRowLock rowLock) throws IOException {
+        if (rowLock.getCommitTimestamp() == Long.MIN_VALUE) {
+            return null;
+        }
+        TSerializer serializer = createSerializer();
+        try {
+            return serializer.serialize(rowLock);
+        } catch (TException e) {
+            throw new IOException(e.getMessage(), e);
+        }
+    }
 
-	public static boolean isPrimary(TRowLock rowLock) {
-		return !rowLock.isSetPrimary();
-	}
+    public static boolean isPrimary(TRowLock rowLock) {
+        return !rowLock.isSetPrimary();
+    }
 
-	public static boolean isSecondaryOf(TRowLock primaryRowLock, TRowKey secondaryRowKey, TRowLock secondaryRowLock) {
-		return primaryRowLock.getCommitTimestamp() == secondaryRowLock.getCommitTimestamp()
-				&& containRowKeyAsSecondary(primaryRowLock, secondaryRowKey);
-	}
+    public static boolean isSecondaryOf(TRowLock primaryRowLock, TRowKey secondaryRowKey, TRowLock secondaryRowLock) {
+        return primaryRowLock.getCommitTimestamp() == secondaryRowLock.getCommitTimestamp()
+                && containRowKeyAsSecondary(primaryRowLock, secondaryRowKey);
+    }
 
-	/**
-	 * Check if given rowLock has secondaryRowKey in secondaries.
-	 *
-	 * @param primaryRowLock given RowLock
-	 * @param secondaryRowKey secondaryRowKey to check if given RowLock contains as secondary.
-	 * @return true if given rowLock contains given secondaryRowKey as secondary.
-	 */
-	public static boolean containRowKeyAsSecondary(TRowLock primaryRowLock, TRowKey secondaryRowKey) {
-		// Check if secondaries of rowLock contains secondaryRowKey as element.
-		if (primaryRowLock.isSetSecondaries()) {
-			for (TRowKey rowKey : primaryRowLock.getSecondaries()) {
-				boolean match = rowKey != null
-						&& rowKey.isSetTableName()
-						&& secondaryRowKey.isSetTableName()
-						&& Arrays.equals(rowKey.getTableName(), secondaryRowKey.getTableName())
-						&& rowKey.isSetRow()
-						&& secondaryRowKey.isSetRow()
-						&& Arrays.equals(rowKey.getRow(), secondaryRowKey.getRow());
-				if (match) {
-					return true;
-				}
-			}
-		}
-		return false;
-	}
+    /**
+     * Check if given rowLock has secondaryRowKey in secondaries.
+     *
+     * @param primaryRowLock given RowLock
+     * @param secondaryRowKey secondaryRowKey to check if given RowLock contains as secondary.
+     * @return true if given rowLock contains given secondaryRowKey as secondary.
+     */
+    public static boolean containRowKeyAsSecondary(TRowLock primaryRowLock, TRowKey secondaryRowKey) {
+        // Check if secondaries of rowLock contains secondaryRowKey as element.
+        if (primaryRowLock.isSetSecondaries()) {
+            for (TRowKey rowKey : primaryRowLock.getSecondaries()) {
+                boolean match = rowKey != null
+                        && rowKey.isSetTableName()
+                        && secondaryRowKey.isSetTableName()
+                        && Arrays.equals(rowKey.getTableName(), secondaryRowKey.getTableName())
+                        && rowKey.isSetRow()
+                        && secondaryRowKey.isSetRow()
+                        && Arrays.equals(rowKey.getRow(), secondaryRowKey.getRow());
+                if (match) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
 }

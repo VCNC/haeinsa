@@ -30,46 +30,46 @@ import com.google.common.collect.Maps;
  * {@link HaeinsaTransaction}
  */
 class HaeinsaTableTransaction {
-	private final NavigableMap<byte[], HaeinsaRowTransaction> rowStates = Maps.newTreeMap(Bytes.BYTES_COMPARATOR);
-	private final HaeinsaTransaction transaction;
+    private final NavigableMap<byte[], HaeinsaRowTransaction> rowStates = Maps.newTreeMap(Bytes.BYTES_COMPARATOR);
+    private final HaeinsaTransaction transaction;
 
-	HaeinsaTableTransaction(HaeinsaTransaction transaction) {
-		this.transaction = transaction;
-	}
+    HaeinsaTableTransaction(HaeinsaTransaction transaction) {
+        this.transaction = transaction;
+    }
 
-	public NavigableMap<byte[], HaeinsaRowTransaction> getRowStates() {
-		return rowStates;
-	}
+    public NavigableMap<byte[], HaeinsaRowTransaction> getRowStates() {
+        return rowStates;
+    }
 
-	public HaeinsaTransaction getTransaction() {
-		return transaction;
-	}
+    public HaeinsaTransaction getTransaction() {
+        return transaction;
+    }
 
-	/**
-	 * Return rowTransaction which this instance contains in rowStates map.
-	 * If there is no rowTransaction for this row, then create new one and return it.
-	 * Returned rowTransaction is always saved in rowStates.
-	 * <p>
-	 * There are three possible states of TRowLock of {@link HaeinsaRowTransaction} which returned by this method.
-	 * <ol>
-	 * <li>When get {@link HaeinsaRowTransaction} which is already contained in rowStates
-	 * - Should not change {@link HaeinsaRowTransaction#current} manually.</li>
-	 * <li>When rowTransaction is newly created by this method and {@link TRowLock} associated with the row exists
-	 * - Use {@link HaeinsaRowTransaction#setCurrent()} to set current field of rowTransaction.
-	 * <li>When rowTransaction is newly created by this method and there is no associated {@link TRowLock}</li>
-	 * - Use {@link TRowLocks#serialize(null)} method to set default {@link TRowLock} to current field of rowTransaction.</li>
-	 * </ol>
-	 *
-	 * @param row
-	 * @return RowTransaction - {@link HaeinsaRowTransaction} which contained in
-	 *         this instance.
-	 */
-	public HaeinsaRowTransaction createOrGetRowState(byte[] row) {
-		HaeinsaRowTransaction rowState = rowStates.get(row);
-		if (rowState == null) {
-			rowState = new HaeinsaRowTransaction(this);
-			rowStates.put(row, rowState);
-		}
-		return rowState;
-	}
+    /**
+     * Return rowTransaction which this instance contains in rowStates map.
+     * If there is no rowTransaction for this row, then create new one and return it.
+     * Returned rowTransaction is always saved in rowStates.
+     * <p>
+     * There are three possible states of TRowLock of {@link HaeinsaRowTransaction} which returned by this method.
+     * <ol>
+     * <li>When get {@link HaeinsaRowTransaction} which is already contained in rowStates
+     * - Should not change {@link HaeinsaRowTransaction#current} manually.</li>
+     * <li>When rowTransaction is newly created by this method and {@link TRowLock} associated with the row exists
+     * - Use {@link HaeinsaRowTransaction#setCurrent()} to set current field of rowTransaction.
+     * <li>When rowTransaction is newly created by this method and there is no associated {@link TRowLock}</li>
+     * - Use {@link TRowLocks#serialize(null)} method to set default {@link TRowLock} to current field of rowTransaction.</li>
+     * </ol>
+     *
+     * @param row
+     * @return RowTransaction - {@link HaeinsaRowTransaction} which contained in
+     *         this instance.
+     */
+    public HaeinsaRowTransaction createOrGetRowState(byte[] row) {
+        HaeinsaRowTransaction rowState = rowStates.get(row);
+        if (rowState == null) {
+            rowState = new HaeinsaRowTransaction(this);
+            rowStates.put(row, rowState);
+        }
+        return rowState;
+    }
 }
