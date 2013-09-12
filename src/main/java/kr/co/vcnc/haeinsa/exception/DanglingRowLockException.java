@@ -28,28 +28,28 @@ import kr.co.vcnc.haeinsa.thrift.generated.TRowKey;
  */
 public class DanglingRowLockException extends ConflictException {
 
-	private static final long serialVersionUID = -9220580990865263679L;
+    private static final long serialVersionUID = -9220580990865263679L;
 
-	private final TRowKey danglingRowKey;
+    private final TRowKey danglingRowKey;
 
-	public DanglingRowLockException(TRowKey danglingRowKey) {
-		super();
-		this.danglingRowKey = danglingRowKey;
-	}
+    public DanglingRowLockException(TRowKey danglingRowKey) {
+        super();
+        this.danglingRowKey = danglingRowKey;
+    }
 
-	public DanglingRowLockException(TRowKey danglingRowKey, String message) {
-		super(message);
-		this.danglingRowKey = danglingRowKey;
-	}
+    public DanglingRowLockException(TRowKey danglingRowKey, String message) {
+        super(message);
+        this.danglingRowKey = danglingRowKey;
+    }
 
-	/**
-	 * This method returns {@link TRowKey} of Dangling row. You can get dangling
-	 * rowLock with this row key.
-	 *
-	 * @return {@link TRowKey} of Dangling row.
-	 */
-	public TRowKey getDanglingRowKey() {
-		return danglingRowKey;
-	}
+    /**
+     * This method returns {@link TRowKey} of Dangling row. You can get dangling
+     * rowLock with this row key.
+     *
+     * @return {@link TRowKey} of Dangling row.
+     */
+    public TRowKey getDanglingRowKey() {
+        return danglingRowKey;
+    }
 
 }

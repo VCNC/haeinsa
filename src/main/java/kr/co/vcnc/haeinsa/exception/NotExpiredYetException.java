@@ -21,16 +21,16 @@ package kr.co.vcnc.haeinsa.exception;
  */
 public class NotExpiredYetException extends ConflictException {
 
-	private static final long serialVersionUID = -5160271558362505568L;
+    private static final long serialVersionUID = -5160271558362505568L;
 
-	public NotExpiredYetException() {
-	}
+    public NotExpiredYetException() {
+    }
 
-	public NotExpiredYetException(String message) {
-		super(message);
-	}
+    public NotExpiredYetException(String message) {
+        super(message);
+    }
 
-	public NotExpiredYetException(String message, Throwable cause) {
-		super(message, cause);
-	}
+    public NotExpiredYetException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

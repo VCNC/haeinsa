@@ -18,88 +18,90 @@ import org.apache.hadoop.hbase.util.PoolMap.PoolType;
 import org.testng.internal.annotations.Sets;
 
 public final class HaeinsaTestingCluster {
-	public static HaeinsaTestingCluster INSTANCE;
-	public static HaeinsaTestingCluster getInstance() {
-		synchronized (HaeinsaTestingCluster.class) {
-			try {
-				if (INSTANCE == null) {
-					INSTANCE = new HaeinsaTestingCluster();
-				}
-			} catch (Exception e) {
-				throw new RuntimeException(e);
-			}
-		}
-		return INSTANCE;
-	}
-	private final MiniHBaseCluster cluster;
-	private final Configuration configuration;
+    public static HaeinsaTestingCluster INSTANCE;
 
-	private final ExecutorService threadPool;
-	private final HaeinsaTablePool haeinsaTablePool;
-	private final HTablePool hbaseTablePool;
-	private final HaeinsaTransactionManager transactionManager;
-	private final Set<String> createdTableNames;
+    public static HaeinsaTestingCluster getInstance() {
+        synchronized (HaeinsaTestingCluster.class) {
+            try {
+                if (INSTANCE == null) {
+                    INSTANCE = new HaeinsaTestingCluster();
+                }
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return INSTANCE;
+    }
 
-	private HaeinsaTestingCluster() throws Exception {
-		Configuration conf = HBaseConfiguration.create();
-		HBaseTestingUtility utility = new HBaseTestingUtility(conf);
-		utility.cleanupTestDir();
-		cluster = utility.startMiniCluster();
-		configuration = cluster.getConfiguration();
+    private final MiniHBaseCluster cluster;
+    private final Configuration configuration;
 
-		threadPool = Executors.newCachedThreadPool();
-		haeinsaTablePool = TestingUtility.createHaeinsaTablePool(configuration, threadPool);
-		hbaseTablePool = new HTablePool(configuration, 128, PoolType.Reusable);
-		transactionManager = new HaeinsaTransactionManager(haeinsaTablePool);
-		createdTableNames = Sets.newHashSet();
-	}
+    private final ExecutorService threadPool;
+    private final HaeinsaTablePool haeinsaTablePool;
+    private final HTablePool hbaseTablePool;
+    private final HaeinsaTransactionManager transactionManager;
+    private final Set<String> createdTableNames;
 
-	public MiniHBaseCluster getCluster() {
-		return cluster;
-	}
+    private HaeinsaTestingCluster() throws Exception {
+        Configuration conf = HBaseConfiguration.create();
+        HBaseTestingUtility utility = new HBaseTestingUtility(conf);
+        utility.cleanupTestDir();
+        cluster = utility.startMiniCluster();
+        configuration = cluster.getConfiguration();
 
-	public Configuration getConfiguration() {
-		return configuration;
-	}
+        threadPool = Executors.newCachedThreadPool();
+        haeinsaTablePool = TestingUtility.createHaeinsaTablePool(configuration, threadPool);
+        hbaseTablePool = new HTablePool(configuration, 128, PoolType.Reusable);
+        transactionManager = new HaeinsaTransactionManager(haeinsaTablePool);
+        createdTableNames = Sets.newHashSet();
+    }
 
-	public HaeinsaTableIface getHaeinsaTable(String tableName) throws Exception {
-		ensureTableCreated(tableName);
-		return haeinsaTablePool.getTable(tableName);
-	}
+    public MiniHBaseCluster getCluster() {
+        return cluster;
+    }
 
-	public HTableInterface getHbaseTable(String tableName) throws Exception {
-		ensureTableCreated(tableName);
-		return hbaseTablePool.getTable(tableName);
-	}
+    public Configuration getConfiguration() {
+        return configuration;
+    }
 
-	private synchronized void ensureTableCreated(String tableName) throws Exception {
-		if (createdTableNames.contains(tableName)) {
-			return;
-		}
-		HBaseAdmin admin = new HBaseAdmin(configuration);
-		HTableDescriptor tableDesc = new HTableDescriptor(tableName);
-		HColumnDescriptor lockColumnDesc = new HColumnDescriptor(HaeinsaConstants.LOCK_FAMILY);
-		lockColumnDesc.setMaxVersions(1);
-		lockColumnDesc.setInMemory(true);
-		tableDesc.addFamily(lockColumnDesc);
-		HColumnDescriptor dataColumnDesc = new HColumnDescriptor("data");
-		tableDesc.addFamily(dataColumnDesc);
-		HColumnDescriptor metaColumnDesc = new HColumnDescriptor("meta");
-		tableDesc.addFamily(metaColumnDesc);
-		HColumnDescriptor rawColumnDesc = new HColumnDescriptor("raw");
-		tableDesc.addFamily(rawColumnDesc);
-		admin.createTable(tableDesc);
-		admin.close();
+    public HaeinsaTableIface getHaeinsaTable(String tableName) throws Exception {
+        ensureTableCreated(tableName);
+        return haeinsaTablePool.getTable(tableName);
+    }
 
-		createdTableNames.add(tableName);
-	}
+    public HTableInterface getHbaseTable(String tableName) throws Exception {
+        ensureTableCreated(tableName);
+        return hbaseTablePool.getTable(tableName);
+    }
 
-	public HaeinsaTransactionManager getTransactionManager() {
-		return transactionManager;
-	}
+    private synchronized void ensureTableCreated(String tableName) throws Exception {
+        if (createdTableNames.contains(tableName)) {
+            return;
+        }
+        HBaseAdmin admin = new HBaseAdmin(configuration);
+        HTableDescriptor tableDesc = new HTableDescriptor(tableName);
+        HColumnDescriptor lockColumnDesc = new HColumnDescriptor(HaeinsaConstants.LOCK_FAMILY);
+        lockColumnDesc.setMaxVersions(1);
+        lockColumnDesc.setInMemory(true);
+        tableDesc.addFamily(lockColumnDesc);
+        HColumnDescriptor dataColumnDesc = new HColumnDescriptor("data");
+        tableDesc.addFamily(dataColumnDesc);
+        HColumnDescriptor metaColumnDesc = new HColumnDescriptor("meta");
+        tableDesc.addFamily(metaColumnDesc);
+        HColumnDescriptor rawColumnDesc = new HColumnDescriptor("raw");
+        tableDesc.addFamily(rawColumnDesc);
+        admin.createTable(tableDesc);
+        admin.close();
 
-	public void release() throws IOException {
-		threadPool.shutdown();
-		cluster.shutdown();
-	}
+        createdTableNames.add(tableName);
+    }
+
+    public HaeinsaTransactionManager getTransactionManager() {
+        return transactionManager;
+    }
+
+    public void release() throws IOException {
+        threadPool.shutdown();
+        cluster.shutdown();
+    }
 }
