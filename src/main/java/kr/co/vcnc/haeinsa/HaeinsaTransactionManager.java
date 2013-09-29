@@ -213,6 +213,10 @@ public class HaeinsaTransactionManager {
             // this row isn't a part of this transaction or already aborted.
             return;
         }
+        if (secondaryRowLock.getState() == TRowLockState.STABLE && secondaryRowLock.getCommitTimestamp() == transaction.getCommitTimestamp()) {
+            // this row is already committed or aborted.
+            return;
+        }
         if (secondaryRowLock.getState() != TRowLockState.STABLE && !TRowLocks.isSecondaryOf(primaryRowLock, rowKey, secondaryRowLock)) {
             // this row isn't a part of this transaction.
             return;
