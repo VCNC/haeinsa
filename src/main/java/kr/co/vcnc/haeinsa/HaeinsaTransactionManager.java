@@ -209,7 +209,7 @@ public class HaeinsaTransactionManager {
      */
     private void addSecondaryRowLock(HaeinsaTransaction transaction, TRowLock primaryRowLock, TRowKey rowKey) throws IOException {
         TRowLock secondaryRowLock = getRowLock(rowKey.getTableName(), rowKey.getRow());
-        if (secondaryRowLock.getCurrentTimestmap() >= transaction.getCommitTimestamp()) {
+        if (secondaryRowLock.getCommitTimestamp() > transaction.getCommitTimestamp()) {
             // this row isn't a part of this transaction or already aborted.
             return;
         }
