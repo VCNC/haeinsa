@@ -18,7 +18,6 @@ package kr.co.vcnc.haeinsa;
 import static kr.co.vcnc.haeinsa.HaeinsaConstants.LOCK_FAMILY;
 import static kr.co.vcnc.haeinsa.HaeinsaConstants.LOCK_QUALIFIER;
 import static kr.co.vcnc.haeinsa.HaeinsaConstants.RECOVER_MAX_RETRY_COUNT;
-import static kr.co.vcnc.haeinsa.HaeinsaConstants.ROW_LOCK_TIMEOUT;
 import static kr.co.vcnc.haeinsa.HaeinsaConstants.ROW_LOCK_VERSION;
 
 import java.io.IOException;
