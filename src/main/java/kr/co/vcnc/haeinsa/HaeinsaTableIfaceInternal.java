@@ -67,7 +67,7 @@ interface HaeinsaTableIfaceInternal extends HaeinsaTableIface {
      * Remaining mutations which is not applied with first RPC is remained in {@link TRowLock#mutations}.
      * This field will be used in {@link #applyMutations()} stage.
      * Columns written in prewritten stage will be recorded in {@link TRowLock#prewritten} field,
-     * which will be used in {@link HaeinsaTransaction#abort()} to clean up dirty data
+     * which will be used in {@link HaeinsaTransaction#recover(boolean)} to clean up dirty data
      * if transaction failed.
      * <p>
      * Add list of secondary rows in secondaries field if this row is primary row, add key of primary row in primary field otherwise.
