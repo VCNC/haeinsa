@@ -18,6 +18,7 @@
 */target
 /reports
 */reports
+release.properties
 
 ## eclipse project
 .settings
