@@ -185,7 +185,7 @@ public class HaeinsaTransactionManager {
         primaryRowTxState.setCurrent(primaryRowLock);
         if (primaryRowLock.getSecondariesSize() > 0) {
             for (TRowKey secondaryRow : primaryRowLock.getSecondaries()) {
-                addSecondaryRowLock(transaction, secondaryRow);
+                addSecondaryRowLock(transaction, primaryRowLock, secondaryRow);
             }
         }
         return transaction;
@@ -207,18 +207,23 @@ public class HaeinsaTransactionManager {
      * @param rowKey
      * @throws IOException
      */
-    private void addSecondaryRowLock(HaeinsaTransaction transaction, TRowKey rowKey) throws IOException {
-        TRowLock unstableRowLock = getUnstableRowLock(rowKey.getTableName(), rowKey.getRow());
-        if (unstableRowLock == null) {
+    private void addSecondaryRowLock(HaeinsaTransaction transaction, TRowLock primaryRowLock, TRowKey rowKey) throws IOException {
+        TRowLock secondaryRowLock = getRowLock(rowKey.getTableName(), rowKey.getRow());
+        if (secondaryRowLock.getCommitTimestamp() > transaction.getCommitTimestamp()) {
+            // this row isn't a part of this transaction or already aborted.
             return;
         }
-        // commitTimestamp가 다르면, 다른 Transaction 이므로 추가하면 안됨
-        if (unstableRowLock.getCommitTimestamp() != transaction.getCommitTimestamp()) {
+        if (secondaryRowLock.getState() == TRowLockState.STABLE && secondaryRowLock.getCommitTimestamp() == transaction.getCommitTimestamp()) {
+            // this row is already committed or aborted.
+            return;
+        }
+        if (secondaryRowLock.getState() != TRowLockState.STABLE && !TRowLocks.isSecondaryOf(primaryRowLock, rowKey, secondaryRowLock)) {
+            // this row isn't a part of this transaction.
             return;
         }
         HaeinsaTableTransaction tableState = transaction.createOrGetTableState(rowKey.getTableName());
         HaeinsaRowTransaction rowState = tableState.createOrGetRowState(rowKey.getRow());
-        rowState.setCurrent(unstableRowLock);
+        rowState.setCurrent(secondaryRowLock);
     }
 
     /**
