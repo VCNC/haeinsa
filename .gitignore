@@ -18,7 +18,11 @@
 */target
 /reports
 */reports
+
+## maven-release-plugin output
 release.properties
+pom.xml.next
+pom.xml.releaseBackup
 
 ## eclipse project
 .settings
