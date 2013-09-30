@@ -721,10 +721,7 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
         put.add(LOCK_FAMILY, LOCK_QUALIFIER, newRowLock.getCurrentTimestmap(), newRowLockBytes);
 
         if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, put)) {
-            HaeinsaTransaction currentTx = transaction.getManager().getTransaction(transaction.getPrimary().getTableName(), transaction.getPrimary().getRow());
-            if (currentTx != null) {
-                currentTx.recover(true);
-            }
+            // We don't need abort current transaction. Because the transaction is already aborted.
             // Consider as conflict because another transaction might acquire lock of primary row.
             throw new ConflictException("can't acquire primary row's lock");
         } else {
