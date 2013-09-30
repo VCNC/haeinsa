@@ -467,7 +467,7 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
         HaeinsaTransaction previousTx = tx.getManager().getTransaction(getTableName(), row);
         if (previousTx != null) {
             try {
-                // 해당 row 에 아직 종료되지 않은 Transaction 이 남아 있는 경우
+                // there is an unstable transaction in this row.
                 previousTx.recover(false);
             } catch (RecoverableConflictException e) {
                 LOGGER.warn(e.getMessage(), e);
