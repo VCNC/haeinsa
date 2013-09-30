@@ -468,7 +468,7 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
         if (previousTx != null) {
             try {
                 // 해당 row 에 아직 종료되지 않은 Transaction 이 남아 있는 경우
-                previousTx.recover();
+                previousTx.recover(false);
             } catch (RecoverableConflictException e) {
                 LOGGER.warn(e.getMessage(), e);
             }
@@ -552,7 +552,10 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
         TRowLock currentRowLock = getRowLock(row);
         if (!rowState.getCurrent().equals(currentRowLock)) {
             HaeinsaTransaction tx = rowState.getTableTransaction().getTransaction();
-            tx.abort();
+            HaeinsaTransaction currentTx = tx.getManager().getTransaction(tx.getPrimary().getTableName(), tx.getPrimary().getRow());
+            if (currentTx != null) {
+                currentTx.recover(true);
+            }
             throw new ConflictException("this row is modified, checkSingleRow failed");
         }
     }
@@ -607,7 +610,10 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
 
         if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, put)) {
             // Consider as conflict because another transaction might acquire lock of this row.
-            tx.abort();
+            HaeinsaTransaction currentTx = tx.getManager().getTransaction(tx.getPrimary().getTableName(), tx.getPrimary().getRow());
+            if (currentTx != null) {
+                currentTx.recover(true);
+            }
             throw new ConflictException("can't acquire row's lock");
         } else {
             rowState.setCurrent(newRowLock);
@@ -714,7 +720,10 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
         put.add(LOCK_FAMILY, LOCK_QUALIFIER, newRowLock.getCurrentTimestmap(), newRowLockBytes);
 
         if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, put)) {
-            transaction.abort();
+            HaeinsaTransaction currentTx = transaction.getManager().getTransaction(transaction.getPrimary().getTableName(), transaction.getPrimary().getRow());
+            if (currentTx != null) {
+                currentTx.recover(true);
+            }
             // Consider as conflict because another transaction might acquire lock of primary row.
             throw new ConflictException("can't acquire primary row's lock");
         } else {

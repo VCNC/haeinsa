@@ -371,15 +371,16 @@ public class HaeinsaTransaction {
      * if already completed one, ( when primaryRow have {@link TRowLockState#COMMITTED} state }
      * or abort by calling {@link #abort()} otherwise.
      *
+     * @param ignoreExpiry ignore row lock's expiry
      * @throws IOException
      */
-    protected void recover() throws IOException {
+    protected void recover(boolean ignoreExpiry) throws IOException {
         boolean onRecovery = true;
         txStates.classifyAndSortRows(onRecovery);
         HaeinsaRowTransaction primaryRowTx = createOrGetTableState(primary.getTableName()).createOrGetRowState(primary.getRow());
         if (primaryRowTx.getCurrent().getState() == TRowLockState.PREWRITTEN) {
             // If primary row is in prewritten state, transaction can be aborted only after expiry.
-            if (primaryRowTx.getCurrent().getExpiry() < System.currentTimeMillis()) {
+            if (ignoreExpiry || primaryRowTx.getCurrent().getExpiry() < System.currentTimeMillis()) {
                 // if transaction is not expired, process recover
             } else {
                 // if transaction haven't past expiry, recover should be failed.
@@ -440,10 +441,6 @@ public class HaeinsaTransaction {
         for (Entry<TRowKey, HaeinsaRowTransaction> rowKeyStateEntry : txStates.getMutationRowStates().entrySet()) {
             TRowKey rowKey = rowKeyStateEntry.getKey();
             HaeinsaRowTransaction rowTx = rowKeyStateEntry.getValue();
-            if (rowTx.getCurrent().getState() == TRowLockState.STABLE) {
-                // abort only unstable rows
-                continue;
-            }
             try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(rowKey.getTableName())) {
                 table.deletePrewritten(rowTx, rowKey.getRow());
 
