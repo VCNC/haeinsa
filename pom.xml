@@ -37,6 +37,21 @@
         <url>http://www.vcnc.co.kr/</url>
     </organization>
 
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0</url>
+        </license>
+    </licenses>
+    <inceptionYear>2008</inceptionYear>
+
+    <scm>
+        <url>https://github.com/vcnc/haeinsa</url>
+        <connection>scm:git:git://github.com/vcnc/haeinsa.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/vcnc/haeinsa.git</developerConnection>
+        <tag>HEAD</tag>
+    </scm>
+
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -224,6 +239,18 @@
                     <detectJavaApiLink>false</detectJavaApiLink>
                     <encoding>UTF-8</encoding>
                     <locale>en_US</locale>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-release-plugin</artifactId>
+                <version>2.4.1</version>
+                <configuration>
+                    <useReleaseProfile>false</useReleaseProfile>
+                    <arguments>-P release,sonatype-oss-release,full,no-osgi</arguments>
+                    <autoVersionSubmodules>true</autoVersionSubmodules>
+                    <allowTimestampedSnapshots>false</allowTimestampedSnapshots>
+                    <tagNameFormat>v@{project.version}</tagNameFormat>
                 </configuration>
             </plugin>
         </plugins>
