@@ -603,7 +603,7 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
         newRowLock.setPrewriteTimestamp(tx.getPrewriteTimestamp());
         newRowLock.setPrewritten(Lists.newArrayList(prewritten));
         newRowLock.setMutations(remaining);
-        newRowLock.setExpiry(System.currentTimeMillis() + ROW_LOCK_TIMEOUT);
+        newRowLock.setExpiry(tx.getExpiry());
         put.add(LOCK_FAMILY, LOCK_QUALIFIER, tx.getPrewriteTimestamp(), TRowLocks.serialize(newRowLock));
 
         byte[] currentRowLockBytes = TRowLocks.serialize(rowState.getCurrent());
@@ -629,6 +629,7 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
 
         List<TMutation> remaining = Lists.newArrayList(rowTxState.getCurrent().getMutations());
         long currentTimestamp = rowTxState.getCurrent().getCurrentTimestmap();
+        final HaeinsaTransaction tx = rowTxState.getTableTransaction().getTransaction();
 
         for (int i = 0; i < remaining.size(); i++) {
             byte[] currentRowLockBytes = TRowLocks.serialize(rowTxState.getCurrent());
@@ -642,7 +643,7 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
                 newRowLock.setCurrentTimestmap(mutationTimestamp);
                 newRowLock.setMutations(remaining.subList(mutationOffset, remaining.size()));
                 // Maintain prewritten state and extend lock by ROW_LOCK_TIMEOUT
-                newRowLock.setExpiry(System.currentTimeMillis() + ROW_LOCK_TIMEOUT);
+                newRowLock.setExpiry(tx.getExpiry());
                 Put put = new Put(row);
                 put.add(LOCK_FAMILY, LOCK_QUALIFIER, newRowLock.getCurrentTimestmap(), TRowLocks.serialize(newRowLock));
                 for (TKeyValue kv : mutation.getPut().getValues()) {
@@ -713,7 +714,7 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
         // make prewritten to null
         newRowLock.setPrewrittenIsSet(false);
         // extend expiry by ROW_LOCK_TIMEOUT
-        newRowLock.setExpiry(System.currentTimeMillis() + ROW_LOCK_TIMEOUT);
+        newRowLock.setExpiry(transaction.getExpiry());
 
         byte[] newRowLockBytes = TRowLocks.serialize(newRowLock);
         Put put = new Put(row);
@@ -757,7 +758,7 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
         }
         newRowLock.setState(TRowLockState.ABORTED);
         newRowLock.setMutationsIsSet(false);
-        newRowLock.setExpiry(System.currentTimeMillis() + ROW_LOCK_TIMEOUT);
+        newRowLock.setExpiry(transaction.getExpiry());
 
         byte[] newRowLockBytes = TRowLocks.serialize(newRowLock);
         Put put = new Put(row);

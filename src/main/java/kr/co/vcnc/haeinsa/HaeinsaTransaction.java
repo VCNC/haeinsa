@@ -57,6 +57,7 @@ public class HaeinsaTransaction {
     private TRowKey primary;
     private long commitTimestamp = Long.MIN_VALUE;
     private long prewriteTimestamp = Long.MIN_VALUE;
+    private long expiry = System.currentTimeMillis() + HaeinsaConstants.ROW_LOCK_TIMEOUT;
     private final AtomicBoolean used = new AtomicBoolean(false);
 
     private static enum CommitMethod {
@@ -105,6 +106,19 @@ public class HaeinsaTransaction {
 
     protected void setCommitTimestamp(long commitTimestamp) {
         this.commitTimestamp = commitTimestamp;
+    }
+
+    public long getExpiry() {
+        return expiry;
+    }
+
+    protected void setExpiry(long expiry) {
+        this.expiry = expiry;
+    }
+
+    private void extendExpiry() {
+        // Expiry is max(getCommitTimestamp, System.currentTimeMillis()) + ROW_LOCK_TIMEOUT(10s)
+        setExpiry(Math.max(getCommitTimestamp(), System.currentTimeMillis()) + HaeinsaConstants.ROW_LOCK_TIMEOUT);
     }
 
     public TRowKey getPrimary() {
@@ -183,6 +197,8 @@ public class HaeinsaTransaction {
         // sequentially.
         // So, we have to determine commitTimestamp properly.
         setCommitTimestamp(Math.max(getPrewriteTimestamp() + 2, maxCurrentCommitTimestamp + maxIterationCount + 2));
+
+        extendExpiry();
 
         TRowKey primaryRowKey = null;
         NavigableMap<TRowKey, HaeinsaRowTransaction> mutationRowStates = txStates.getMutationRowStates();
@@ -329,6 +345,8 @@ public class HaeinsaTransaction {
      * @throws IOException ConflictException, HBase IOException.
      */
     private void makeStable() throws IOException {
+        extendExpiry();
+
         HaeinsaTablePool tablePool = getManager().getTablePool();
         HaeinsaRowTransaction primaryRowTx = createOrGetTableState(primary.getTableName())
                 .createOrGetRowState(primary.getRow());
@@ -387,6 +405,8 @@ public class HaeinsaTransaction {
                 throw new ConflictException();
             }
         }
+
+        extendExpiry();
 
         switch (primaryRowTx.getCurrent().getState()) {
         case ABORTED:
