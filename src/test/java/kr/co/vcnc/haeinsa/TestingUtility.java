@@ -94,15 +94,4 @@ public final class TestingUtility {
         return !Bytes.equals(getLock(table, row), oldLock);
     }
 
-    /**
-     * Create table name for current test.
-     * This method infer name of the test class and name of the test method by stacktrace.
-     * @return created table name for current test
-     */
-    public static String currentTableName() {
-        final StackTraceElement[] ste = Thread.currentThread().getStackTrace();
-        final String className = ste[2].getClassName();
-        final String methodName = ste[2].getMethodName();
-        return String.format("%s.%s.%s", className, methodName, "test");
-    }
 }

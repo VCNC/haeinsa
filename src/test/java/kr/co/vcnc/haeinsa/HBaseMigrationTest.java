@@ -16,7 +16,6 @@
 package kr.co.vcnc.haeinsa;
 
 import static kr.co.vcnc.haeinsa.TestingUtility.checkLockExist;
-import static kr.co.vcnc.haeinsa.TestingUtility.currentTableName;
 
 import java.util.Iterator;
 
@@ -24,7 +23,6 @@ import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.testng.Assert;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 /**
@@ -32,13 +30,7 @@ import org.testng.annotations.Test;
  * This test ensures migration logic works correctly
  * by simulating migration from HBase-only schema to Haeinsa schema.
  */
-public class HBaseMigrationTest {
-    private static HaeinsaTestingCluster CLUSTER;
-
-    @BeforeClass
-    public static void setUpHbase() throws Exception {
-        CLUSTER = HaeinsaTestingCluster.getInstance();
-    }
+public class HBaseMigrationTest extends HaeinsaTestBase {
 
     /**
      * Lock should be NOT created after HaeinsaGet executed.
