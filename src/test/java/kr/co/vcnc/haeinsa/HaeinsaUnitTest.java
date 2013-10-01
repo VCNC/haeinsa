@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2013 VCNC, inc
+ * Copyright (C) 2013 VCNC Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,9 @@
  */
 package kr.co.vcnc.haeinsa;
 
+import static kr.co.vcnc.haeinsa.TestingUtility.checkLockChanged;
+import static kr.co.vcnc.haeinsa.TestingUtility.getLock;
+
 import java.util.Iterator;
 
 import kr.co.vcnc.haeinsa.exception.ConflictException;
@@ -24,7 +27,6 @@ import kr.co.vcnc.haeinsa.thrift.generated.TRowKey;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
 
-import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -584,264 +586,6 @@ public class HaeinsaUnitTest {
     }
 
     /**
-     * Unit test for lazy-migration from HBase-only to Haeinsa.
-     *
-     * @throws Exception
-     */
-    @Test
-    public void testHBaseHaeinsaMigration() throws Exception {
-        final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
-        final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable("HaeinsaUnitTest.testHBaseHaeinsaMigration.test");
-        final HTableInterface hTestTable = CLUSTER.getHbaseTable("HaeinsaUnitTest.testHBaseHaeinsaMigration.test");
-
-        /*
-         * - HBase operation
-         * 1. HBase Put { row1, data, col1 }
-         *
-         * - beginTransaction
-         * 2. Get { row1, data, col1 }
-         * 3. Put { row2, data, col2 }
-         * - commit
-         *
-         * There should be lock at row2, but not in row1.
-         */
-        Put hPut = new Put(Bytes.toBytes("row1"));
-        hPut.add(Bytes.toBytes("data"), Bytes.toBytes("col1"), Bytes.toBytes("value1"));
-        hTestTable.put(hPut);
-        // no lock at { row1, row2 }
-        Assert.assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row1")));
-        Assert.assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row2")));
-
-        HaeinsaTransaction tx = tm.begin();
-        HaeinsaGet get = new HaeinsaGet(Bytes.toBytes("row1"));
-        get.addColumn(Bytes.toBytes("data"), Bytes.toBytes("col1"));
-        HaeinsaResult result = testTable.get(tx, get);
-        Assert.assertTrue(Bytes.equals(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("col1")), Bytes.toBytes("value1")));
-        HaeinsaPut put = new HaeinsaPut(Bytes.toBytes("row2"));
-        put.add(Bytes.toBytes("data"), Bytes.toBytes("col2"), Bytes.toBytes("value2"));
-        testTable.put(tx, put);
-        tx.commit();
-
-        tx = tm.begin();
-        // check data on row1, row2
-        get = new HaeinsaGet(Bytes.toBytes("row1"));
-        get.addColumn(Bytes.toBytes("data"), Bytes.toBytes("col1"));
-        result = testTable.get(tx, get);
-        Assert.assertTrue(Bytes.equals(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("col1")), Bytes.toBytes("value1")));
-        get = new HaeinsaGet(Bytes.toBytes("row2"));
-        get.addColumn(Bytes.toBytes("data"), Bytes.toBytes("col2"));
-        result = testTable.get(tx, get);
-        Assert.assertTrue(Bytes.equals(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("col2")), Bytes.toBytes("value2")));
-        tx.rollback();
-        // still no have lock at { row1 }, have lock at { row2 }
-        Assert.assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row1")));
-        Assert.assertTrue(checkLockExist(hTestTable, Bytes.toBytes("row2")));
-
-        /*
-         * - HBase operation
-         * 1. HBase Put { row3, data, col4 }
-         *
-         * - beginTransaction
-         * 2. Put { row3, data, col3 }
-         * - commit
-         *
-         * There should be lock at row3.
-         */
-        hPut = new Put(Bytes.toBytes("row3"));
-        hPut.add(Bytes.toBytes("data"), Bytes.toBytes("col3"), Bytes.toBytes("value3"));
-        hTestTable.put(hPut);
-        // no lock at { row3 }
-        Assert.assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row3")));
-
-        tx = tm.begin();
-        put = new HaeinsaPut(Bytes.toBytes("row3"));
-        put.add(Bytes.toBytes("data"), Bytes.toBytes("col3"), Bytes.toBytes("value3-2.0"));
-        testTable.put(tx, put);
-        tx.commit();
-
-        tx = tm.begin();
-        get = new HaeinsaGet(Bytes.toBytes("row3"));
-        get.addColumn(Bytes.toBytes("data"), Bytes.toBytes("col3"));
-        result = testTable.get(tx, get);
-        Assert.assertTrue(Bytes.equals(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("col3")), Bytes.toBytes("value3-2.0")));
-        tx.rollback();
-        // now have lock at { row3 }
-        Assert.assertTrue(checkLockExist(hTestTable, Bytes.toBytes("row3")));
-
-        /*
-         * - HBase operation
-         * 1. HBase put { row4, data, col4 }
-         *
-         * - beginTransaction
-         * 2. Delete { row4, data, col4 }
-         * - commit
-         *
-         * There should be lock at row4.
-         */
-        hPut = new Put(Bytes.toBytes("row4"));
-        hPut.add(Bytes.toBytes("data"), Bytes.toBytes("col4"), Bytes.toBytes("value4"));
-        hTestTable.put(hPut);
-        // no lock at { row4 }
-        Assert.assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row4")));
-
-        tx = tm.begin();
-        HaeinsaDelete delete = new HaeinsaDelete(Bytes.toBytes("row4"));
-        delete.deleteColumns(Bytes.toBytes("data"), Bytes.toBytes("col4"));
-        testTable.delete(tx, delete);
-        tx.commit();
-
-        tx = tm.begin();
-        result = testTable.get(tx, get);
-        Assert.assertTrue(result.getValue(Bytes.toBytes("data"), Bytes.toBytes("col4")) == null);
-        tx.rollback();
-        // now have lock at { row4 }
-        Assert.assertTrue(checkLockExist(hTestTable, Bytes.toBytes("row4")));
-
-        /*
-         * - HBase operation
-         * 1. HBase put { row5, data, col5 }
-         * 2. HBase put { row6, data, col6 }
-         * 3. HBase put { row7, data, col7 }
-         *
-         * - beginTransaction
-         * 4. Scan { [ row5 ~ row8 ] }
-         * 5. Put { row8, data, col8 }
-         * - commit
-         *
-         * There should be lock at row8, and there are no lock at row5 ~ row7.
-         */
-        // test HBase put -> Haeinsa Scan ( w\ multiRowCommit() ) Migration
-        hPut = new Put(Bytes.toBytes("row5"));
-        hPut.add(Bytes.toBytes("data"), Bytes.toBytes("col5"), Bytes.toBytes("value5"));
-        hTestTable.put(hPut);
-        // no lock at { row5 }
-        Assert.assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row5")));
-
-        hPut = new Put(Bytes.toBytes("row6"));
-        hPut.add(Bytes.toBytes("data"), Bytes.toBytes("col6"), Bytes.toBytes("value6"));
-        hTestTable.put(hPut);
-        // no lock at { row6 }
-        Assert.assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row6")));
-
-        hPut = new Put(Bytes.toBytes("row7"));
-        hPut.add(Bytes.toBytes("data"), Bytes.toBytes("col7"), Bytes.toBytes("value7"));
-        hTestTable.put(hPut);
-        // no lock at { row7 }
-        Assert.assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row7")));
-
-        tx = tm.begin();
-        HaeinsaScan scan = new HaeinsaScan();
-        scan.setStartRow(Bytes.toBytes("row5"));
-        scan.setStopRow(Bytes.toBytes("row8"));
-        Iterator<HaeinsaResult> iter = testTable.getScanner(tx, scan).iterator();
-        while (iter.hasNext()) {
-            iter.next();
-        }
-        put = new HaeinsaPut(Bytes.toBytes("row8"));
-        put.add(Bytes.toBytes("data"), Bytes.toBytes("col8"), Bytes.toBytes("value8"));
-        testTable.put(tx, put);
-        tx.commit();
-
-        // still no lock at {row5, row6, row7}, now have lock at {row8}
-        Assert.assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row5")));
-        Assert.assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row6")));
-        Assert.assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row7")));
-        Assert.assertTrue(checkLockExist(hTestTable, Bytes.toBytes("row8")));
-
-        tx = tm.begin();
-        Assert.assertEquals(testTable.get(tx,
-                new HaeinsaGet(Bytes.toBytes("row5"))).getValue(Bytes.toBytes("data"), Bytes.toBytes("col5")),
-                Bytes.toBytes("value5"));
-        Assert.assertEquals(testTable.get(tx,
-                new HaeinsaGet(Bytes.toBytes("row6"))).getValue(Bytes.toBytes("data"), Bytes.toBytes("col6")),
-                Bytes.toBytes("value6"));
-        Assert.assertEquals(testTable.get(tx,
-                new HaeinsaGet(Bytes.toBytes("row7"))).getValue(Bytes.toBytes("data"), Bytes.toBytes("col7")),
-                Bytes.toBytes("value7"));
-        Assert.assertEquals(testTable.get(tx,
-                new HaeinsaGet(Bytes.toBytes("row8"))).getValue(Bytes.toBytes("data"), Bytes.toBytes("col8")),
-                Bytes.toBytes("value8"));
-        tx.rollback();
-
-        /*
-         * - HBase operation
-         * 1. HBase put { row9, data, [col9-ver1, col9-ver2, col9-ver3] }
-         *
-         * - beginTransaction
-         * 2. IntraScan { row9, data, col9 ~ col9-ver3 }
-         * 3. Put { row10, data, col10 }
-         * - commit
-         *
-         * There should be lock at row10, but not in row9.
-         */
-        hPut = new Put(Bytes.toBytes("row9"));
-        hPut.add(Bytes.toBytes("data"), Bytes.toBytes("col9-ver1"), Bytes.toBytes("value9-ver1"));
-        hPut.add(Bytes.toBytes("data"), Bytes.toBytes("col9-ver2"), Bytes.toBytes("value9-ver2"));
-        hPut.add(Bytes.toBytes("data"), Bytes.toBytes("col9-ver3"), Bytes.toBytes("value9-ver3"));
-        hTestTable.put(hPut);
-        // no lock at { row9 }
-        Assert.assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row9")));
-
-        tx = tm.begin();
-        HaeinsaIntraScan intraScan = new HaeinsaIntraScan(
-                Bytes.toBytes("row9"),
-                Bytes.toBytes("col9"), true,
-                Bytes.toBytes("col9-ver3"), true);
-        intraScan.setBatch(1);
-        HaeinsaResultScanner resultScanner = testTable.getScanner(tx, intraScan);
-        iter = resultScanner.iterator();
-        Assert.assertEquals(iter.next().getValue(Bytes.toBytes("data"), Bytes.toBytes("col9-ver1")), Bytes.toBytes("value9-ver1"));
-        Assert.assertEquals(iter.next().getValue(Bytes.toBytes("data"), Bytes.toBytes("col9-ver2")), Bytes.toBytes("value9-ver2"));
-        Assert.assertEquals(iter.next().getValue(Bytes.toBytes("data"), Bytes.toBytes("col9-ver3")), Bytes.toBytes("value9-ver3"));
-        resultScanner.close();
-
-        put = new HaeinsaPut(Bytes.toBytes("row10"));
-        put.add(Bytes.toBytes("data"), Bytes.toBytes("col10"), Bytes.toBytes("value10"));
-        testTable.put(tx, put);
-        tx.commit();
-        // still have no lock at {row9}, now have lock at { row10 }
-        Assert.assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row9")));
-        Assert.assertTrue(checkLockExist(hTestTable, Bytes.toBytes("row10")));
-
-        /*
-         * - beginTransaction
-         * 1. intraScan { row11, data, col11 ~ col11-ver3 } -> empty
-         * 2. Put { row10, data, col10 }
-         * - commit
-         *
-         * There should be lock at row10, but not in row11.
-         */
-        byte[] row = Bytes.toBytes("row10");
-        byte[] oldPutLock = getLock(hTestTable, row);
-        // no lock at { row11 }
-        Assert.assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row11")));
-
-        tx = tm.begin();
-        intraScan = new HaeinsaIntraScan(
-                Bytes.toBytes("row11"),
-                Bytes.toBytes("col11"), true,
-                Bytes.toBytes("col11-ver3"), true);
-        intraScan.addFamily(Bytes.toBytes("data"));
-        intraScan.setBatch(1);
-        resultScanner = testTable.getScanner(tx, intraScan);
-        iter = resultScanner.iterator();
-        resultScanner.close();
-
-        put = new HaeinsaPut(Bytes.toBytes("row10"));
-        put.add(Bytes.toBytes("data"), Bytes.toBytes("col10"), Bytes.toBytes("value10"));
-        testTable.put(tx, put);
-        tx.commit();
-        // lock at { row10 } changed
-        Assert.assertTrue(checkLockChanged(hTestTable, row, oldPutLock));
-        // still have no lock at { row11 }
-        Assert.assertFalse(checkLockExist(hTestTable, Bytes.toBytes("row11")));
-
-        // release all resources
-        hTestTable.close();
-        testTable.close();
-    }
-
-    /**
      * Unit test for multiple mutations for any rows in {@link HaeinsaTransaction}.
      *
      * @throws Exception
@@ -1145,24 +889,4 @@ public class HaeinsaUnitTest {
         hTestTable.close();
     }
 
-    /**
-     * return true if TRowLock exist in specific ( table, row )
-     *
-     * @param table
-     * @param row
-     * @return
-     * @throws Exception
-     */
-    private boolean checkLockExist(HTableInterface table, byte[] row) throws Exception {
-        return getLock(table, row) != null;
-    }
-
-    private byte[] getLock(HTableInterface table, byte[] row) throws Exception {
-        return table.get(new Get(row).addColumn(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER))
-                .getValue(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER);
-    }
-
-    private boolean checkLockChanged(HTableInterface table, byte[] row, byte[] oldLock) throws Exception {
-        return !Bytes.equals(getLock(table, row), oldLock);
-    }
 }
