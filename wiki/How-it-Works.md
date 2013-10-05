@@ -18,10 +18,10 @@ Haeinsa client only acquire lock in commit phase and abort transaction if others
 
 ![](images/optimistic_concurrency_control.png)
 
-#### Two-Phase Locking
+#### Two-Phase Commit Protocol
 
 After finishing transaction, Haeinsa client releases locks to let other transaction could access those rows.
-This is similar to [two-phase locking protocol], which has lock expanding phase and shrinking phase.
+This is similar to [two-phase commit protocol], which has commit-request phase and commit phase.
 
 ### Mechanism
 
@@ -46,7 +46,7 @@ See other resources to understand how Haeinsa works.
 
 - [Haeinsa Overview Presentation]
 
-[two-phase locking protocol]: http://en.wikipedia.org/wiki/Two-phase_locking
+[two-phase commit protocol]: http://en.wikipedia.org/wiki/Two-phase_commit_protocol
 [optimistic concurrency control]: http://en.wikipedia.org/wiki/Optimistic_concurrency_control
 [Percolator]: http://research.google.com/pubs/pub36726.html
 [Haeinsa Overview Presentation]: https://speakerdeck.com/vcnc/haeinsa-overview
