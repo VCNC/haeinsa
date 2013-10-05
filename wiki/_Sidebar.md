@@ -4,4 +4,4 @@
 	- [[How it Works]]	
 	- [[Migration from HBase]]
 	- [[Performance]]
-	- [[Practice]]
+	- [[Use Case]]

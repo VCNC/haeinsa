@@ -1,4 +1,4 @@
-> [[Home]] ▸ **Practice**
+> [[Home]] ▸ **Use Case**
 
 ### [Between]
 
