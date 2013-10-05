@@ -14,7 +14,7 @@ Please see Haeinsa [Wiki] for further information.
 - **[Low overhead]**: Relatively low overhead compared to other comparable libraries.
 - **Fault-tolerant**: Haeinsa is fault-tolerant against both client and HBase failures.
 - **[Easy migration]**: Add transaction feature to your own HBase cluster without any change in HBase cluster except adding lock column family.
-- **[Used in practice](wiki/Practice)**: Haeinsa is used in real service.
+- **[Used in practice]**: Haeinsa is used in real service.
 
 ## Usage
 
@@ -68,7 +68,7 @@ APIs of Haeinsa is really similar to APIs of HBase. Please see [How to Use] and 
 [Tripitaka Koreana, or Palman Daejanggyeong]: http://en.wikipedia.org/wiki/Tripitaka_Koreana
 [Haeinsa Overview Presentation]: https://speakerdeck.com/vcnc/haeinsa-overview
 [Announcing Haeinsa]: http://engineering.vcnc.co.kr/2013/10/announcing-haeinsa/
-[Linearly scalable]: wiki/Performance
+[Linearly scalable]: https://github.com/vcnc/haeinsa/wiki/Performance
 [Low overhead]: https://github.com/vcnc/haeinsa/wiki/Performance
 [Easy Migration]: https://github.com/vcnc/haeinsa/wiki/Migration-from-HBase
 [Used in practice]: https://github.com/vcnc/haeinsa/wiki/Use-Case
