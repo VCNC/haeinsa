@@ -26,7 +26,6 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.testng.Assert;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 /**
@@ -34,20 +33,13 @@ import org.testng.annotations.Test;
  * should make stable rows into new committimestamp's stable rows. This method
  * prevents making dangling row locks of long running transactions.
  */
-public class Haeinsa67BugTest {
-
-    private static HaeinsaTestingCluster CLUSTER;
-
-    @BeforeClass
-    public static void setUpHbase() throws Exception {
-        CLUSTER = HaeinsaTestingCluster.getInstance();
-    }
+public class Haeinsa67BugTest extends HaeinsaTestBase {
 
     @Test
     public void testRecover() throws Exception {
         final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
-        final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable("Haeinsa67BugTest.test");
-        final HTableInterface hTestTable = CLUSTER.getHbaseTable("Haeinsa67BugTest.test");
+        final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable(currentTableName());
+        final HTableInterface hTestTable = CLUSTER.getHbaseTable(currentTableName());
 
         {
             TRowKey primaryRowKey = new TRowKey().setTableName(testTable.getTableName()).setRow(Bytes.toBytes("Andrew"));
