@@ -4,7 +4,7 @@ Haeinsa is linearly scalable multi-row, multi-table transaction library for HBas
 Haeinsa uses two-phase locking and optimistic concurrency control for implementing transaction.
 The isolation level of transaction is serializable.
 
-### Features
+## Features
 
 Please see Haeinsa [Wiki] for further information.
 
