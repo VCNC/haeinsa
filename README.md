@@ -9,11 +9,11 @@ The isolation level of transaction is serializable.
 Please see Haeinsa [Wiki] for further information.
 
 - **ACID**: Provides multi-row, multi-table transaction with full ACID senantics.
-- **[Linearly scalable](wiki/Performance)**: Can linearly scale out throughput of transaction as scale out your HBase cluster.
+- **[Linearly scalable]**: Can linearly scale out throughput of transaction as scale out your HBase cluster.
 - **[Serializability]**: Provide isolation level of serializability.
-- **[Low overhead](wiki/Performance)**: Relatively low overhead compared to other comparable libraries.
+- **[Low overhead]**: Relatively low overhead compared to other comparable libraries.
 - **Fault-tolerant**: Haeinsa is fault-tolerant against both client and HBase failures.
-- **[Easy migration](wiki/Migration-from-HBase)**: Add transaction feature to your own HBase cluster without any change in HBase cluster except adding lock column family.
+- **[Easy migration]**: Add transaction feature to your own HBase cluster without any change in HBase cluster except adding lock column family.
 - **[Used in practice](wiki/Practice)**: Haeinsa is used in real service.
 
 ## Usage
@@ -68,3 +68,7 @@ APIs of Haeinsa is really similar to APIs of HBase. Please see [How to Use] and 
 [Tripitaka Koreana, or Palman Daejanggyeong]: http://en.wikipedia.org/wiki/Tripitaka_Koreana
 [Haeinsa Overview Presentation]: https://speakerdeck.com/vcnc/haeinsa-overview
 [Announcing Haeinsa]: http://engineering.vcnc.co.kr/2013/10/announcing-haeinsa/
+[Linearly scalable]: wiki/Performance
+[Low overhead]: https://github.com/vcnc/haeinsa/wiki/Performance
+[Easy Migration]: https://github.com/vcnc/haeinsa/wiki/Migration-from-HBase
+[Used in practice]: https://github.com/vcnc/haeinsa/wiki/Use-Case
