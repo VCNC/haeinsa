@@ -21,7 +21,7 @@ that each transaction executed serially and completely isolated from each other.
 - **Fault-tolerant**: Haeinsa is fault-tolerant against both client and HBase failures
 - **Bare bones HBase**: **NO** additional components, **NO** modification on HBase, client-only library.
 - **[Easy migration from HBase application](wiki/Migration-from-HBase)**: Add transaction feature without any change in HBase cluster except adding lock column family.
-- **[Used in practice](wiki/Practice)**: Haeinsa is used in real service.
+- **[Used in practice](wiki/Use-Case)**: Haeinsa is used in real service.
 
 ### Where name 'Haeinsa' comes from?
 
