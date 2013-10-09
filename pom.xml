@@ -31,10 +31,10 @@
     <name>haeinsa</name>
     <url>https://github.com/vcnc/haeinsa</url>
     <description>
-		Haeinsa is linearly scalable multi-row, multi-table transaction library for HBase.
-		Haeinsa uses two-phase locking and multi-version concurrency control for implementing transaction.
-		The isolation level of transaction is serializable.
-	</description>
+        Haeinsa is linearly scalable multi-row, multi-table transaction library for HBase.
+        Haeinsa uses two-phase locking and multi-version concurrency control for implementing transaction.
+        The isolation level of transaction is serializable.
+    </description>
 
     <organization>
         <name>VCNC</name>
