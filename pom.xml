@@ -52,7 +52,7 @@
     <scm>
         <url>https://github.com/vcnc/haeinsa</url>
         <connection>scm:git:git://github.com/vcnc/haeinsa.git</connection>
-        <developerConnection>scm:git:https://stash.vcnc.co.kr/scm/haeinsa/haeinsa.git</developerConnection>
+        <developerConnection>scm:git:ssh://git@github.com/vcnc/haeinsa.git</developerConnection>
         <tag>HEAD</tag>
     </scm>
 
