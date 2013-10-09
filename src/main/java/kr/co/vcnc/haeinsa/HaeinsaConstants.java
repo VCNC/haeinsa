@@ -43,7 +43,7 @@ public final class HaeinsaConstants {
      * execution time of most transactions.
      * There would be lot of aborted transactions by other clients otherwise.
      */
-    public static final long ROW_LOCK_TIMEOUT = TimeUnit.SECONDS.toMillis(10);
+    public static final long ROW_LOCK_TIMEOUT = TimeUnit.SECONDS.toMillis(5);
 
     /**
      * This is default name of lock column family used by Haeinsa transaction.
