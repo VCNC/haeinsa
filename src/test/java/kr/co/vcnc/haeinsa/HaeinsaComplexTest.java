@@ -24,7 +24,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.hadoop.hbase.util.Bytes;
 import org.testng.Assert;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
@@ -33,13 +32,7 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
  * Complex multi-thread unit test for Haeinsa. It contains simple-increment
  * test, concurrent random increment test, and serializability test.
  */
-public class HaeinsaComplexTest {
-    private static HaeinsaTestingCluster CLUSTER;
-
-    @BeforeClass
-    public static void setUpHbase() throws Exception {
-        CLUSTER = HaeinsaTestingCluster.getInstance();
-    }
+public class HaeinsaComplexTest extends HaeinsaTestBase {
 
     /**
      * Test which executes multiple transactions which increment specific value by single thread and check result.

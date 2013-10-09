@@ -31,7 +31,6 @@ import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.testng.Assert;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 /**
@@ -39,13 +38,7 @@ import org.testng.annotations.Test;
  * mutations test, conflict and recover test, conflict and abort test,
  * HaeinsaWithoutTx test, and HBase migration test.
  */
-public class HaeinsaUnitTest {
-    private static HaeinsaTestingCluster CLUSTER;
-
-    @BeforeClass
-    public static void setUpHbase() throws Exception {
-        CLUSTER = HaeinsaTestingCluster.getInstance();
-    }
+public class HaeinsaUnitTest extends HaeinsaTestBase {
 
     @Test
     public void testTransaction() throws Exception {
