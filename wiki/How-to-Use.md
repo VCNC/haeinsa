@@ -2,6 +2,8 @@
 
 ### Quick Setup
 
+Haeinsa needs HBase 0.94.3 or later and Java 1.7 or later.
+
 #### 1. Create Lock Column Family
 
 Add lock column family to all of tables on your HBase cluster.
