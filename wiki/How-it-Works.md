@@ -9,7 +9,7 @@ The mechanism of Haeinsa transaction is fairly straightforward.
 Haeinsa manipulates special lock column which contains metadata of transaction on every row on HBase.
 When changing columns on multiple row in a transaction,
 Haeinsa client should acquire lock of every associated rows before modifying them.
-Lock column stores transactional metadat of each row.
+Lock column stores transactional metadata of each row.
 
 #### Optimistic Concurrency Control
 
