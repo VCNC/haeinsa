@@ -4,7 +4,9 @@
 
 #### 1. Create Lock Column Family
 
-Add "lock" column family to all of tables on your HBase cluster.
+Add lock column family to all of tables on your HBase cluster.
+This lock column is used by Haeinsa internally.
+Default name of the column familmy is "!lock!".
 
 #### 2. Include library to your project
 
