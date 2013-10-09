@@ -32,7 +32,7 @@ These overhead comes from additional CheckAndPut and Get operations when committ
 Because Haeinsa use row-level locking, overhead varies on schema of database.
 
 For example, one of major transaction used in practice
-which referred as 'Practical Transaction' in following graph have slightly better performance compare to HBase-only case.
+which referred as 'Practical Transaction' in following graph has slightly better performance compare to HBase-only case.
 On average, various transactions used in Between experienced 6% latency overhead and 10% throughput overhead after migration.
 Even in the worst case, Haeinsa transaction is slower than raw HBase-only operations only by 2~3 times.
 
