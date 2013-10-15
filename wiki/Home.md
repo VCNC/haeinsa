@@ -34,6 +34,7 @@ We decided to name after because it incarnates important aspects of database whi
 
 - [Haeinsa Overview Presentation]: Introducing how Haeina works.
 - [Announcing Haeinsa]: Blog post of VCNC Engineering Blog (Korean)
+- [Haeinsa: Hbase Transaction Library]: Presentation for Deview Conference (Korean)
 
 ### License
 
@@ -58,3 +59,4 @@ We decided to name after because it incarnates important aspects of database whi
 [Tripitaka Koreana, or Palman Daejanggyeong]: http://en.wikipedia.org/wiki/Tripitaka_Koreana
 [Haeinsa Overview Presentation]: https://speakerdeck.com/vcnc/haeinsa-overview
 [Announcing Haeinsa]: http://engineering.vcnc.co.kr/2013/10/announcing-haeinsa/
+[Haeinsa: Hbase Transaction Library]: https://speakerdeck.com/vcnc/haeinsa-hbase-transaction-library
