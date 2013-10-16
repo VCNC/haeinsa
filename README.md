@@ -41,6 +41,7 @@ APIs of Haeinsa is really similar to APIs of HBase. Please see [How to Use] and 
 
 - [Haeinsa Overview Presentation]: Introducing how Haeina works.
 - [Announcing Haeinsa]: Blog post of VCNC Engineering Blog (Korean)
+- [Haeinsa: Hbase Transaction Library]: Presentation for Deview Conference (Korean)
 
 ## License
 
@@ -72,3 +73,4 @@ APIs of Haeinsa is really similar to APIs of HBase. Please see [How to Use] and 
 [Low overhead]: https://github.com/vcnc/haeinsa/wiki/Performance
 [Easy Migration]: https://github.com/vcnc/haeinsa/wiki/Migration-from-HBase
 [Used in practice]: https://github.com/vcnc/haeinsa/wiki/Use-Case
+[Haeinsa: Hbase Transaction Library]: https://speakerdeck.com/vcnc/haeinsa-hbase-transaction-library
