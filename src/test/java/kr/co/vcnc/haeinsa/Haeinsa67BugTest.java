@@ -46,12 +46,12 @@ public class Haeinsa67BugTest extends HaeinsaTestBase {
             TRowKey secondaryRowKey = new TRowKey().setTableName(testTable.getTableName()).setRow(Bytes.toBytes("Brad"));
             TRowLock secondaryRowLock = new TRowLock(HaeinsaConstants.ROW_LOCK_VERSION, TRowLockState.STABLE, 1380504156137L);
             TRowLock primaryRowLock = new TRowLock(HaeinsaConstants.ROW_LOCK_VERSION, TRowLockState.PREWRITTEN, 1380504157100L)
-                                            .setCurrentTimestmap(1380504156000L)
+                                            .setCurrentTimestamp(1380504156000L)
                                             .setExpiry(1380504160000L);
             primaryRowLock.addToSecondaries(secondaryRowKey);
             Put primaryPut = new Put(primaryRowKey.getRow());
             primaryPut.add(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER,
-                    primaryRowLock.getCurrentTimestmap(), TRowLocks.serialize(primaryRowLock));
+                    primaryRowLock.getCurrentTimestamp(), TRowLocks.serialize(primaryRowLock));
             hTestTable.put(primaryPut);
 
             Put secondaryPut = new Put(secondaryRowKey.getRow());

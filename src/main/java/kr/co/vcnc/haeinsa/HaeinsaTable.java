@@ -583,7 +583,7 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
         }
 
         TRowLock newRowLock = new TRowLock(ROW_LOCK_VERSION, TRowLockState.PREWRITTEN,
-                tx.getCommitTimestamp()).setCurrentTimestmap(tx.getPrewriteTimestamp());
+                tx.getCommitTimestamp()).setCurrentTimestamp(tx.getPrewriteTimestamp());
         if (isPrimary) {
             // for primary row
             for (Entry<TRowKey, HaeinsaRowTransaction> rowStateEntry : tx.getMutationRowStates().entrySet()) {
@@ -627,7 +627,7 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
         }
 
         List<TMutation> remaining = Lists.newArrayList(rowTxState.getCurrent().getMutations());
-        long currentTimestamp = rowTxState.getCurrent().getCurrentTimestmap();
+        long currentTimestamp = rowTxState.getCurrent().getCurrentTimestamp();
         final HaeinsaTransaction tx = rowTxState.getTableTransaction().getTransaction();
 
         for (int i = 0; i < remaining.size(); i++) {
@@ -639,14 +639,14 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
             switch (mutation.getType()) {
             case PUT: {
                 TRowLock newRowLock = rowTxState.getCurrent().deepCopy();
-                newRowLock.setCurrentTimestmap(mutationTimestamp);
+                newRowLock.setCurrentTimestamp(mutationTimestamp);
                 newRowLock.setMutations(remaining.subList(mutationOffset, remaining.size()));
                 // Maintain prewritten state and extend lock by ROW_LOCK_TIMEOUT
                 newRowLock.setExpiry(tx.getExpiry());
                 Put put = new Put(row);
-                put.add(LOCK_FAMILY, LOCK_QUALIFIER, newRowLock.getCurrentTimestmap(), TRowLocks.serialize(newRowLock));
+                put.add(LOCK_FAMILY, LOCK_QUALIFIER, newRowLock.getCurrentTimestamp(), TRowLocks.serialize(newRowLock));
                 for (TKeyValue kv : mutation.getPut().getValues()) {
-                    put.add(kv.getKey().getFamily(), kv.getKey().getQualifier(), newRowLock.getCurrentTimestmap(), kv.getValue());
+                    put.add(kv.getKey().getFamily(), kv.getKey().getQualifier(), newRowLock.getCurrentTimestamp(), kv.getValue());
                 }
                 if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, put)) {
                     // Consider as conflict because another transaction might acquire lock of this row.
@@ -708,7 +708,7 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
         newRowLock.setState(TRowLockState.COMMITTED);
         // if tx is already committed, we can't change current timestamp.
         if (rowTxState.getCurrent().getState() != TRowLockState.COMMITTED) {
-            newRowLock.setCurrentTimestmap(newRowLock.getCurrentTimestmap() + 1);
+            newRowLock.setCurrentTimestamp(newRowLock.getCurrentTimestamp() + 1);
         }
         // make prewritten to null
         newRowLock.setPrewrittenIsSet(false);
@@ -717,7 +717,7 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
 
         byte[] newRowLockBytes = TRowLocks.serialize(newRowLock);
         Put put = new Put(row);
-        put.add(LOCK_FAMILY, LOCK_QUALIFIER, newRowLock.getCurrentTimestmap(), newRowLockBytes);
+        put.add(LOCK_FAMILY, LOCK_QUALIFIER, newRowLock.getCurrentTimestamp(), newRowLockBytes);
 
         if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, put)) {
             // We don't need abort current transaction. Because the transaction is already aborted.
@@ -750,7 +750,7 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
         newRowLock.setCommitTimestamp(commitTimestamp);
         // if tx is already aborted, we can't change current timestamp.
         if (rowTxState.getCurrent().getState() != TRowLockState.ABORTED) {
-            newRowLock.setCurrentTimestmap(newRowLock.getCurrentTimestmap() + 1);
+            newRowLock.setCurrentTimestamp(newRowLock.getCurrentTimestamp() + 1);
         }
         newRowLock.setState(TRowLockState.ABORTED);
         newRowLock.setMutationsIsSet(false);
@@ -758,7 +758,7 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
 
         byte[] newRowLockBytes = TRowLocks.serialize(newRowLock);
         Put put = new Put(row);
-        put.add(LOCK_FAMILY, LOCK_QUALIFIER, newRowLock.getCurrentTimestmap(), newRowLockBytes);
+        put.add(LOCK_FAMILY, LOCK_QUALIFIER, newRowLock.getCurrentTimestamp(), newRowLockBytes);
 
         if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, put)) {
             // Consider as conflict because another transaction might acquire lock of primary row.
@@ -776,7 +776,7 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
         }
         byte[] currentRowLockBytes = TRowLocks.serialize(rowTxState.getCurrent());
         long prewriteTimestamp = rowTxState.getCurrent().isSetPrewriteTimestamp() ?
-                rowTxState.getCurrent().getPrewriteTimestamp() : rowTxState.getCurrent().getCurrentTimestmap();
+                rowTxState.getCurrent().getPrewriteTimestamp() : rowTxState.getCurrent().getCurrentTimestamp();
         Delete delete = new Delete(row);
         for (TCellKey cellKey : rowTxState.getCurrent().getPrewritten()) {
             delete.deleteColumn(cellKey.getFamily(), cellKey.getQualifier(), prewriteTimestamp);

@@ -88,7 +88,7 @@ interface HaeinsaTableIfaceInternal extends HaeinsaTableIface {
      * {@link TRowLock} in HBase row is changed only when applying Puts.
      * <p>
      * So if transaction failed just after applying {@link TMutationType#REMOVE} to HBase,
-     * increased {@link TRowLock#currentTimestmap} and remaining {@link TRowLock#mutations} fields are not changed on HBase.
+     * increased {@link TRowLock#currentTimestamp} and remaining {@link TRowLock#mutations} fields are not changed on HBase.
      * If other client try to recover this transaction, currentTimestamp is smaller by 1 than actual currentTimestamp when transaction failed.
      * However this is not an issue for transaction consistency because new client will execute idempotent remove operations one more time
      * on same timestamp which are already used during previous transaction attempt.
@@ -150,7 +150,7 @@ interface HaeinsaTableIfaceInternal extends HaeinsaTableIface {
     /**
      * Delete columns that are prewritten to the specific row during prewritten stage.
      * Haeinsa can infer prewritten columns to clean up by parsing prewritten field in {@link TRowLock}.
-     * Should remove column which have {@link TRowLock#currentTimestmap} as timestamp.
+     * Should remove column which have {@link TRowLock#currentTimestamp} as timestamp.
      * This is possible by using {@link Delete#deleteColumn()} instead of {@link Delete#deleteColumns()}.
      * <p>
      * Because Haeinsa uses {@link HTableInterface#checkAndDelete()} to delete prewrittens,
