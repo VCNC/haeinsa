@@ -825,13 +825,13 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
             TRowKey primaryRowKey = new TRowKey().setTableName(testTable.getTableName()).setRow(Bytes.toBytes("James"));
             TRowKey danglingRowKey = new TRowKey().setTableName(testTable.getTableName()).setRow(Bytes.toBytes("Brad"));
             TRowLock danglingRowLock = new TRowLock(HaeinsaConstants.ROW_LOCK_VERSION, TRowLockState.PREWRITTEN, 1376526618707L)
-                    .setCurrentTimestmap(1376526618705L)
+                    .setCurrentTimestamp(1376526618705L)
                     .setExpiry(1376526623706L)
                     .setPrimary(primaryRowKey);
 
             Put hPut = new Put(danglingRowKey.getRow());
             hPut.add(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER,
-                    danglingRowLock.getCurrentTimestmap(), TRowLocks.serialize(danglingRowLock));
+                    danglingRowLock.getCurrentTimestamp(), TRowLocks.serialize(danglingRowLock));
             hTestTable.put(hPut);
 
             HaeinsaTransaction tx = tm.begin();
@@ -851,13 +851,13 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
             TRowLock primaryRowLock = new TRowLock(HaeinsaConstants.ROW_LOCK_VERSION, TRowLockState.STABLE, System.currentTimeMillis());
             TRowKey danglingRowKey = new TRowKey().setTableName(testTable.getTableName()).setRow(Bytes.toBytes("Alpaca"));
             TRowLock danglingRowLock = new TRowLock(HaeinsaConstants.ROW_LOCK_VERSION, TRowLockState.PREWRITTEN, 1376526618717L)
-                    .setCurrentTimestmap(1376526618715L)
+                    .setCurrentTimestamp(1376526618715L)
                     .setExpiry(1376526623716L)
                     .setPrimary(primaryRowKey);
 
             Put hPut = new Put(danglingRowKey.getRow());
             hPut.add(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER,
-                    danglingRowLock.getCurrentTimestmap(), TRowLocks.serialize(danglingRowLock));
+                    danglingRowLock.getCurrentTimestamp(), TRowLocks.serialize(danglingRowLock));
             hTestTable.put(hPut);
 
             hPut = new Put(primaryRowKey.getRow());

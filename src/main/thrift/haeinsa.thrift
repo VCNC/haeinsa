@@ -61,7 +61,7 @@ struct TRowLock {
     1: required i32 version,
     2: required TRowLockState state,
     3: required i64 commitTimestamp,
-    4: optional i64 currentTimestmap,
+    4: optional i64 currentTimestamp,
     5: optional i64 expiry,
     6: optional TRowKey primary,
     7: optional list<TRowKey> secondaries,
