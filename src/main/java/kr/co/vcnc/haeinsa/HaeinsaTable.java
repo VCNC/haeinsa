@@ -132,6 +132,7 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
         HaeinsaRowTransaction rowState = tableState.getRowStates().get(row);
         boolean lockInclusive = false;
         Get hGet = new Get(get.getRow());
+        hGet.setCacheBlocks(get.getCacheBlocks());
 
         for (Entry<byte[], NavigableSet<byte[]>> entry : get.getFamilyMap().entrySet()) {
             if (entry.getValue() == null) {
