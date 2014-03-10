@@ -315,6 +315,7 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
         // scan from startRow ( inclusive ) to startRow + 0x00 ( exclusive )
         Scan hScan = new Scan(intraScan.getRow(), Bytes.add(intraScan.getRow(), new byte[] { 0x00 }));
         hScan.setBatch(intraScan.getBatch());
+        hScan.setCacheBlocks(intraScan.getCacheBlocks());
 
         for (byte[] family : intraScan.getFamilies()) {
             hScan.addFamily(family);
