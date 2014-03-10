@@ -89,12 +89,12 @@ public class HaeinsaIntraScan {
     public NavigableSet<byte[]> getFamilies() {
         return families;
     }
-    
+
     public void setCacheBlocks(boolean cacheBlocks) {
-		this.cacheBlocks = cacheBlocks;
-	}
-    
+        this.cacheBlocks = cacheBlocks;
+    }
+
     public boolean getCacheBlocks() {
-		return cacheBlocks;
-	}
+        return cacheBlocks;
+    }
 }
