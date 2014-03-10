@@ -38,6 +38,7 @@ public class HaeinsaIntraScan {
     private final byte[] maxColumn;
     private final boolean maxColumnInclusive;
     private int batch = 32;
+    private boolean cacheBlocks = true;
 
     // if this set is empty, then scan every family
     private final NavigableSet<byte[]> families = new TreeSet<byte[]>(Bytes.BYTES_COMPARATOR);
@@ -87,5 +88,13 @@ public class HaeinsaIntraScan {
 
     public NavigableSet<byte[]> getFamilies() {
         return families;
+    }
+
+    public void setCacheBlocks(boolean cacheBlocks) {
+        this.cacheBlocks = cacheBlocks;
+    }
+
+    public boolean getCacheBlocks() {
+        return cacheBlocks;
     }
 }
