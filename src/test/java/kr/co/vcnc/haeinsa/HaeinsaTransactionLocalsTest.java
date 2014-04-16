@@ -30,7 +30,7 @@ public class HaeinsaTransactionLocalsTest extends HaeinsaTestBase {
         Assert.assertNull(LOCAL.get(tx1));
         LOCAL.set(tx1, 1);
         Assert.assertTrue(LOCAL.isSet(tx1));
-        Assert.assertEquals(Integer.valueOf(1), LOCAL.get(tx1));
+        Assert.assertEquals(LOCAL.get(tx1), Integer.valueOf(1));
         LOCAL.remove(tx1);
         Assert.assertFalse(LOCAL.isSet(tx1));
         Assert.assertNull(LOCAL.get(tx1));
@@ -40,7 +40,7 @@ public class HaeinsaTransactionLocalsTest extends HaeinsaTestBase {
         Assert.assertNull(LOCAL.get(tx2));
         LOCAL.set(tx2, 2);
         Assert.assertTrue(LOCAL.isSet(tx2));
-        Assert.assertEquals(Integer.valueOf(2), LOCAL.get(tx2));
+        Assert.assertEquals(LOCAL.get(tx2), Integer.valueOf(2));
         LOCAL.remove(tx2);
         Assert.assertFalse(LOCAL.isSet(tx2));
         Assert.assertNull(LOCAL.get(tx2));
