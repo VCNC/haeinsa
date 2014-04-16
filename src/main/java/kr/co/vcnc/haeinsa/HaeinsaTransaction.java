@@ -21,6 +21,7 @@ import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import kr.co.vcnc.haeinsa.HaeinsaTransactionLocal.HaeinsaTransactionLocals;
 import kr.co.vcnc.haeinsa.exception.ConflictException;
 import kr.co.vcnc.haeinsa.exception.RecoverableConflictException;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowKey;
@@ -28,15 +29,14 @@ import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
 
 import org.apache.hadoop.hbase.util.Bytes;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ComparisonChain;
 import com.google.common.collect.Maps;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Representation of single transaction in Haeinsa.
@@ -59,6 +59,7 @@ public class HaeinsaTransaction {
     private long prewriteTimestamp = Long.MIN_VALUE;
     private long expiry = System.currentTimeMillis() + HaeinsaConstants.ROW_LOCK_TIMEOUT;
     private final AtomicBoolean used = new AtomicBoolean(false);
+    private HaeinsaTransactionLocals txLocals;
 
     private static enum CommitMethod {
         /**
@@ -127,6 +128,13 @@ public class HaeinsaTransaction {
 
     protected void setPrimary(TRowKey primary) {
         this.primary = primary;
+    }
+
+    HaeinsaTransactionLocals getLocals() {
+        if (txLocals == null) {
+            txLocals = new HaeinsaTransactionLocals();
+        }
+        return txLocals;
     }
 
     /**
