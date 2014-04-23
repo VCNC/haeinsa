@@ -67,7 +67,7 @@ APIs of Haeinsa is really similar to APIs of HBase. Please see [How to Use] and 
 [Percolator]: http://research.google.com/pubs/pub36726.html
 [Haeinsa]: http://en.wikipedia.org/wiki/Haeinsa
 [Tripitaka Koreana, or Palman Daejanggyeong]: http://en.wikipedia.org/wiki/Tripitaka_Koreana
-[Haeinsa Overview Presentation]: https://speakerdeck.com/vcnc/haeinsa-overview
+[Haeinsa Overview Presentation]: https://speakerdeck.com/vcnc/haeinsa-overview-hbase-transaction-library
 [Announcing Haeinsa]: http://engineering.vcnc.co.kr/2013/10/announcing-haeinsa/
 [Linearly scalable]: https://github.com/vcnc/haeinsa/wiki/Performance
 [Low overhead]: https://github.com/vcnc/haeinsa/wiki/Performance

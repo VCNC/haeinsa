@@ -57,6 +57,7 @@ We decided to name after because it incarnates important aspects of database whi
 [Percolator]: http://research.google.com/pubs/pub36726.html
 [Haeinsa]: http://en.wikipedia.org/wiki/Haeinsa
 [Tripitaka Koreana, or Palman Daejanggyeong]: http://en.wikipedia.org/wiki/Tripitaka_Koreana
-[Haeinsa Overview Presentation]: https://speakerdeck.com/vcnc/haeinsa-overview
+[Haeinsa Overview Presentation]: https://speakerdeck.com/vcnc/haeinsa-overview-hbase-transaction-library
 [Announcing Haeinsa]: http://engineering.vcnc.co.kr/2013/10/announcing-haeinsa/
 [Haeinsa: Hbase Transaction Library]: https://speakerdeck.com/vcnc/haeinsa-hbase-transaction-library
+
