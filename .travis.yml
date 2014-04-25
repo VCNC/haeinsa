@@ -2,9 +2,6 @@ language: java
 jdk:
   - openjdk7
   - oraclejdk7
-branches:
-  only:
-    - master
 before_install:
   - sudo add-apt-repository -y ppa:wnoronha/thrift
   - sudo apt-get update -qq
