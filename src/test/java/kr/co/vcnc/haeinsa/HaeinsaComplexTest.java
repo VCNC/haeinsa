@@ -106,7 +106,8 @@ public class HaeinsaComplexTest extends HaeinsaTestBase {
         final AtomicLong count = new AtomicLong(0);
         final long maxIter = 100;
         final int randomRange = 100;
-        int numberOfJob = 10;
+        final int numberOfJob = 10;
+        final CountDownLatch countDownLatch = new CountDownLatch(numberOfJob);
         final AtomicLong successCount = new AtomicLong(0);
         final AtomicLong failCount = new AtomicLong(0);
 
@@ -148,6 +149,7 @@ public class HaeinsaComplexTest extends HaeinsaTestBase {
                     }
                 }
                 System.out.println(String.format("iteration : %d on Thread : %s", iteration, Thread.currentThread().getName()));
+                countDownLatch.countDown();
             }
         };
 
@@ -157,8 +159,8 @@ public class HaeinsaComplexTest extends HaeinsaTestBase {
         for (int i = 0; i < numberOfJob; i++) {
             service.execute(singleIncrementJob);
         }
+        countDownLatch.await();
 
-        Thread.sleep(10000);
         // check result
         tx = tm.begin();
         HaeinsaGet get = new HaeinsaGet(row);
