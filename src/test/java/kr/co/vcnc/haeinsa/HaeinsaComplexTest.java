@@ -36,8 +36,6 @@ public class HaeinsaComplexTest extends HaeinsaTestBase {
 
     /**
      * Test which executes multiple transactions which increment specific value by single thread and check result.
-     *
-     * @throws Exception
      */
     @Test
     public void testSimepleIncrement() throws Exception {
@@ -93,8 +91,6 @@ public class HaeinsaComplexTest extends HaeinsaTestBase {
     /**
      * Test which execute multiple transactions by multiple threads concurrently which increase value of
      * single row randomly. Check result after transactions with value in local variable.
-     *
-     * @throws Exception
      */
     @Test
     public void testConcurrentRandomIncrement() throws Exception {
@@ -192,8 +188,6 @@ public class HaeinsaComplexTest extends HaeinsaTestBase {
      * </pre>
      * If transaction successes, it will acquire local memory lock and atomically change two atomicInteger in local.
      * After multiple times of concurrent transaction, if data in memory and DB is same then we can think this schedule is serializable.
-     *
-     * @throws Exception
      */
     @Test
     public void testSerializability() throws Exception {
@@ -296,9 +290,6 @@ public class HaeinsaComplexTest extends HaeinsaTestBase {
 
     /**
      * return (str(oldValue) + str(random int)).hashCode()
-     *
-     * @param oldValue
-     * @return
      */
     private long nextHashedValue(long oldValue) {
         String result = "";
