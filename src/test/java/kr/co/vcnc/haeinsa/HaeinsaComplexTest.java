@@ -36,8 +36,6 @@ public class HaeinsaComplexTest extends HaeinsaTestBase {
 
     /**
      * Test which executes multiple transactions which increment specific value by single thread and check result.
-     *
-     * @throws Exception
      */
     @Test
     public void testSimepleIncrement() throws Exception {
@@ -93,8 +91,6 @@ public class HaeinsaComplexTest extends HaeinsaTestBase {
     /**
      * Test which execute multiple transactions by multiple threads concurrently which increase value of
      * single row randomly. Check result after transactions with value in local variable.
-     *
-     * @throws Exception
      */
     @Test
     public void testConcurrentRandomIncrement() throws Exception {
@@ -106,7 +102,8 @@ public class HaeinsaComplexTest extends HaeinsaTestBase {
         final AtomicLong count = new AtomicLong(0);
         final long maxIter = 100;
         final int randomRange = 100;
-        int numberOfJob = 10;
+        final int numberOfJob = 10;
+        final CountDownLatch countDownLatch = new CountDownLatch(numberOfJob);
         final AtomicLong successCount = new AtomicLong(0);
         final AtomicLong failCount = new AtomicLong(0);
 
@@ -148,6 +145,7 @@ public class HaeinsaComplexTest extends HaeinsaTestBase {
                     }
                 }
                 System.out.println(String.format("iteration : %d on Thread : %s", iteration, Thread.currentThread().getName()));
+                countDownLatch.countDown();
             }
         };
 
@@ -157,8 +155,8 @@ public class HaeinsaComplexTest extends HaeinsaTestBase {
         for (int i = 0; i < numberOfJob; i++) {
             service.execute(singleIncrementJob);
         }
+        countDownLatch.await();
 
-        Thread.sleep(10000);
         // check result
         tx = tm.begin();
         HaeinsaGet get = new HaeinsaGet(row);
@@ -190,8 +188,6 @@ public class HaeinsaComplexTest extends HaeinsaTestBase {
      * </pre>
      * If transaction successes, it will acquire local memory lock and atomically change two atomicInteger in local.
      * After multiple times of concurrent transaction, if data in memory and DB is same then we can think this schedule is serializable.
-     *
-     * @throws Exception
      */
     @Test
     public void testSerializability() throws Exception {
@@ -294,9 +290,6 @@ public class HaeinsaComplexTest extends HaeinsaTestBase {
 
     /**
      * return (str(oldValue) + str(random int)).hashCode()
-     *
-     * @param oldValue
-     * @return
      */
     private long nextHashedValue(long oldValue) {
         String result = "";
