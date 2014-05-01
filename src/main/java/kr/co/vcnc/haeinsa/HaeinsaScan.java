@@ -24,6 +24,7 @@ import java.util.TreeSet;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.util.Bytes;
 
 /**
@@ -88,6 +89,7 @@ public class HaeinsaScan extends HaeinsaQuery {
         startRow = scan.getStartRow();
         stopRow = scan.getStopRow();
         caching = scan.getCaching();
+        filter = scan.getFilter();
         cacheBlocks = scan.getCacheBlocks();
         Map<byte[], NavigableSet<byte[]>> fams = scan.getFamilyMap();
         for (Map.Entry<byte[], NavigableSet<byte[]>> entry : fams.entrySet()) {
@@ -236,5 +238,11 @@ public class HaeinsaScan extends HaeinsaQuery {
      */
     public int getCaching() {
         return this.caching;
+    }
+
+    @Override
+    public HaeinsaScan setFilter(Filter filter) {
+        super.setFilter(filter);
+        return this;
     }
 }

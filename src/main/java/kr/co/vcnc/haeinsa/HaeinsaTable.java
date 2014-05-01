@@ -132,6 +132,7 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
         HaeinsaRowTransaction rowState = tableState.getRowStates().get(row);
         boolean lockInclusive = false;
         Get hGet = new Get(get.getRow());
+        hGet.setFilter(get.getFilter());
         hGet.setCacheBlocks(get.getCacheBlocks());
 
         for (Entry<byte[], NavigableSet<byte[]>> entry : get.getFamilyMap().entrySet()) {
@@ -220,6 +221,7 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
 
         Scan hScan = new Scan(scan.getStartRow(), scan.getStopRow());
         hScan.setCaching(scan.getCaching());
+        hScan.setFilter(scan.getFilter());
         hScan.setCacheBlocks(scan.getCacheBlocks());
 
         for (Entry<byte[], NavigableSet<byte[]>> entry : scan.getFamilyMap().entrySet()) {
@@ -280,6 +282,7 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
     private HaeinsaResultScanner getScannerWithoutTx(HaeinsaScan scan) throws IOException {
         Scan hScan = new Scan(scan.getStartRow(), scan.getStopRow());
         hScan.setCaching(scan.getCaching());
+        hScan.setFilter(scan.getFilter());
         hScan.setCacheBlocks(scan.getCacheBlocks());
 
         for (Entry<byte[], NavigableSet<byte[]>> entry : scan.getFamilyMap().entrySet()) {
@@ -316,6 +319,7 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
         // scan from startRow ( inclusive ) to startRow + 0x00 ( exclusive )
         Scan hScan = new Scan(intraScan.getRow(), Bytes.add(intraScan.getRow(), new byte[] { 0x00 }));
         hScan.setBatch(intraScan.getBatch());
+        hScan.setFilter(intraScan.getFilter());
         hScan.setCacheBlocks(intraScan.getCacheBlocks());
 
         for (byte[] family : intraScan.getFamilies()) {

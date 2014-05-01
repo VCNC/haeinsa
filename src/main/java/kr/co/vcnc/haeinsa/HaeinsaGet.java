@@ -21,6 +21,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.util.Bytes;
 
 /**
@@ -94,5 +95,11 @@ public class HaeinsaGet extends HaeinsaQuery {
      */
     public Map<byte[], NavigableSet<byte[]>> getFamilyMap() {
         return this.familyMap;
+    }
+
+    @Override
+    public HaeinsaGet setFilter(Filter filter) {
+        super.setFilter(filter);
+        return this;
     }
 }

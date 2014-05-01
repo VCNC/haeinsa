@@ -15,11 +15,46 @@
  */
 package kr.co.vcnc.haeinsa;
 
+import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.filter.Filter;
+
 public abstract class HaeinsaQuery extends HaeinsaOperation {
+    protected Filter filter = null;
     protected boolean cacheBlocks = true;
 
     /**
-     * Set whether blocks should be cached for this Scan.
+     * Get server-side filter instance of this operation.
+     *
+     * @return Filter instance of this operation
+     */
+    public Filter getFilter() {
+        return filter;
+    }
+
+    /**
+     * Apply the specified server-side filter when performing this operation.
+     * Only {@link Filter#filterKeyValue(KeyValue)} is called AFTER all tests
+     * for ttl, column match, deletes and max versions have been run.
+     *
+     * @param filter filter to run on the server
+     * @return this for invocation chaining
+     */
+    public HaeinsaQuery setFilter(Filter filter) {
+        this.filter = filter;
+        return this;
+    }
+
+    /**
+     * Get whether filter has been specified for this operation.
+     *
+     * @return true is a filter has been specified, false if not
+     */
+    public boolean hasFilter() {
+        return filter != null;
+    }
+
+    /**
+     * Set whether blocks should be cached for this operation.
      * Generally caching block help next get/scan requests to the same block,
      * but DB consume more memory which could cause longer jvm gc or cache churn.
      * CacheBlocks and caching are different configurations.
@@ -36,7 +71,7 @@ public abstract class HaeinsaQuery extends HaeinsaOperation {
     }
 
     /**
-     * Get whether blocks should be cached for this Scan.
+     * Get whether blocks should be cached for this operation.
      *
      * @return true if default setting of block caching should be used, false if
      *         blocks should not be cached
