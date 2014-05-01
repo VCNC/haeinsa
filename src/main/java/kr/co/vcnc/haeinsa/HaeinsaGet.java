@@ -30,7 +30,7 @@ import org.apache.hadoop.hbase.util.Bytes;
  */
 public class HaeinsaGet {
     private byte[] row;
-    private boolean cacheBlocks;
+    private boolean cacheBlocks = true;
     private Map<byte[], NavigableSet<byte[]>> familyMap =
             new TreeMap<byte[], NavigableSet<byte[]>>(Bytes.BYTES_COMPARATOR);
 
