@@ -28,9 +28,7 @@ import org.apache.hadoop.hbase.client.HTableInterfaceFactory;
 import org.apache.hadoop.hbase.util.Bytes;
 
 public final class TestingUtility {
-
-    private TestingUtility() {
-    }
+    private TestingUtility() {}
 
     /**
      * Create {@link HaeinsaTablePool} instance for testing
@@ -61,6 +59,7 @@ public final class TestingUtility {
 
     /**
      * Check if there is lock in specific row in table
+     *
      * @param table given HTableInterface
      * @param row given row key
      * @return true if TRowLock exist in specific row
@@ -72,6 +71,7 @@ public final class TestingUtility {
 
     /**
      * Get Lock from given row in table
+     *
      * @param table given HTableInterface
      * @param row given row key
      * @return byte array which represents lock
@@ -84,6 +84,7 @@ public final class TestingUtility {
 
     /**
      * Check whether lock of the specific row is changed from old lock.
+     *
      * @param table specific HTableInterface
      * @param row row key of the specific row
      * @param oldLock byte array of the old lock
@@ -93,5 +94,4 @@ public final class TestingUtility {
     public static boolean checkLockChanged(HTableInterface table, byte[] row, byte[] oldLock) throws IOException {
         return !Bytes.equals(getLock(table, row), oldLock);
     }
-
 }
