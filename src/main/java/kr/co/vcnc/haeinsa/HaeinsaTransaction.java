@@ -89,6 +89,17 @@ public class HaeinsaTransaction {
         return txStates.getMutationRowStates();
     }
 
+    /**
+     * Indicate whether this transaction has any changes.
+     * This method return true if the transaction contains one or more {@link HaeinsaPut} or
+     * {@link HaeinsaDelete} operation.
+     *
+     * @return true if this transaction has any changes, otherwise, false.
+     */
+    public boolean hasChanges() {
+        return txStates.hasChanges();
+    }
+
     public HaeinsaTransactionManager getManager() {
         return manager;
     }
@@ -516,6 +527,24 @@ public class HaeinsaTransaction {
         }
 
         /**
+         * Check whether there is row which contains mutation.
+         * This method returns false only if there is no changes on data in the transaction.
+         *
+         * @return true if one or more row state has mutation,
+         *         false if any row does not contains mutation.
+         */
+        public boolean hasChanges() {
+            for (HaeinsaTableTransaction tableState : tableStates.values()) {
+                for (HaeinsaRowTransaction rowState : tableState.getRowStates().values()) {
+                    if (rowState.getMutations().size() > 0) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        /**
          * Determine commitMethod among {@link CommitMethod#READ_ONLY},
          * {@link CommitMethod#SINGLE_ROW_PUT_ONLY} and
          * {@link CommitMethod#MULTI_ROW_MUTATIONS}
@@ -616,7 +645,6 @@ public class HaeinsaTransaction {
      * byte[] row). Thread-safe & stateless
      */
     private static class BasicComparator implements Comparator<TRowKey> {
-
         @Override
         public int compare(TRowKey o1, TRowKey o2) {
             return ComparisonChain
