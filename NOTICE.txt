@@ -1,0 +1,21 @@
+Haeinsa
+Copyright (C) 2013-2014 VCNC Inc.
+
+This product developed and maintained by VCNC Inc.
+This product is licensed under Apache License 2.0.
+
+This product depends on software developed at
+The Apache Software Foundation (http://www.apache.org/).
+
+This product depends on Guava Libraries (https://code.google.com/p/guava-libraries/).
+The Guava project contains several of Google's core libraries
+that Google rely on in Google's Java-based projects: collections, caching, primitives support,
+concurrency libraries, common annotations, string processing, I/O, and so forth.
+
+This product depends on TestNG (http://testng.org/).
+TestNG is a testing framework inspired from JUnit and NUnit
+but introducing some new functionalities that make it more powerful and easier to use.
+
+This product depends on FindBugs (http://findbugs.sourceforge.net/).
+FindBugs is a program to find bugs in Java programs.
+It looks for instances of "bug patterns" - code instances that are likely to be errors.

@@ -222,6 +222,7 @@
                     <excludes>
                         <exclude>**/README</exclude>
                         <exclude>**/LICENSE.txt</exclude>
+                        <exclude>**/NOTICE.txt</exclude>
                         <exclude>src/test/resources/**</exclude>
                         <exclude>src/main/resources/**</exclude>
                         <exclude>external/**</exclude>
