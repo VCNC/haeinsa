@@ -31,14 +31,13 @@ import org.apache.hadoop.hbase.util.Bytes;
  * <p>
  * Default batch size is 32.
  */
-public class HaeinsaIntraScan {
+public class HaeinsaIntraScan extends HaeinsaQuery {
     private final byte[] row;
     private final byte[] minColumn;
     private final boolean minColumnInclusive;
     private final byte[] maxColumn;
     private final boolean maxColumnInclusive;
     private int batch = 32;
-    private boolean cacheBlocks = true;
 
     // if this set is empty, then scan every family
     private final NavigableSet<byte[]> families = new TreeSet<byte[]>(Bytes.BYTES_COMPARATOR);
@@ -88,13 +87,5 @@ public class HaeinsaIntraScan {
 
     public NavigableSet<byte[]> getFamilies() {
         return families;
-    }
-
-    public void setCacheBlocks(boolean cacheBlocks) {
-        this.cacheBlocks = cacheBlocks;
-    }
-
-    public boolean getCacheBlocks() {
-        return cacheBlocks;
     }
 }

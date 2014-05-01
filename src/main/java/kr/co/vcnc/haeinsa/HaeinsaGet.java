@@ -28,9 +28,8 @@ import org.apache.hadoop.hbase.util.Bytes;
  * <p>
  * HaeinsaGet only contains data of single row.
  */
-public class HaeinsaGet {
+public class HaeinsaGet extends HaeinsaQuery {
     private byte[] row;
-    private boolean cacheBlocks = true;
     private Map<byte[], NavigableSet<byte[]>> familyMap =
             new TreeMap<byte[], NavigableSet<byte[]>>(Bytes.BYTES_COMPARATOR);
 
@@ -95,13 +94,5 @@ public class HaeinsaGet {
      */
     public Map<byte[], NavigableSet<byte[]>> getFamilyMap() {
         return this.familyMap;
-    }
-
-    public void setCacheBlocks(boolean cacheBlocks) {
-        this.cacheBlocks = cacheBlocks;
-    }
-
-    public boolean getCacheBlocks() {
-        return cacheBlocks;
     }
 }
