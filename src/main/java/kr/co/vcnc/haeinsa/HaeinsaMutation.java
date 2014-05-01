@@ -43,7 +43,7 @@ import com.google.common.collect.Iterables;
  * <p>
  * HaeinsaMutation provides {@link HaeinsaKeyValueScanner} interface by {@link #getScanner()} method.
  */
-public abstract class HaeinsaMutation {
+public abstract class HaeinsaMutation extends HaeinsaOperation {
     protected byte[] row;
     // { family -> HaeinsaKeyValue }
     protected Map<byte[], NavigableSet<HaeinsaKeyValue>> familyMap =

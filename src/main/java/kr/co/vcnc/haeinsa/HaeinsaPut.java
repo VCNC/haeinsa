@@ -42,6 +42,7 @@ import com.google.common.collect.Sets;
  * HaeinsaPut only contains data of single row.
  */
 public class HaeinsaPut extends HaeinsaMutation {
+
     public HaeinsaPut(byte[] row) {
         this.row = row;
     }

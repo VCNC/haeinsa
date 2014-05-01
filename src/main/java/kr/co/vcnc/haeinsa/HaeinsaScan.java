@@ -37,11 +37,10 @@ import org.apache.hadoop.hbase.util.Bytes;
  * one time.
  */
 // TODO: Setting batch size will be supported in future....?
-public class HaeinsaScan {
+public class HaeinsaScan extends HaeinsaQuery {
     private byte[] startRow = HConstants.EMPTY_START_ROW;
     private byte[] stopRow = HConstants.EMPTY_END_ROW;
     private int caching = -1;
-    private boolean cacheBlocks = true;
 
     // { family -> qualifier }
     private Map<byte[], NavigableSet<byte[]>> familyMap =
@@ -238,32 +237,4 @@ public class HaeinsaScan {
     public int getCaching() {
         return this.caching;
     }
-
-    /**
-     * Set whether blocks should be cached for this Scan.
-     * Generally caching block help next get/scan requests to the same block,
-     * but DB consume more memory which could cause longer jvm gc or cache churn.
-     * CacheBlocks and caching are different configurations.
-     * <p>
-     * This is true by default. When true, default settings of the table and
-     * family are used (this will never override caching blocks if the block
-     * cache is disabled for that family or entirely).
-     *
-     * @param cacheBlocks if false, default settings are overridden and blocks
-     *        will not be cached
-     */
-    public void setCacheBlocks(boolean cacheBlocks) {
-        this.cacheBlocks = cacheBlocks;
-    }
-
-    /**
-     * Get whether blocks should be cached for this Scan.
-     *
-     * @return true if default setting of block caching should be used, false if
-     *         blocks should not be cached
-     */
-    public boolean getCacheBlocks() {
-        return cacheBlocks;
-    }
-
 }
