@@ -38,9 +38,9 @@ public class HBaseMigrationTest extends HaeinsaTestBase {
      */
     @Test
     public void testMigrationByGet() throws Exception {
-        final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
-        final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable(currentTableName());
-        final HTableInterface hTestTable = CLUSTER.getHbaseTable(currentTableName());
+        final HaeinsaTransactionManager tm = context().getTransactionManager();
+        final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
+        final HTableInterface hTestTable = context().getHTableInterface("test");
 
         // Put sample data to HBase cluster by primitive HBase operation.
         // Lock will not created because it is just a primitive HBase operation.
@@ -73,9 +73,9 @@ public class HBaseMigrationTest extends HaeinsaTestBase {
      */
     @Test
     public void testMigrationByPut() throws Exception {
-        final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
-        final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable(currentTableName());
-        final HTableInterface hTestTable = CLUSTER.getHbaseTable(currentTableName());
+        final HaeinsaTransactionManager tm = context().getTransactionManager();
+        final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
+        final HTableInterface hTestTable = context().getHTableInterface("test");
 
         // Put sample data to HBase cluster by primitive HBase operation.
         // Lock will not created because it is just a primitive HBase operation.
@@ -117,9 +117,9 @@ public class HBaseMigrationTest extends HaeinsaTestBase {
      */
     @Test
     public void testMigrationByDelete() throws Exception {
-        final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
-        final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable(currentTableName());
-        final HTableInterface hTestTable = CLUSTER.getHbaseTable(currentTableName());
+        final HaeinsaTransactionManager tm = context().getTransactionManager();
+        final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
+        final HTableInterface hTestTable = context().getHTableInterface("test");
 
         // Put sample data to HBase cluster by primitive HBase operation.
         // Lock will not created because it is just a primitive HBase operation.
@@ -162,9 +162,9 @@ public class HBaseMigrationTest extends HaeinsaTestBase {
      */
     @Test
     public void testMigrationByInterRowScan() throws Exception {
-        final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
-        final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable(currentTableName());
-        final HTableInterface hTestTable = CLUSTER.getHbaseTable(currentTableName());
+        final HaeinsaTransactionManager tm = context().getTransactionManager();
+        final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
+        final HTableInterface hTestTable = context().getHTableInterface("test");
 
         // Put sample data to HBase cluster by primitive HBase operation.
         // Lock will not created because it is just a primitive HBase operation.
@@ -237,9 +237,9 @@ public class HBaseMigrationTest extends HaeinsaTestBase {
      */
     @Test
     public void testMigrationByIntraRowScan() throws Exception {
-        final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
-        final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable(currentTableName());
-        final HTableInterface hTestTable = CLUSTER.getHbaseTable(currentTableName());
+        final HaeinsaTransactionManager tm = context().getTransactionManager();
+        final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
+        final HTableInterface hTestTable = context().getHTableInterface("test");
 
         // Put sample data to HBase cluster by primitive HBase operation.
         // Lock will not created because it is just a primitive HBase operation.
@@ -305,9 +305,9 @@ public class HBaseMigrationTest extends HaeinsaTestBase {
      */
     @Test
     public void testMigrationByMixedPutAndGet() throws Exception {
-        final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
-        final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable(currentTableName());
-        final HTableInterface hTestTable = CLUSTER.getHbaseTable(currentTableName());
+        final HaeinsaTransactionManager tm = context().getTransactionManager();
+        final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
+        final HTableInterface hTestTable = context().getHTableInterface("test");
 
         // Put sample data to HBase cluster by primitive HBase operation.
         // Lock will not created because it is just a primitive HBase operation.
@@ -369,9 +369,9 @@ public class HBaseMigrationTest extends HaeinsaTestBase {
      */
     @Test
     public void testMigrationByMixedPutAndDelete() throws Exception {
-        final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
-        final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable(currentTableName());
-        final HTableInterface hTestTable = CLUSTER.getHbaseTable(currentTableName());
+        final HaeinsaTransactionManager tm = context().getTransactionManager();
+        final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
+        final HTableInterface hTestTable = context().getHTableInterface("test");
 
         // Put sample data to HBase cluster by primitive HBase operation.
         // Lock will not created because it is just a primitive HBase operation.
@@ -436,9 +436,9 @@ public class HBaseMigrationTest extends HaeinsaTestBase {
      */
     @Test
     public void testMigrationByMixedInterRowScanAndPut() throws Exception {
-        final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
-        final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable(currentTableName());
-        final HTableInterface hTestTable = CLUSTER.getHbaseTable(currentTableName());
+        final HaeinsaTransactionManager tm = context().getTransactionManager();
+        final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
+        final HTableInterface hTestTable = context().getHTableInterface("test");
 
         // Put sample data to HBase cluster by primitive HBase operation.
         // Lock will not created because it is just a primitive HBase operation.
@@ -521,9 +521,9 @@ public class HBaseMigrationTest extends HaeinsaTestBase {
      */
     @Test
     public void testMigrationByMixedIntraRowScanAndPut() throws Exception {
-        final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
-        final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable(currentTableName());
-        final HTableInterface hTestTable = CLUSTER.getHbaseTable(currentTableName());
+        final HaeinsaTransactionManager tm = context().getTransactionManager();
+        final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
+        final HTableInterface hTestTable = context().getHTableInterface("test");
 
         // Put sample data to HBase cluster by primitive HBase operation.
         // Lock will not created because it is just a primitive HBase operation.

@@ -42,9 +42,9 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
 
     @Test
     public void testTransaction() throws Exception {
-        final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
-        final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable("HaeinsaUnitTest.testTransaction.test");
-        final HaeinsaTableIface logTable = CLUSTER.getHaeinsaTable("HaeinsaUnitTest.testTransaction.log");
+        final HaeinsaTransactionManager tm = context().getTransactionManager();
+        final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
+        final HaeinsaTableIface logTable = context().getHaeinsaTableIface("log");
 
         // Test 2 puts tx
         HaeinsaTransaction tx = tm.begin();
@@ -289,8 +289,8 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
 
     @Test
     public void testMultiPutAndMultiDelete() throws Exception {
-        final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
-        final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable("HaeinsaUnitTest.testMultiPutAndMultiDelete.test");
+        final HaeinsaTransactionManager tm = context().getTransactionManager();
+        final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
 
         HaeinsaTransaction tx = tm.begin();
 
@@ -351,8 +351,8 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
 
     @Test
     public void testMultiRowReadOnly() throws Exception {
-        final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
-        final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable("HaeinsaUnitTest.testMultiRowReadOnly.test");
+        final HaeinsaTransactionManager tm = context().getTransactionManager();
+        final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
 
         // Test 2 puts tx
         HaeinsaTransaction tx = tm.begin();
@@ -395,8 +395,8 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
 
     @Test
     public void testConflictAndAbort() throws Exception {
-        final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
-        final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable("HaeinsaUnitTest.testConflictAndAbort.test");
+        final HaeinsaTransactionManager tm = context().getTransactionManager();
+        final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
 
         HaeinsaTransaction tx = tm.begin();
         HaeinsaTransaction tx2 = tm.begin();
@@ -471,8 +471,8 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
 
     @Test
     public void testConflictAndRecover() throws Exception {
-        final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
-        final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable("HaeinsaUnitTest.testConflictAndRecover.test");
+        final HaeinsaTransactionManager tm = context().getTransactionManager();
+        final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
         final HaeinsaTableIfaceInternal testInternalTable = (HaeinsaTableIfaceInternal) testTable;
 
         HaeinsaTransaction tx1 = tm.begin();
@@ -487,7 +487,7 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
         testTable.put(tx1, put2);
         testTable.put(tx2, put1);
 
-        HaeinsaTableTransaction tableState = tx2.createOrGetTableState(Bytes.toBytes("HaeinsaUnitTest.testConflictAndRecover.test"));
+        HaeinsaTableTransaction tableState = tx2.createOrGetTableState(testTable.getTableName());
         HaeinsaRowTransaction rowState = tableState.createOrGetRowState(Bytes.toBytes("ymkim"));
 
         // currentCommitTimestamp is System.currentTimeMillis(),
@@ -585,8 +585,8 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
      */
     @Test
     public void testMultipleMutations() throws Exception {
-        final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
-        final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable("HaeinsaUnitTest.testMultipleMutations.test");
+        final HaeinsaTransactionManager tm = context().getTransactionManager();
+        final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
 
         /*
          * - beginTransaction
@@ -668,16 +668,15 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
     }
 
     /**
-     *
      * Unit test for check get/scan without transaction.
      *
      * @throws Exception
      */
     @Test
     public void testHaeinsaTableWithoutTx() throws Exception {
-        final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
-        final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable("HaeinsaUnitTest.testHaeinsaTableWithoutTx.test");
-        final HTableInterface hTestTable = CLUSTER.getHbaseTable("HaeinsaUnitTest.testHaeinsaTableWithoutTx.test");
+        final HaeinsaTransactionManager tm = context().getTransactionManager();
+        final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
+        final HTableInterface hTestTable = context().getHTableInterface("test");
 
         /*
          * - beginTransaction
@@ -817,9 +816,9 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
 
     @Test
     public void testDanglingRowLockException() throws Exception {
-        final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
-        final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable("HaeinsaUnitTest.testDanglingRowLockException.test");
-        final HTableInterface hTestTable = CLUSTER.getHbaseTable("HaeinsaUnitTest.testDanglingRowLockException.test");
+        final HaeinsaTransactionManager tm = context().getTransactionManager();
+        final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
+        final HTableInterface hTestTable = context().getHTableInterface("test");
 
         {
             TRowKey primaryRowKey = new TRowKey().setTableName(testTable.getTableName()).setRow(Bytes.toBytes("James"));
@@ -881,5 +880,4 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
         testTable.close();
         hTestTable.close();
     }
-
 }

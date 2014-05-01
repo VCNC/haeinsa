@@ -29,7 +29,7 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 /**
- * https://issues.vcnc.co.kr/browse/HAEINSA-67 When haeinsa recovers rows, we
+ * https://issues.vcnc.co.kr/browse/HAEINSA-67 When Haeinsa recovers rows, we
  * should make stable rows into new committimestamp's stable rows. This method
  * prevents making dangling row locks of long running transactions.
  */
@@ -37,9 +37,9 @@ public class Haeinsa67BugTest extends HaeinsaTestBase {
 
     @Test
     public void testRecover() throws Exception {
-        final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
-        final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable(currentTableName());
-        final HTableInterface hTestTable = CLUSTER.getHbaseTable(currentTableName());
+        final HaeinsaTransactionManager tm = context().getTransactionManager();
+        final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
+        final HTableInterface hTestTable = context().getHTableInterface("test");
 
         {
             TRowKey primaryRowKey = new TRowKey().setTableName(testTable.getTableName()).setRow(Bytes.toBytes("Andrew"));
