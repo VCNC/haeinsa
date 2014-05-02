@@ -23,8 +23,8 @@ public class HaeinsaTransactionTest extends HaeinsaTestBase {
 
     @Test
     public void testHasChanges() throws Exception {
-        final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
-        final HaeinsaTableIface table = CLUSTER.getHaeinsaTable(currentTableName());
+        final HaeinsaTransactionManager tm = context().getTransactionManager();
+        final HaeinsaTableIface table = context().getHaeinsaTableIface("test");
 
         // Tests read-only transaction
         {
