@@ -39,8 +39,8 @@ public class HaeinsaComplexTest extends HaeinsaTestBase {
      */
     @Test
     public void testSimepleIncrement() throws Exception {
-        final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
-        final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable("HaeinsaComplexTest.testSimepleIncrement.test");
+        final HaeinsaTransactionManager tm = context().getTransactionManager();
+        final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
 
         HaeinsaTransaction tx;
 
@@ -94,8 +94,8 @@ public class HaeinsaComplexTest extends HaeinsaTestBase {
      */
     @Test
     public void testConcurrentRandomIncrement() throws Exception {
-        final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
-        final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable("HaeinsaComplexTest.testConcurrentRandomIncrement.test");
+        final HaeinsaTransactionManager tm = context().getTransactionManager();
+        final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
 
         HaeinsaTransaction tx;
 
@@ -191,8 +191,8 @@ public class HaeinsaComplexTest extends HaeinsaTestBase {
      */
     @Test
     public void testSerializability() throws Exception {
-        final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
-        final HaeinsaTableIface testTable = CLUSTER.getHaeinsaTable("HaeinsaComplexTest.testSerializability.test");
+        final HaeinsaTransactionManager tm = context().getTransactionManager();
+        final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
 
         HaeinsaTransaction tx;
 

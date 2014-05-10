@@ -23,7 +23,7 @@ public class HaeinsaTransactionLocalsTest extends HaeinsaTestBase {
 
     @Test
     public void testBasicOperations() throws Exception {
-        final HaeinsaTransactionManager tm = CLUSTER.getTransactionManager();
+        final HaeinsaTransactionManager tm = context().getTransactionManager();
 
         HaeinsaTransaction tx1 = tm.begin();
         Assert.assertFalse(LOCAL.isSet(tx1));
