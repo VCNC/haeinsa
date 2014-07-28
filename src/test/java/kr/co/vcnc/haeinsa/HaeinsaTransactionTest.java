@@ -15,9 +15,18 @@
  */
 package kr.co.vcnc.haeinsa;
 
+import kr.co.vcnc.haeinsa.thrift.TRowLocks;
+import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
+import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
+import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.client.HTableInterface;
+import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.junit.Assert;
+
+import org.testng.Assert;
 import org.testng.annotations.Test;
+
+import java.util.concurrent.TimeUnit;
 
 public class HaeinsaTransactionTest extends HaeinsaTestBase {
 
@@ -77,6 +86,61 @@ public class HaeinsaTransactionTest extends HaeinsaTestBase {
             put1.add(Bytes.toBytes("data"), Bytes.toBytes("qualifier"), Bytes.toBytes("value"));
             table.put(tx, put1);
             Assert.assertTrue(tx.hasChanges());
+        }
+    }
+
+    @Test
+    public void testTimeout() throws Exception {
+        final HaeinsaTransactionManager tm = context().getTransactionManager();
+        final HaeinsaTableIface table = context().getHaeinsaTableIface("test");
+        final HTableInterface htable = context().getHTableInterface("test");
+        final HaeinsaTableIfaceInternal interalTable = (HaeinsaTableIfaceInternal) table;
+
+        // Tests created, timeout and expiry fields
+        {
+            HaeinsaTransaction tx = tm.begin();
+            Assert.assertEquals(tx.getCreated(), System.currentTimeMillis());
+            Assert.assertEquals(tx.getExpiry(), tx.getCreated() + tx.getTimeout());
+
+            long originalExpiry = tx.getExpiry();
+            tx.setTimeout(TimeUnit.SECONDS.toMillis(20));
+            Assert.assertEquals(tx.getTimeout(), TimeUnit.SECONDS.toMillis(20));
+            Assert.assertEquals(tx.getExpiry(), tx.getCreated() + tx.getTimeout());
+            Assert.assertNotEquals(tx.getExpiry(), originalExpiry);
+
+            tx.rollback();
+        }
+        // Tests expiry in HBase
+        {
+            HaeinsaTransaction tx = tm.begin();
+            tx.setTimeout(TimeUnit.SECONDS.toMillis(20));
+
+            HaeinsaPut put1 = new HaeinsaPut(Bytes.toBytes("brad"));
+            put1.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("+821411111111"));
+            table.put(tx, put1);
+
+            HaeinsaPut put2 = new HaeinsaPut(Bytes.toBytes("james"));
+            put2.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("+821422222222"));
+            table.put(tx, put2);
+
+            // Simulate prewrite of the transaction
+            HaeinsaTableTransaction tableState = tx.createOrGetTableState(table.getTableName());
+            HaeinsaRowTransaction rowState = tableState.createOrGetRowState(Bytes.toBytes("brad"));
+
+            long currentCommitTimestamp = System.currentTimeMillis();
+            tx.classifyAndSortRows(false);
+            tx.setPrewriteTimestamp(currentCommitTimestamp + 1);
+            tx.setCommitTimestamp(currentCommitTimestamp + 3);
+            interalTable.prewrite(rowState, Bytes.toBytes("brad"), true);
+
+            // Check whether expiry in HBase is same as expiry of HaeinsaTransaction
+            Get hPrimaryGet = new Get(Bytes.toBytes("brad"));
+            hPrimaryGet.addColumn(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER);
+            Result primaryResult = htable.get(hPrimaryGet);
+            TRowLock rowLock = TRowLocks.deserialize(primaryResult.getValue(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER));
+            Assert.assertEquals(rowLock.getState(), TRowLockState.PREWRITTEN);
+            Assert.assertEquals(rowLock.getCommitTimestamp(), tx.getCommitTimestamp());
+            Assert.assertEquals(rowLock.getExpiry(), tx.getExpiry());
         }
     }
 }
