@@ -134,9 +134,9 @@ public class HaeinsaTransactionTest extends HaeinsaTestBase {
             interalTable.prewrite(rowState, Bytes.toBytes("brad"), true);
 
             // Check whether expiry in HBase is same as expiry of HaeinsaTransaction
-            Get hPrimaryGet = new Get(Bytes.toBytes("brad"));
-            hPrimaryGet.addColumn(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER);
-            Result primaryResult = htable.get(hPrimaryGet);
+            Get hGet = new Get(Bytes.toBytes("brad"));
+            hGet.addColumn(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER);
+            Result primaryResult = htable.get(hGet);
             TRowLock rowLock = TRowLocks.deserialize(primaryResult.getValue(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER));
             Assert.assertEquals(rowLock.getState(), TRowLockState.PREWRITTEN);
             Assert.assertEquals(rowLock.getCommitTimestamp(), tx.getCommitTimestamp());
