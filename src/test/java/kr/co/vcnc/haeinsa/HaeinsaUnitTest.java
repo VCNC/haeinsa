@@ -523,7 +523,7 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
             Assert.assertTrue(e instanceof ConflictException);
         }
 
-        Thread.sleep(HaeinsaConstants.ROW_LOCK_TIMEOUT + 100);
+        Thread.sleep(HaeinsaConstants.DEFAULT_ROW_LOCK_TIMEOUT + 100);
 
         tx1 = tm.begin();
         HaeinsaScan scan = new HaeinsaScan();

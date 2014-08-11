@@ -57,7 +57,9 @@ public class HaeinsaTransaction {
     private TRowKey primary;
     private long commitTimestamp = Long.MIN_VALUE;
     private long prewriteTimestamp = Long.MIN_VALUE;
-    private long expiry = System.currentTimeMillis() + HaeinsaConstants.ROW_LOCK_TIMEOUT;
+    private long created = System.currentTimeMillis();
+    private long timeout = HaeinsaConstants.DEFAULT_ROW_LOCK_TIMEOUT;
+    private long expiry = created + timeout;
     private final AtomicBoolean used = new AtomicBoolean(false);
     private HaeinsaTransactionLocals txLocals;
 
@@ -129,8 +131,21 @@ public class HaeinsaTransaction {
     }
 
     private void extendExpiry() {
-        // Expiry is max(getCommitTimestamp, System.currentTimeMillis()) + ROW_LOCK_TIMEOUT(10s)
-        setExpiry(Math.max(getCommitTimestamp(), System.currentTimeMillis()) + HaeinsaConstants.ROW_LOCK_TIMEOUT);
+        // Expiry is max(getCommitTimestamp, System.currentTimeMillis()) + DEFAULT_ROW_LOCK_TIMEOUT
+        setExpiry(Math.max(getCommitTimestamp(), System.currentTimeMillis()) + timeout);
+    }
+
+    public long getCreated() {
+        return created;
+    }
+
+    public long getTimeout() {
+        return timeout;
+    }
+
+    public void setTimeout(long timeout) {
+        this.timeout = timeout;
+        this.expiry = created + timeout;
     }
 
     public TRowKey getPrimary() {
