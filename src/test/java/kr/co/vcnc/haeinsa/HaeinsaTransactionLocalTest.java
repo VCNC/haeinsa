@@ -18,7 +18,7 @@ package kr.co.vcnc.haeinsa;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-public class HaeinsaTransactionLocalsTest extends HaeinsaTestBase {
+public class HaeinsaTransactionLocalTest extends HaeinsaTestBase {
     private static HaeinsaTransactionLocal<Integer> LOCAL = HaeinsaTransactionLocal.newLocal();
 
     @Test
