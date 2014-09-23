@@ -19,7 +19,7 @@ It is worth to mention transaction shows consistently low latency even when size
 ***Tx/Sec graph of Worst-case Transaction***
 ![](images/haeinsa_performance_graph_worst_linearscalability.png)
 
-You can see that **Haeinsa is even faster than HBsse** on practical transaction test.
+You can see that **Haeinsa is even faster than HBase** on practical transaction test.
 It is because Hbase does more RPC than Haeinsa.
 Since Haeinsa applies writes on commit with checkAndPut operation,
 If operations are gathered in a small number of rows, the better performance can be.
