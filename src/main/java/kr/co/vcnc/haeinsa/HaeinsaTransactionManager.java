@@ -93,7 +93,7 @@ public class HaeinsaTransactionManager {
             primaryRowLock = getRowLock(primaryRowKey.getTableName(), primaryRowKey.getRow());
 
             TRowKey rowKey = new TRowKey().setTableName(tableName).setRow(row);
-            if (!TRowLocks.isSecondaryOf(primaryRowLock, rowKey, unstableRowLock)) {
+            if (!TRowLocks.isSecondaryOf(primaryRowKey, primaryRowLock, rowKey, unstableRowLock)) {
                 checkDanglingRowLockOrThrow(tableName, row, unstableRowLock);
                 return null;
             }
@@ -159,7 +159,7 @@ public class HaeinsaTransactionManager {
                 TRowLock primaryRowLock = getRowLock(primaryRowKey.getTableName(), primaryRowKey.getRow());
 
                 TRowKey secondaryRowKey = new TRowKey().setTableName(tableName).setRow(row);
-                if (!TRowLocks.isSecondaryOf(primaryRowLock, secondaryRowKey, currentRowLock)) {
+                if (!TRowLocks.isSecondaryOf(primaryRowKey, primaryRowLock, secondaryRowKey, currentRowLock)) {
                     throw new DanglingRowLockException(secondaryRowKey, "Primary lock doesn't have rowLock as secondary.");
                 }
             }
@@ -185,7 +185,7 @@ public class HaeinsaTransactionManager {
         primaryRowTxState.setCurrent(primaryRowLock);
         if (primaryRowLock.getSecondariesSize() > 0) {
             for (TRowKey secondaryRow : primaryRowLock.getSecondaries()) {
-                addSecondaryRowLock(transaction, primaryRowLock, secondaryRow);
+                addSecondaryRowLock(transaction, rowKey, primaryRowLock, secondaryRow);
             }
         }
         return transaction;
@@ -207,8 +207,9 @@ public class HaeinsaTransactionManager {
      * @param rowKey
      * @throws IOException
      */
-    private void addSecondaryRowLock(HaeinsaTransaction transaction, TRowLock primaryRowLock, TRowKey rowKey) throws IOException {
-        TRowLock secondaryRowLock = getRowLock(rowKey.getTableName(), rowKey.getRow());
+    private void addSecondaryRowLock(HaeinsaTransaction transaction, TRowKey primaryRowKey,
+            TRowLock primaryRowLock, TRowKey secondaryRowKey) throws IOException {
+        TRowLock secondaryRowLock = getRowLock(secondaryRowKey.getTableName(), secondaryRowKey.getRow());
         if (secondaryRowLock.getCommitTimestamp() > transaction.getCommitTimestamp()) {
             // this row isn't a part of this transaction or already aborted.
             return;
@@ -217,12 +218,12 @@ public class HaeinsaTransactionManager {
             // this row is already committed or aborted.
             return;
         }
-        if (secondaryRowLock.getState() != TRowLockState.STABLE && !TRowLocks.isSecondaryOf(primaryRowLock, rowKey, secondaryRowLock)) {
+        if (secondaryRowLock.getState() != TRowLockState.STABLE && !TRowLocks.isSecondaryOf(primaryRowKey, primaryRowLock, secondaryRowKey, secondaryRowLock)) {
             // this row isn't a part of this transaction.
             return;
         }
-        HaeinsaTableTransaction tableState = transaction.createOrGetTableState(rowKey.getTableName());
-        HaeinsaRowTransaction rowState = tableState.createOrGetRowState(rowKey.getRow());
+        HaeinsaTableTransaction tableState = transaction.createOrGetTableState(secondaryRowKey.getTableName());
+        HaeinsaRowTransaction rowState = tableState.createOrGetRowState(secondaryRowKey.getRow());
         rowState.setCurrent(secondaryRowLock);
     }
 
