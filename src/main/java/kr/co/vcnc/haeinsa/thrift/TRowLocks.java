@@ -80,9 +80,18 @@ public final class TRowLocks {
         return !rowLock.isSetPrimary();
     }
 
-    public static boolean isSecondaryOf(TRowLock primaryRowLock, TRowKey secondaryRowKey, TRowLock secondaryRowLock) {
+    public static boolean isSecondaryOf(TRowKey primaryRowKey, TRowLock primaryRowLock, TRowKey secondaryRowKey, TRowLock secondaryRowLock) {
         return primaryRowLock.getCommitTimestamp() == secondaryRowLock.getCommitTimestamp()
-                && containRowKeyAsSecondary(primaryRowLock, secondaryRowKey);
+                && containRowKeyAsSecondary(primaryRowLock, secondaryRowKey)
+                && containsRowKeyAsPrimary(secondaryRowLock, primaryRowKey);
+    }
+
+    public static boolean containsRowKeyAsPrimary(TRowLock secondaryRowLock, TRowKey primaryRowKey) {
+        if (secondaryRowLock.isSetPrimary()) {
+            return Arrays.equals(secondaryRowLock.getPrimary().getTableName(), primaryRowKey.getTableName())
+                    && Arrays.equals(secondaryRowLock.getPrimary().getRow(), primaryRowKey.getRow());
+        }
+        return false;
     }
 
     /**

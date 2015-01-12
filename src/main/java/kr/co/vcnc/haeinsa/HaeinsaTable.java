@@ -555,7 +555,9 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
             HaeinsaTransaction tx = rowState.getTableTransaction().getTransaction();
             HaeinsaTransaction currentTx = tx.getManager().getTransaction(tx.getPrimary().getTableName(), tx.getPrimary().getRow());
             if (currentTx != null) {
-                currentTx.recover(true);
+                if (HaeinsaTransactions.hasSameCommitTimestamp(tx, currentTx)) {
+                    currentTx.recover(true);
+                }
             }
             throw new ConflictException("this row is modified, checkSingleRow failed");
         }
@@ -613,7 +615,10 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
             // Consider as conflict because another transaction might acquire lock of this row.
             HaeinsaTransaction currentTx = tx.getManager().getTransaction(tx.getPrimary().getTableName(), tx.getPrimary().getRow());
             if (currentTx != null) {
-                currentTx.recover(true);
+                // Consider as same transaction if commitTimestamp of two transaction is same.
+                if (HaeinsaTransactions.hasSameCommitTimestamp(tx, currentTx)) {
+                    currentTx.recover(true);
+                }
             }
             throw new ConflictException("can't acquire row's lock");
         } else {
