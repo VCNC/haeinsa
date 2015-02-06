@@ -19,6 +19,7 @@ import java.util.concurrent.TimeUnit;
 
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
+
 import org.apache.hadoop.hbase.util.Bytes;
 
 /**
