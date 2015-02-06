@@ -250,23 +250,24 @@ public class HaeinsaTransaction {
 
         CommitMethod method = txStates.determineCommitMethod();
         switch (method) {
-            case READ_ONLY: {
-                commitReadOnly();
-                break;
-            }
-            case SINGLE_ROW_PUT_ONLY: {
-                commitSingleRowPutOnly();
-                break;
-            }
-            case MULTI_ROW_MUTATIONS: {
-                commitMultiRowsMutation();
-                break;
-            }
-            case NOTHING: {
-                break;
-            }
-            default:
-                break;
+        case READ_ONLY: {
+            commitReadOnly();
+            break;
+        }
+        case SINGLE_ROW_PUT_ONLY: {
+            commitSingleRowPutOnly();
+            break;
+        }
+        case MULTI_ROW_MUTATIONS: {
+            commitMultiRowsMutation();
+            break;
+        }
+        case NOTHING: {
+            break;
+        }
+        default: {
+            break;
+        }
         }
     }
 
@@ -439,18 +440,18 @@ public class HaeinsaTransaction {
         extendExpiry();
 
         switch (primaryRowTx.getCurrent().getState()) {
-            case ABORTED:
-            case PREWRITTEN: {
-                abort();
-                break;
-            }
-            case COMMITTED: {
-                // Transaction is already succeeded.
-                makeStable();
-                break;
-            }
-            default:
-                throw new ConflictException();
+        case ABORTED:
+        case PREWRITTEN: {
+            abort();
+            break;
+        }
+        case COMMITTED: {
+            // Transaction is already succeeded.
+            makeStable();
+            break;
+        }
+        default:
+            throw new ConflictException();
         }
     }
 

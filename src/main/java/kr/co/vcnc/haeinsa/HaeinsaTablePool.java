@@ -109,13 +109,15 @@ public class HaeinsaTablePool implements Closeable {
             this.poolType = PoolType.Reusable;
         } else {
             switch (poolType) {
-                case Reusable:
-                case ThreadLocal:
-                    this.poolType = poolType;
-                    break;
-                default:
-                    this.poolType = PoolType.Reusable;
-                    break;
+            case Reusable:
+            case ThreadLocal: {
+                this.poolType = poolType;
+                break;
+            }
+            default: {
+                this.poolType = PoolType.Reusable;
+                break;
+            }
             }
         }
         this.tables = new PoolMap<String, HaeinsaTableIfaceInternal>(this.poolType, this.maxSize);

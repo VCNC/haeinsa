@@ -39,29 +39,30 @@ public class HaeinsaDeleteTracker {
      */
     public void add(HaeinsaKeyValue kv, long sequenceID) {
         switch (kv.getType()) {
-            case DeleteFamily: {
-                Long previous = families.get(kv.getFamily());
-                if (previous == null || previous.compareTo(sequenceID) > 0) {
-                    // sequenceId is lower than previous one.
-                    families.put(kv.getFamily(), sequenceID);
-                }
-                break;
+        case DeleteFamily: {
+            Long previous = families.get(kv.getFamily());
+            if (previous == null || previous.compareTo(sequenceID) > 0) {
+                // sequenceId is lower than previous one.
+                families.put(kv.getFamily(), sequenceID);
             }
-            case DeleteColumn: {
-                NavigableMap<byte[], Long> cellMap = cells.get(kv.getFamily());
-                if (cellMap == null) {
-                    cellMap = Maps.newTreeMap(Bytes.BYTES_COMPARATOR);
-                    cells.put(kv.getFamily(), cellMap);
-                }
-                Long previous = families.get(kv.getQualifier());
-                if (previous == null || previous.compareTo(sequenceID) > 0) {
-                    // sequenceId is lower than previous one.
-                    cellMap.put(kv.getQualifier(), sequenceID);
-                }
-                break;
+            break;
+        }
+        case DeleteColumn: {
+            NavigableMap<byte[], Long> cellMap = cells.get(kv.getFamily());
+            if (cellMap == null) {
+                cellMap = Maps.newTreeMap(Bytes.BYTES_COMPARATOR);
+                cells.put(kv.getFamily(), cellMap);
             }
-            default:
-                break;
+            Long previous = families.get(kv.getQualifier());
+            if (previous == null || previous.compareTo(sequenceID) > 0) {
+                // sequenceId is lower than previous one.
+                cellMap.put(kv.getQualifier(), sequenceID);
+            }
+            break;
+        }
+        default: {
+            break;
+        }
         }
     }
 

@@ -113,16 +113,17 @@ public class HaeinsaDelete extends HaeinsaMutation {
         TRemove newTRemove = new TRemove();
         for (HaeinsaKeyValue kv : Iterables.concat(familyMap.values())) {
             switch (kv.getType()) {
-                case DeleteColumn: {
-                    newTRemove.addToRemoveCells(new TCellKey().setFamily(kv.getFamily()).setQualifier(kv.getQualifier()));
-                    break;
-                }
-                case DeleteFamily: {
-                    newTRemove.addToRemoveFamilies(ByteBuffer.wrap(kv.getFamily()));
-                    break;
-                }
-                default:
-                    break;
+            case DeleteColumn: {
+                newTRemove.addToRemoveCells(new TCellKey().setFamily(kv.getFamily()).setQualifier(kv.getQualifier()));
+                break;
+            }
+            case DeleteFamily: {
+                newTRemove.addToRemoveFamilies(ByteBuffer.wrap(kv.getFamily()));
+                break;
+            }
+            default: {
+                break;
+            }
             }
         }
         newTMutation.setRemove(newTRemove);

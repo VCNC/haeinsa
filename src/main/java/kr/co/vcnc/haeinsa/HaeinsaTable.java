@@ -625,45 +625,46 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
 
             TMutation mutation = remaining.get(i);
             switch (mutation.getType()) {
-                case PUT: {
-                    TRowLock newRowLock = rowTxState.getCurrent().deepCopy();
-                    newRowLock.setCurrentTimestamp(mutationTimestamp);
-                    newRowLock.setMutations(remaining.subList(mutationOffset, remaining.size()));
-                    // Maintain prewritten state and extend lock by ROW_LOCK_TIMEOUT
-                    newRowLock.setExpiry(tx.getExpiry());
-                    Put put = new Put(row);
-                    put.add(LOCK_FAMILY, LOCK_QUALIFIER, newRowLock.getCurrentTimestamp(), TRowLocks.serialize(newRowLock));
-                    for (TKeyValue kv : mutation.getPut().getValues()) {
-                        put.add(kv.getKey().getFamily(), kv.getKey().getQualifier(), newRowLock.getCurrentTimestamp(), kv.getValue());
-                    }
-                    if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, put)) {
-                        // Consider as conflict because another transaction might acquire lock of this row.
-                        throw new ConflictException("can't acquire row's lock");
-                    } else {
-                        rowTxState.setCurrent(newRowLock);
-                    }
-                    break;
+            case PUT: {
+                TRowLock newRowLock = rowTxState.getCurrent().deepCopy();
+                newRowLock.setCurrentTimestamp(mutationTimestamp);
+                newRowLock.setMutations(remaining.subList(mutationOffset, remaining.size()));
+                // Maintain prewritten state and extend lock by ROW_LOCK_TIMEOUT
+                newRowLock.setExpiry(tx.getExpiry());
+                Put put = new Put(row);
+                put.add(LOCK_FAMILY, LOCK_QUALIFIER, newRowLock.getCurrentTimestamp(), TRowLocks.serialize(newRowLock));
+                for (TKeyValue kv : mutation.getPut().getValues()) {
+                    put.add(kv.getKey().getFamily(), kv.getKey().getQualifier(), newRowLock.getCurrentTimestamp(), kv.getValue());
                 }
-                case REMOVE: {
-                    Delete delete = new Delete(row);
-                    if (mutation.getRemove().getRemoveFamiliesSize() > 0) {
-                        for (ByteBuffer removeFamily : mutation.getRemove().getRemoveFamilies()) {
-                            delete.deleteFamily(removeFamily.array(), mutationTimestamp);
-                        }
-                    }
-                    if (mutation.getRemove().getRemoveCellsSize() > 0) {
-                        for (TCellKey removeCell : mutation.getRemove().getRemoveCells()) {
-                            delete.deleteColumns(removeCell.getFamily(), removeCell.getQualifier(), mutationTimestamp);
-                        }
-                    }
-                    if (!table.checkAndDelete(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, delete)) {
-                        // Consider as conflict because another transaction might acquire lock of this row.
-                        throw new ConflictException("can't acquire row's lock");
-                    }
-                    break;
+                if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, put)) {
+                    // Consider as conflict because another transaction might acquire lock of this row.
+                    throw new ConflictException("can't acquire row's lock");
+                } else {
+                    rowTxState.setCurrent(newRowLock);
                 }
-                default:
-                    break;
+                break;
+            }
+            case REMOVE: {
+                Delete delete = new Delete(row);
+                if (mutation.getRemove().getRemoveFamiliesSize() > 0) {
+                    for (ByteBuffer removeFamily : mutation.getRemove().getRemoveFamilies()) {
+                        delete.deleteFamily(removeFamily.array(), mutationTimestamp);
+                    }
+                }
+                if (mutation.getRemove().getRemoveCellsSize() > 0) {
+                    for (TCellKey removeCell : mutation.getRemove().getRemoveCells()) {
+                        delete.deleteColumns(removeCell.getFamily(), removeCell.getQualifier(), mutationTimestamp);
+                    }
+                }
+                if (!table.checkAndDelete(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, delete)) {
+                    // Consider as conflict because another transaction might acquire lock of this row.
+                    throw new ConflictException("can't acquire row's lock");
+                }
+                break;
+            }
+            default: {
+                break;
+            }
             }
         }
     }
