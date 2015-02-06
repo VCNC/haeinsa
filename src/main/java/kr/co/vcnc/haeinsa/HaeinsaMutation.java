@@ -42,7 +42,7 @@ import com.google.common.collect.Maps;
  * These late Get/Scan operations can see the mutated view of specific row
  * even before those mutations are committed to HBase.
  * <p>
- * HaeinsaMutation provides {@link HaeinsaKeyValueScanner} interface by {@link #getScanner()} method.
+ * HaeinsaMutation provides {@link HaeinsaKeyValueScanner} interface by {@link #getScanner(long)} method.
  */
 public abstract class HaeinsaMutation extends HaeinsaOperation {
     protected byte[] row;
@@ -103,7 +103,7 @@ public abstract class HaeinsaMutation extends HaeinsaOperation {
     public abstract TMutation toTMutation();
 
     /**
-     * Return {@link #HaeinsaKeyValueScanner} interface for single row.
+     * Return {@link HaeinsaKeyValueScanner} interface for single row.
      *
      * @param sequenceID sequence id represent which Scanner is newer one. Lower
      * id is newer one.

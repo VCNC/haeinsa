@@ -34,11 +34,6 @@ import com.google.common.collect.ForwardingObject;
 public class ForwardingHaeinsaTable extends ForwardingObject implements HaeinsaTableIfaceInternal {
     private final HaeinsaTableIfaceInternal delegate;
 
-    /**
-     * Constructor
-     *
-     * @param haeinsaTable HaeinsaTable
-     */
     public ForwardingHaeinsaTable(HaeinsaTableIface haeinsaTable) {
         Preconditions.checkArgument(haeinsaTable instanceof HaeinsaTableIfaceInternal);
         this.delegate = (HaeinsaTableIfaceInternal) haeinsaTable;

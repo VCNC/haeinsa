@@ -36,7 +36,7 @@ import com.google.common.collect.ComparisonChain;
  * same Enum with {@link org.apache.hadoop.hbase.KeyValue.Type}.
  * <p>
  * HaeinsaKeyValue has public static comparator which can be used in
- * navigableMap. This comparator is ComparisionChain of {@link NullableCompator}
+ * navigableMap. This comparator is ComparisionChain of {@link NullableComparator}
  * wrapped {@link org.apache.hadoop.hbase.util.Bytes#BYTES_COMPARATOR}. The
  * order of comparisonChain is row, family, qualifier, value and type.
  */

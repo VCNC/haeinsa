@@ -44,7 +44,7 @@ import com.google.common.hash.Hashing;
  * and have reference to {@link HaeinsaTransactionManager} which created this instance.
  * <p>
  * HaeinsaTransaction can be generated via calling {@link HaeinsaTransactionManager#begin()}
- * or {@link HaeinsaTransactionManager#getTransaction()}.
+ * or {@link HaeinsaTransactionManager#getTransaction(byte[], byte[])}.
  * Former is used when start new transaction, later is used when try to roll back or retry failed transaction.
  * <p>
  * One {@link HaeinsaTransaction} can't be used after calling {@link #commit()} or {@link #rollback()} is called.
@@ -166,7 +166,7 @@ public class HaeinsaTransaction {
     /**
      * Bring {@link HaeinsaTableTransaction} which have name of tableName.
      * If there is no {@link HaeinsaTableTransaction} have this name,
-     * then create one instance for it and save inside {@link #tableStates} and return.
+     * then create one instance for it and save inside {@link #txStates} and return.
      *
      * @return instance of {@link HaeinsaTableTransaction}
      */
@@ -272,7 +272,7 @@ public class HaeinsaTransaction {
     }
 
     /**
-     * Use {@link HaeinsaTable#checkSingleRowLock()} to check RowLock on HBase
+     * Use {@link HaeinsaTable#checkSingleRowLock(HaeinsaRowTransaction, byte[])} to check RowLock on HBase
      * of read-only rows of tx. If all lock-checking by get was success,
      * read-only tx was success. Throws ConflictException otherwise.
      *
@@ -371,7 +371,7 @@ public class HaeinsaTransaction {
      * 1. In case of {@link #commitMultiRowsMutation()}, after changing primary row to
      * {@link TRowLockState#COMMITTED} and applying all mutations in primary row and secondary rows.
      * <p>
-     * 2. When try to {@link #recover()} failed transaction in the middle of execution.
+     * 2. When try to {@link #recover(boolean)} failed transaction in the middle of execution.
      * This method should be called only when primary row is in the state of {@link TRowLockState#COMMITTED}.
      *
      * @throws IOException ConflictException, HBase IOException.
@@ -417,7 +417,7 @@ public class HaeinsaTransaction {
     }
 
     /**
-     * Reload information of failed transaction and complete it by calling {@link #makStable()}
+     * Reload information of failed transaction and complete it by calling {@link #makeStable()}
      * if already completed one, ( when primaryRow have {@link TRowLockState#COMMITTED} state }
      * or abort by calling {@link #abort()} otherwise.
      *
@@ -467,7 +467,7 @@ public class HaeinsaTransaction {
      * <p>
      * Aborting is executed by following order.
      * <ol>
-     * <li>Abort primary row by calling {@link HaeinsaTableIfaceInternal#abortPrimary()}.</li>
+     * <li>Abort primary row by calling {@link HaeinsaTableIfaceInternal#abortPrimary(HaeinsaRowTransaction, byte[])}.</li>
      * <li>Visit all secondary rows and change from prewritten to stable state.
      * Prewritten data on rows are removed at this state.</li>
      * <li>Change primary row to stable state.</li>

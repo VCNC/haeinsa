@@ -167,7 +167,8 @@ public class HaeinsaTransactionManager {
 
     /**
      * Recover TRowLocks of failed HaeinsaTransaction from primary row on HBase.
-     * Transaction information about secondary rows are recovered with {@link #addSecondaryRowLock()}.
+     * Transaction information about secondary rows are recovered with
+     * {@link #addSecondaryRowLock(HaeinsaTransaction, TRowKey, TRowLock, TRowKey)}.
      * HaeinsaTransaction made by this method do not assign proper values on mutations variable.
      */
     private HaeinsaTransaction getTransactionFromPrimary(TRowKey rowKey, TRowLock primaryRowLock) throws IOException {
@@ -194,7 +195,7 @@ public class HaeinsaTransactionManager {
      * Secondary row is not included in recovered transaction neither when commitTimestamp is different with primary row's,
      * because it implicates that the row is locked by other transaction.
      * <p>
-     * As similar to {@link #getTransactionFromPrimary()}, rowTransaction added by this method do not have
+     * As similar to {@link #getTransactionFromPrimary(TRowKey, TRowLock)}, rowTransaction added by this method do not have
      * proper mutations variable.
      */
     private void addSecondaryRowLock(HaeinsaTransaction transaction, TRowKey primaryRowKey,

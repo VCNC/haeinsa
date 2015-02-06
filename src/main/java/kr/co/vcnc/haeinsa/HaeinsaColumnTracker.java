@@ -44,8 +44,7 @@ public class HaeinsaColumnTracker {
      * Constructor of HaeinsaColumnTracker.
      * <p>
      * If this ColumnTracker track {@link HaeinsaScan}, minColumn, maxColumn
-     * should be null and minColumnInclusive, maxColumnInclusive should be
-     * false.
+     * should be null and minColumnInclusive, maxColumnInclusive should be false.
      */
     public HaeinsaColumnTracker(Map<byte[], NavigableSet<byte[]>> familyMap,
                                 byte[] minColumn, boolean minColumnInclusive,

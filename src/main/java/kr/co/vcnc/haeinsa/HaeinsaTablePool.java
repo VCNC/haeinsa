@@ -237,7 +237,7 @@ public class HaeinsaTablePool implements Closeable {
      * table pool.
      * <p>
      * Note: this is a 'shutdown' of the given table pool and different from
-     * {@link #putTable(HaeinsaTableIface)}, that is used to return the table
+     * {@link #release(HaeinsaTableIface)}, that is used to return the table
      * instance to the pool for future re-use.
      */
     public void closeTablePool(final String tableName) throws IOException {

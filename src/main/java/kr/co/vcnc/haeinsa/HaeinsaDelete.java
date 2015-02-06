@@ -32,7 +32,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 
 /**
- * Implementation of {@link HaeinsaMuation} which only contains HaeinsaKeyValue
+ * Implementation of {@link HaeinsaMutation} which only contains HaeinsaKeyValue
  * with {@link Type#DeleteFamily} and {@link Type#DeleteColumn} identifier.
  * HaeinsaPut can be analogous to {@link Delete} class in HBase.
  * <p>

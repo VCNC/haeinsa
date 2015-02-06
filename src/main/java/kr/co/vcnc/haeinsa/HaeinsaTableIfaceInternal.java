@@ -50,8 +50,7 @@ interface HaeinsaTableIfaceInternal extends HaeinsaTableIface {
      * {@link ConflictException}.
      *
      * @throws IOException ConflictException, HBase IOException.
-     * @throws NullPointException if oldLock is null (haven't read lock from
-     * HBase)
+     * @throws NullPointerException if oldLock is null (haven't read lock from HBase)
      */
     void checkSingleRowLock(HaeinsaRowTransaction rowState, byte[] row) throws IOException;
 
@@ -61,7 +60,7 @@ interface HaeinsaTableIfaceInternal extends HaeinsaTableIface {
      * If first mutation in rowState is {@link HaeinsaPut}, then apply consequent Puts in the same RPC which changes lock to
      * {@link TRowLockState#PREWRITTEN}.
      * Remaining mutations which is not applied with first RPC is remained in {@link TRowLock#mutations}.
-     * This field will be used in {@link #applyMutations()} stage.
+     * This field will be used in {@link #applyMutations(HaeinsaRowTransaction, byte[])} stage.
      * Columns written in prewritten stage will be recorded in {@link TRowLock#prewritten} field,
      * which will be used in {@link HaeinsaTransaction#recover(boolean)} to clean up dirty data
      * if transaction failed.
@@ -134,11 +133,11 @@ interface HaeinsaTableIfaceInternal extends HaeinsaTableIface {
 
     /**
      * Delete columns that are prewritten to the specific row during prewritten stage.
+     * <p>
      * Haeinsa can infer prewritten columns to clean up by parsing prewritten field in {@link TRowLock}.
      * Should remove column which have {@link TRowLock#currentTimestamp} as timestamp.
-     * This is possible by using {@link Delete#deleteColumn()} instead of {@link Delete#deleteColumns()}.
      * <p>
-     * Because Haeinsa uses {@link HTableInterface#checkAndDelete()} to delete prewrittens,
+     * Because Haeinsa uses {@link HTableInterface#checkAndDelete(byte[], byte[], byte[], byte[], Delete)} to delete prewrittens,
      * {@link TRowLock} is not changed. It will throw {@link ConflictException} if failed to acquire lock in checkAndDelete.
      *
      * @throws IOException ConflictException, HBase IOException.
