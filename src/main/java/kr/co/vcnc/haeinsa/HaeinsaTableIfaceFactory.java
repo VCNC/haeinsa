@@ -35,8 +35,6 @@ public interface HaeinsaTableIfaceFactory {
 
     /**
      * Release the HaeinsaTable resource represented by the table.
-     * @param table
      */
     void releaseHaeinsaTableIface(final HaeinsaTableIface table) throws IOException;
-
 }

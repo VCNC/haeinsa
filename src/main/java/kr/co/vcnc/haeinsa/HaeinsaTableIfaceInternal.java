@@ -40,8 +40,6 @@ interface HaeinsaTableIfaceInternal extends HaeinsaTableIface {
      * If TRowLock is changed and checkAndPut failed, it means transaction is
      * failed so throw {@link ConflictException}.
      *
-     * @param rowState
-     * @param row
      * @throws IOException ConflictException, HBase IOException.
      */
     void commitSingleRowPutOnly(HaeinsaRowTransaction rowState, byte[] row) throws IOException;
@@ -51,11 +49,9 @@ interface HaeinsaTableIfaceInternal extends HaeinsaTableIface {
      * If TRowLock is changed, it means transaction is failed, so throw
      * {@link ConflictException}.
      *
-     * @param prevRowLock
-     * @param row
      * @throws IOException ConflictException, HBase IOException.
      * @throws NullPointException if oldLock is null (haven't read lock from
-     *         HBase)
+     * HBase)
      */
     void checkSingleRowLock(HaeinsaRowTransaction rowState, byte[] row) throws IOException;
 
@@ -72,9 +68,6 @@ interface HaeinsaTableIfaceInternal extends HaeinsaTableIface {
      * <p>
      * Add list of secondary rows in secondaries field if this row is primary row, add key of primary row in primary field otherwise.
      *
-     * @param rowState
-     * @param row
-     * @param isPrimary
      * @throws IOException ConflictException, HBase IOException
      */
     void prewrite(HaeinsaRowTransaction rowState, byte[] row, boolean isPrimary) throws IOException;
@@ -93,8 +86,6 @@ interface HaeinsaTableIfaceInternal extends HaeinsaTableIface {
      * However this is not an issue for transaction consistency because new client will execute idempotent remove operations one more time
      * on same timestamp which are already used during previous transaction attempt.
      *
-     * @param rowTxState
-     * @param row
      * @throws IOException ConflictException, HBase IOException.
      */
     void applyMutations(HaeinsaRowTransaction rowTxState, byte[] row) throws IOException;
@@ -104,8 +95,6 @@ interface HaeinsaTableIfaceInternal extends HaeinsaTableIface {
      * Use commitTimestamp field of {@link TRowLock} as timestamp on HBase.
      * Only {@link TRowLock#version}, {@link TRowLock#state} and {@link TRowLock#commitTimestamp} fields are written.
      *
-     * @param tx
-     * @param row
      * @throws IOException ConflictException, HBase IOException.
      */
     void makeStable(HaeinsaRowTransaction rowTxState, byte[] row) throws IOException;
@@ -118,8 +107,6 @@ interface HaeinsaTableIfaceInternal extends HaeinsaTableIface {
      * failed-over client will call this method again to extend lock expiry on primary row.
      * In this case, {@link TRowLock} is remained in {@link TRowLockState#COMMITTED}.
      *
-     * @param tx
-     * @param row
      * @throws IOException ConflictException, HBase IOException.
      */
     void commitPrimary(HaeinsaRowTransaction rowTxState, byte[] row) throws IOException;
@@ -141,8 +128,6 @@ interface HaeinsaTableIfaceInternal extends HaeinsaTableIface {
      * or {@link TRowLockState#ABORTED} to another {@link TRowLockState#ABORTED}.
      * Later is when different client failed again during cleaning up aborted transaction.
      *
-     * @param tx
-     * @param row
      * @throws IOException ConflictException, HBase IOException.
      */
     void abortPrimary(HaeinsaRowTransaction rowTxState, byte[] row) throws IOException;
@@ -156,8 +141,6 @@ interface HaeinsaTableIfaceInternal extends HaeinsaTableIface {
      * Because Haeinsa uses {@link HTableInterface#checkAndDelete()} to delete prewrittens,
      * {@link TRowLock} is not changed. It will throw {@link ConflictException} if failed to acquire lock in checkAndDelete.
      *
-     * @param rowTxState
-     * @param row
      * @throws IOException ConflictException, HBase IOException.
      */
     void deletePrewritten(HaeinsaRowTransaction rowTxState, byte[] row) throws IOException;

@@ -35,7 +35,6 @@ import com.google.common.collect.ComparisonChain;
  */
 public interface HaeinsaKeyValueScanner {
     Comparator<HaeinsaKeyValueScanner> COMPARATOR = new Comparator<HaeinsaKeyValueScanner>() {
-
         @Override
         public int compare(HaeinsaKeyValueScanner o1, HaeinsaKeyValueScanner o2) {
             return ComparisonChain.start()
@@ -60,9 +59,7 @@ public interface HaeinsaKeyValueScanner {
     HaeinsaKeyValue next() throws IOException;
 
     /**
-     *
      * @return Return TRowLock if exist in HaeinsaKeyValue. Otherwise, return null
-     * @throws IOException
      */
     TRowLock peekLock() throws IOException;
 

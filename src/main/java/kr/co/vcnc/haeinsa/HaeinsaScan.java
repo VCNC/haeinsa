@@ -26,6 +26,8 @@ import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import com.google.common.collect.Maps;
+
 /**
  * HaeinsaScan is analogous to {@link Scan} class in HBase. HaeinsaScan can be
  * used to retrieve range of row with specific family or (family, qualifier)
@@ -43,8 +45,7 @@ public class HaeinsaScan extends HaeinsaQuery {
     private int caching = -1;
 
     // { family -> qualifier }
-    private Map<byte[], NavigableSet<byte[]>> familyMap =
-            new TreeMap<byte[], NavigableSet<byte[]>>(Bytes.BYTES_COMPARATOR);
+    private Map<byte[], NavigableSet<byte[]>> familyMap = Maps.newTreeMap(Bytes.BYTES_COMPARATOR);
 
     /**
      * Create a HaeinsaScan instance.
@@ -52,8 +53,7 @@ public class HaeinsaScan extends HaeinsaQuery {
      * If row is not specified for HaeinsaScan, the Scanner will start from the
      * beginning of the table.
      */
-    public HaeinsaScan() {
-    }
+    public HaeinsaScan() {}
 
     /**
      * Create a Scan operation starting at the specified row.

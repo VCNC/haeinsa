@@ -27,7 +27,6 @@ import kr.co.vcnc.haeinsa.thrift.generated.TRowKey;
  * exception if there is fatal consistency error in Haeinsa.
  */
 public class DanglingRowLockException extends ConflictException {
-
     private static final long serialVersionUID = -9220580990865263679L;
 
     private final TRowKey danglingRowKey;
@@ -51,5 +50,4 @@ public class DanglingRowLockException extends ConflictException {
     public TRowKey getDanglingRowKey() {
         return danglingRowKey;
     }
-
 }

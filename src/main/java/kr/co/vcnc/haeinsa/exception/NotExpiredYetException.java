@@ -20,11 +20,9 @@ package kr.co.vcnc.haeinsa.exception;
  * This exception extends {@link ConflictException}
  */
 public class NotExpiredYetException extends ConflictException {
-
     private static final long serialVersionUID = -5160271558362505568L;
 
-    public NotExpiredYetException() {
-    }
+    public NotExpiredYetException() {}
 
     public NotExpiredYetException(String message) {
         super(message);

@@ -99,10 +99,6 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
      * Get data from HBase without transaction.
      * {@link HaeinsaTransaction#commit()} to check or mutate lock column of the row scanned by this method.
      * This method can be used when read performance is important or strict consistency of the result is not matter.
-     *
-     * @param get
-     * @return
-     * @throws IOException
      */
     private HaeinsaResult getWithoutTx(HaeinsaGet get) throws IOException {
         Get hGet = new Get(get.getRow());
@@ -272,8 +268,6 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
      * {@link HaeinsaTransaction#commit()} to check or mutate lock column of the row scanned by this method.
      * This method can be used when read performance is important or strict consistency of the result is not matter.
      *
-     * @param scan
-     * @return
      * @throws IOException IOException from HBase.
      */
     private HaeinsaResultScanner getScannerWithoutTx(HaeinsaScan scan) throws IOException {
@@ -313,7 +307,7 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
         }
 
         // scan from startRow ( inclusive ) to startRow + 0x00 ( exclusive )
-        Scan hScan = new Scan(intraScan.getRow(), Bytes.add(intraScan.getRow(), new byte[] { 0x00 }));
+        Scan hScan = new Scan(intraScan.getRow(), Bytes.add(intraScan.getRow(), new byte[]{0x00}));
         hScan.setBatch(intraScan.getBatch());
         hScan.setCacheBlocks(intraScan.getCacheBlocks());
 
@@ -348,12 +342,10 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
      * {@link HaeinsaTransaction#commit()} to check or mutate lock column of the row scanned by this method.
      * This method can be used when read performance is important or strict consistency of the result is not matter.
      *
-     * @param intraScan
-     * @return
      * @throws IOException IOException from HBase.
      */
     private HaeinsaResultScanner getScannerWithoutTx(HaeinsaIntraScan intraScan) throws IOException {
-        Scan hScan = new Scan(intraScan.getRow(), Bytes.add(intraScan.getRow(), new byte[] { 0x00 }));
+        Scan hScan = new Scan(intraScan.getRow(), Bytes.add(intraScan.getRow(), new byte[]{0x00}));
         hScan.setBatch(intraScan.getBatch());
 
         for (byte[] family : intraScan.getFamilies()) {
@@ -393,16 +385,11 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
      * By calling this method proper time, {@link RowTransaction} inside {@link HaeinsaTransaction} can have
      * {@link TRowLock} of the row when this method was called first time in the context of the transaction.
      *
-     * @param tx
-     * @param row
-     * @param tableState
-     * @param rowState
-     * @return
      * @throws IOException ConflictException, HBase IOException
      */
     private HaeinsaRowTransaction checkOrRecoverLock(HaeinsaTransaction tx,
-            byte[] row, HaeinsaTableTransaction tableState,
-            @Nullable HaeinsaRowTransaction rowState) throws IOException {
+                                                     byte[] row, HaeinsaTableTransaction tableState,
+                                                     @Nullable HaeinsaRowTransaction rowState) throws IOException {
         if (rowState != null && rowState.getCurrent() != null) {
             // return rowState itself if rowState already exist and contains TRowLock
             return rowState;
@@ -438,11 +425,10 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
      * Return false if rowLock is in {@link TRowLockState#STABLE} state.
      * Throw {@link ConflictException} if rowLock is not in stable state and not expired yet.
      *
-     * @param rowLock
      * @return true - when lock is established but expired. / false - when there
-     *         is no lock ( {@link TRowLockState#STABLE} )
+     * is no lock ( {@link TRowLockState#STABLE} )
      * @throws IOException {@link NotExpiredYetException} if lock is established and
-     *         not expired.
+     * not expired.
      */
     private boolean checkAndIsShouldRecover(TRowLock rowLock) throws IOException {
         if (rowLock.getState() != TRowLockState.STABLE) {
@@ -459,8 +445,6 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
      * Abort or recover when there is failed transaction on the row,
      * throw {@link ConflictException} when there is ongoing transaction.
      *
-     * @param tx
-     * @param row
      * @throws IOException ConflictException, HBase IOException
      */
     private void recover(HaeinsaTransaction tx, byte[] row) throws IOException {
@@ -541,11 +525,9 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
      * If TRowLock is changed, it means transaction is failed, so throw
      * {@link ConflictException}.
      *
-     * @param prevRowLock
-     * @param row
      * @throws IOException ConflictException, HBase IOException.
      * @throws NullPointException if oldLock is null (haven't read lock from
-     *         HBase)
+     * HBase)
      */
     @Override
     public void checkSingleRowLock(HaeinsaRowTransaction rowState, byte[] row) throws IOException {
@@ -643,45 +625,45 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
 
             TMutation mutation = remaining.get(i);
             switch (mutation.getType()) {
-            case PUT: {
-                TRowLock newRowLock = rowTxState.getCurrent().deepCopy();
-                newRowLock.setCurrentTimestamp(mutationTimestamp);
-                newRowLock.setMutations(remaining.subList(mutationOffset, remaining.size()));
-                // Maintain prewritten state and extend lock by ROW_LOCK_TIMEOUT
-                newRowLock.setExpiry(tx.getExpiry());
-                Put put = new Put(row);
-                put.add(LOCK_FAMILY, LOCK_QUALIFIER, newRowLock.getCurrentTimestamp(), TRowLocks.serialize(newRowLock));
-                for (TKeyValue kv : mutation.getPut().getValues()) {
-                    put.add(kv.getKey().getFamily(), kv.getKey().getQualifier(), newRowLock.getCurrentTimestamp(), kv.getValue());
-                }
-                if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, put)) {
-                    // Consider as conflict because another transaction might acquire lock of this row.
-                    throw new ConflictException("can't acquire row's lock");
-                } else {
-                    rowTxState.setCurrent(newRowLock);
-                }
-                break;
-            }
-            case REMOVE: {
-                Delete delete = new Delete(row);
-                if (mutation.getRemove().getRemoveFamiliesSize() > 0) {
-                    for (ByteBuffer removeFamily : mutation.getRemove().getRemoveFamilies()) {
-                        delete.deleteFamily(removeFamily.array(), mutationTimestamp);
+                case PUT: {
+                    TRowLock newRowLock = rowTxState.getCurrent().deepCopy();
+                    newRowLock.setCurrentTimestamp(mutationTimestamp);
+                    newRowLock.setMutations(remaining.subList(mutationOffset, remaining.size()));
+                    // Maintain prewritten state and extend lock by ROW_LOCK_TIMEOUT
+                    newRowLock.setExpiry(tx.getExpiry());
+                    Put put = new Put(row);
+                    put.add(LOCK_FAMILY, LOCK_QUALIFIER, newRowLock.getCurrentTimestamp(), TRowLocks.serialize(newRowLock));
+                    for (TKeyValue kv : mutation.getPut().getValues()) {
+                        put.add(kv.getKey().getFamily(), kv.getKey().getQualifier(), newRowLock.getCurrentTimestamp(), kv.getValue());
                     }
-                }
-                if (mutation.getRemove().getRemoveCellsSize() > 0) {
-                    for (TCellKey removeCell : mutation.getRemove().getRemoveCells()) {
-                        delete.deleteColumns(removeCell.getFamily(), removeCell.getQualifier(), mutationTimestamp);
+                    if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, put)) {
+                        // Consider as conflict because another transaction might acquire lock of this row.
+                        throw new ConflictException("can't acquire row's lock");
+                    } else {
+                        rowTxState.setCurrent(newRowLock);
                     }
+                    break;
                 }
-                if (!table.checkAndDelete(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, delete)) {
-                    // Consider as conflict because another transaction might acquire lock of this row.
-                    throw new ConflictException("can't acquire row's lock");
+                case REMOVE: {
+                    Delete delete = new Delete(row);
+                    if (mutation.getRemove().getRemoveFamiliesSize() > 0) {
+                        for (ByteBuffer removeFamily : mutation.getRemove().getRemoveFamilies()) {
+                            delete.deleteFamily(removeFamily.array(), mutationTimestamp);
+                        }
+                    }
+                    if (mutation.getRemove().getRemoveCellsSize() > 0) {
+                        for (TCellKey removeCell : mutation.getRemove().getRemoveCells()) {
+                            delete.deleteColumns(removeCell.getFamily(), removeCell.getQualifier(), mutationTimestamp);
+                        }
+                    }
+                    if (!table.checkAndDelete(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, delete)) {
+                        // Consider as conflict because another transaction might acquire lock of this row.
+                        throw new ConflictException("can't acquire row's lock");
+                    }
+                    break;
                 }
-                break;
-            }
-            default:
-                break;
+                default:
+                    break;
             }
         }
     }
@@ -879,29 +861,21 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
         private long maxSeqID = Long.MAX_VALUE;
 
         /**
-         *
-         * @param tx
-         * @param scanners
-         * @param familyMap
          * @param lockInclusive - whether scanners contains {@link TRowLock} inside.
-         *        If not, should bring from {@link RowTransaction} or get from HBase directly.
+         * If not, should bring from {@link RowTransaction} or get from HBase directly.
          */
         public ClientScanner(HaeinsaTransaction tx, Iterable<HaeinsaKeyValueScanner> scanners,
-                Map<byte[], NavigableSet<byte[]>> familyMap, boolean lockInclusive) {
+                             Map<byte[], NavigableSet<byte[]>> familyMap, boolean lockInclusive) {
             this(tx, scanners, familyMap, null, lockInclusive);
         }
 
         /**
-         *
-         * @param tx
-         * @param scanners
-         * @param familyMap
          * @param intraScan - To support to use {@link ColumnRangeFilter}
          * @param lockInclusive - whether scanners contains {@link TRowLock} inside.
-         *        If not, should bring from {@link RowTransaction} or get from HBase directly.
+         * If not, should bring from {@link RowTransaction} or get from HBase directly.
          */
         public ClientScanner(HaeinsaTransaction tx, Iterable<HaeinsaKeyValueScanner> scanners,
-                Map<byte[], NavigableSet<byte[]>> familyMap, HaeinsaIntraScan intraScan, boolean lockInclusive) {
+                             Map<byte[], NavigableSet<byte[]>> familyMap, HaeinsaIntraScan intraScan, boolean lockInclusive) {
             this.tx = tx;
             this.tableState = tx.createOrGetTableState(getTableName());
             for (HaeinsaKeyValueScanner kvScanner : scanners) {
@@ -927,8 +901,6 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
          * the way {@link #nextScanner()} implemented is removing {@link HaeinsaKeyValueScanner} one by one form scanners.
          * {@link #close()} method needs to close every {@link ClientScanner} when called,
          * so some other variable should preserve every scanner when ClientScanner created.
-         *
-         * @throws IOException
          */
         private void initialize() throws IOException {
             try {
@@ -998,10 +970,8 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
          * So proper operation is guaranteed only when every scanner in {@link #scanners} return
          * smaller or equal row key when {@link HaeinsaKeyValueScanner#peek()} is called.
          *
-         * @param row
          * @return null if there is no TRowLock information inside scanners,
-         *         return rowLock otherwise.
-         * @throws IOException
+         * return rowLock otherwise.
          */
         private TRowLock peekLock(byte[] row) throws IOException {
             for (HaeinsaKeyValueScanner scanner : scanners) {
@@ -1101,8 +1071,8 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
                         deleteTracker.add(currentKV, currentScanner.getSequenceID());
                     } else if (prevKV == currentKV
                             || !(Bytes.equals(prevKV.getRow(), currentKV.getRow())
-                                    && Bytes.equals(prevKV.getFamily(), currentKV.getFamily())
-                                    && Bytes.equals(prevKV.getQualifier(), currentKV.getQualifier()))) {
+                            && Bytes.equals(prevKV.getFamily(), currentKV.getFamily())
+                            && Bytes.equals(prevKV.getQualifier(), currentKV.getQualifier()))) {
                         // if reference of prevKV and currentKV is same, the currentKV have new row.
                         // Ignore when prevKV and currentKV is different but row, family,
                         // qualifier of currentKv and prevKv is all same. (not likely)
@@ -1143,9 +1113,6 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
          * Moving index of scanner of currentScanner by one. If there is no more
          * element at the scanner, remove currentScanner from scanners
          * (NavigableSet)
-         *
-         * @param currentScanner
-         * @throws IOException
          */
         private void nextScanner(HaeinsaKeyValueScanner currentScanner) throws IOException {
             scanners.remove(currentScanner);
@@ -1366,7 +1333,6 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
         }
 
         @Override
-        public void close() {
-        }
+        public void close() {}
     }
 }

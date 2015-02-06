@@ -59,7 +59,7 @@ public class HaeinsaResult {
      * Construct HaeinsaResultImpl from sorted list of HaeinsaKeyValue
      *
      * @param sortedKVs - Assumed that {@link HaeinsaKeyValue}s in sortedKVs
-     *        have same row with first element and sorted in ascending order.
+     * have same row with first element and sorted in ascending order.
      */
     public HaeinsaResult(List<HaeinsaKeyValue> sortedKVs) {
         this.sortedKVs = sortedKVs;

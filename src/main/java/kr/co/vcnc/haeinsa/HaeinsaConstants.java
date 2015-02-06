@@ -26,8 +26,7 @@ import org.apache.hadoop.hbase.util.Bytes;
  * Static Class of Constants for Haeinsa
  */
 public final class HaeinsaConstants {
-    private HaeinsaConstants() {
-    }
+    private HaeinsaConstants() {}
 
     /**
      * Haeinsa protocol version of this release.

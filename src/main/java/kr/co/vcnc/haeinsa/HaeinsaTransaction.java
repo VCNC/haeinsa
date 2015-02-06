@@ -168,7 +168,6 @@ public class HaeinsaTransaction {
      * If there is no {@link HaeinsaTableTransaction} have this name,
      * then create one instance for it and save inside {@link #tableStates} and return.
      *
-     * @param tableName
      * @return instance of {@link HaeinsaTableTransaction}
      */
     protected HaeinsaTableTransaction createOrGetTableState(byte[] tableName) {
@@ -251,23 +250,23 @@ public class HaeinsaTransaction {
 
         CommitMethod method = txStates.determineCommitMethod();
         switch (method) {
-        case READ_ONLY: {
-            commitReadOnly();
-            break;
-        }
-        case SINGLE_ROW_PUT_ONLY: {
-            commitSingleRowPutOnly();
-            break;
-        }
-        case MULTI_ROW_MUTATIONS: {
-            commitMultiRowsMutation();
-            break;
-        }
-        case NOTHING: {
-            break;
-        }
-        default:
-            break;
+            case READ_ONLY: {
+                commitReadOnly();
+                break;
+            }
+            case SINGLE_ROW_PUT_ONLY: {
+                commitSingleRowPutOnly();
+                break;
+            }
+            case MULTI_ROW_MUTATIONS: {
+                commitMultiRowsMutation();
+                break;
+            }
+            case NOTHING: {
+                break;
+            }
+            default:
+                break;
         }
     }
 
@@ -309,8 +308,6 @@ public class HaeinsaTransaction {
     /**
      * Commit single row & PUT only (possibly include get/scan, but not Delete)
      * Transaction.
-     *
-     * @throws IOException
      */
     private void commitSingleRowPutOnly() throws IOException {
         HaeinsaTableTransaction primaryTableState = createOrGetTableState(primary.getTableName());
@@ -424,7 +421,6 @@ public class HaeinsaTransaction {
      * or abort by calling {@link #abort()} otherwise.
      *
      * @param ignoreExpiry ignore row lock's expiry
-     * @throws IOException
      */
     protected void recover(boolean ignoreExpiry) throws IOException {
         boolean onRecovery = true;
@@ -443,18 +439,18 @@ public class HaeinsaTransaction {
         extendExpiry();
 
         switch (primaryRowTx.getCurrent().getState()) {
-        case ABORTED:
-        case PREWRITTEN: {
-            abort();
-            break;
-        }
-        case COMMITTED: {
-            // Transaction is already succeeded.
-            makeStable();
-            break;
-        }
-        default:
-            throw new ConflictException();
+            case ABORTED:
+            case PREWRITTEN: {
+                abort();
+                break;
+            }
+            case COMMITTED: {
+                // Transaction is already succeeded.
+                makeStable();
+                break;
+            }
+            default:
+                throw new ConflictException();
         }
     }
 
@@ -515,6 +511,7 @@ public class HaeinsaTransaction {
 
     /**
      * for unit test code
+     *
      * @param onRecovery onRecovery
      */
     void classifyAndSortRows(boolean onRecovery) {
@@ -546,7 +543,7 @@ public class HaeinsaTransaction {
          * This method returns false only if there is no changes on data in the transaction.
          *
          * @return true if one or more row state has mutation,
-         *         false if any row does not contains mutation.
+         * false if any row does not contains mutation.
          */
         public boolean hasChanges() {
             for (HaeinsaTableTransaction tableState : tableStates.values()) {
@@ -566,8 +563,6 @@ public class HaeinsaTransaction {
          * <p>
          * Transaction of single row with at least one of {@link HaeinsaDelete}
          * will be considered as {@link CommitMethod#MULTI_ROW_MUTATIONS}.
-         *
-         * @return
          */
         public CommitMethod determineCommitMethod() {
             int count = 0;
@@ -606,8 +601,6 @@ public class HaeinsaTransaction {
 
         /**
          * Return mutation rows which is hash-sorted by TRowKey(table, row).
-         *
-         * @return
          */
         public NavigableMap<TRowKey, HaeinsaRowTransaction> getMutationRowStates() {
             Preconditions.checkNotNull(mutationRowStates, "Should call classifyAndSortRows first.");
@@ -616,8 +609,6 @@ public class HaeinsaTransaction {
 
         /**
          * Return read-only rows which is hash-sorted by TRowKey(table, row).
-         *
-         * @return
          */
         public NavigableMap<TRowKey, HaeinsaRowTransaction> getReadOnlyRowStates() {
             Preconditions.checkNotNull(readOnlyRowStates, "Should call classifyAndSortRows first.");

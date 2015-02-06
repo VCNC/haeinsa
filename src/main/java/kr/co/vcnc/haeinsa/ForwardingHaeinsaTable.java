@@ -36,6 +36,7 @@ public class ForwardingHaeinsaTable extends ForwardingObject implements HaeinsaT
 
     /**
      * Constructor
+     *
      * @param haeinsaTable HaeinsaTable
      */
     public ForwardingHaeinsaTable(HaeinsaTableIface haeinsaTable) {

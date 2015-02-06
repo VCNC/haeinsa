@@ -60,9 +60,8 @@ class HaeinsaTableTransaction {
      * - Use {@link TRowLocks#serialize(null)} method to set default {@link TRowLock} to current field of rowTransaction.</li>
      * </ol>
      *
-     * @param row
      * @return RowTransaction - {@link HaeinsaRowTransaction} which contained in
-     *         this instance.
+     * this instance.
      */
     public HaeinsaRowTransaction createOrGetRowState(byte[] row) {
         HaeinsaRowTransaction rowState = rowStates.get(row);

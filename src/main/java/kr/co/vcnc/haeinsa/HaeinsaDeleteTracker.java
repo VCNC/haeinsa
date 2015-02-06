@@ -39,38 +39,35 @@ public class HaeinsaDeleteTracker {
      */
     public void add(HaeinsaKeyValue kv, long sequenceID) {
         switch (kv.getType()) {
-        case DeleteFamily: {
-            Long previous = families.get(kv.getFamily());
-            if (previous == null || previous.compareTo(sequenceID) > 0) {
-                // sequenceId is lower than previous one.
-                families.put(kv.getFamily(), sequenceID);
+            case DeleteFamily: {
+                Long previous = families.get(kv.getFamily());
+                if (previous == null || previous.compareTo(sequenceID) > 0) {
+                    // sequenceId is lower than previous one.
+                    families.put(kv.getFamily(), sequenceID);
+                }
+                break;
             }
-            break;
-        }
-        case DeleteColumn: {
-            NavigableMap<byte[], Long> cellMap = cells.get(kv.getFamily());
-            if (cellMap == null) {
-                cellMap = Maps.newTreeMap(Bytes.BYTES_COMPARATOR);
-                cells.put(kv.getFamily(), cellMap);
+            case DeleteColumn: {
+                NavigableMap<byte[], Long> cellMap = cells.get(kv.getFamily());
+                if (cellMap == null) {
+                    cellMap = Maps.newTreeMap(Bytes.BYTES_COMPARATOR);
+                    cells.put(kv.getFamily(), cellMap);
+                }
+                Long previous = families.get(kv.getQualifier());
+                if (previous == null || previous.compareTo(sequenceID) > 0) {
+                    // sequenceId is lower than previous one.
+                    cellMap.put(kv.getQualifier(), sequenceID);
+                }
+                break;
             }
-            Long previous = families.get(kv.getQualifier());
-            if (previous == null || previous.compareTo(sequenceID) > 0) {
-                // sequenceId is lower than previous one.
-                cellMap.put(kv.getQualifier(), sequenceID);
-            }
-            break;
-        }
-        default:
-            break;
+            default:
+                break;
         }
     }
 
     /**
-     *
-     * @param kv
-     * @param sequenceID
      * @return Return true if kv is deleted after sequenceID (lower sequenceID),
-     *         return false otherwise.
+     * return false otherwise.
      */
     public boolean isDeleted(HaeinsaKeyValue kv, long sequenceID) {
         // check family

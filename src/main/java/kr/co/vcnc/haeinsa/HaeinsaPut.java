@@ -17,7 +17,6 @@ package kr.co.vcnc.haeinsa;
 
 import java.util.Map;
 import java.util.NavigableSet;
-import java.util.TreeMap;
 
 import kr.co.vcnc.haeinsa.thrift.generated.TCellKey;
 import kr.co.vcnc.haeinsa.thrift.generated.TKeyValue;
@@ -32,6 +31,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 /**
@@ -54,7 +54,7 @@ public class HaeinsaPut extends HaeinsaMutation {
      */
     public HaeinsaPut(HaeinsaPut putToCopy) {
         this(putToCopy.getRow());
-        this.familyMap = new TreeMap<byte[], NavigableSet<HaeinsaKeyValue>>(Bytes.BYTES_COMPARATOR);
+        this.familyMap = Maps.newTreeMap(Bytes.BYTES_COMPARATOR);
         for (Map.Entry<byte[], NavigableSet<HaeinsaKeyValue>> entry : putToCopy.getFamilyMap().entrySet()) {
             this.familyMap.put(entry.getKey(), entry.getValue());
         }
@@ -98,7 +98,7 @@ public class HaeinsaPut extends HaeinsaMutation {
      *
      * @param family column family
      * @return a set of KeyValue objects, returns an empty set if one doesn't
-     *         exist.
+     * exist.
      */
     private NavigableSet<HaeinsaKeyValue> getKeyValueSet(byte[] family) {
         NavigableSet<HaeinsaKeyValue> set = familyMap.get(family);
