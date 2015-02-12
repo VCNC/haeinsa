@@ -37,6 +37,8 @@ import org.apache.thrift.protocol.TProtocolFactory;
  * TRowLock(commitTimestamp = Long.MIN_VALUE) <=> byte[] null
  */
 public final class TRowLocks {
+    private TRowLocks() {}
+
     private static final TProtocolFactory PROTOCOL_FACTORY = new TCompactProtocol.Factory();
 
     private static TSerializer createSerializer() {
@@ -45,9 +47,6 @@ public final class TRowLocks {
 
     private static TDeserializer createDeserializer() {
         return new TDeserializer(PROTOCOL_FACTORY);
-    }
-
-    private TRowLocks() {
     }
 
     public static TRowLock deserialize(byte[] rowLockBytes) throws IOException {

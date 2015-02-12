@@ -36,7 +36,7 @@ import com.google.common.collect.ComparisonChain;
  * same Enum with {@link org.apache.hadoop.hbase.KeyValue.Type}.
  * <p>
  * HaeinsaKeyValue has public static comparator which can be used in
- * navigableMap. This comparator is ComparisionChain of {@link NullableCompator}
+ * navigableMap. This comparator is ComparisionChain of {@link NullableComparator}
  * wrapped {@link org.apache.hadoop.hbase.util.Bytes#BYTES_COMPARATOR}. The
  * order of comparisonChain is row, family, qualifier, value and type.
  */
@@ -45,9 +45,9 @@ public class HaeinsaKeyValue {
         @Override
         public int compare(HaeinsaKeyValue o1, HaeinsaKeyValue o2) {
             return ComparisonChain.start()
-                    .compare(o1.getRow(), o2.getRow(), new NullableComparator<byte[]>(Bytes.BYTES_COMPARATOR))
-                    .compare(o1.getFamily(), o2.getFamily(), new NullableComparator<byte[]>(Bytes.BYTES_COMPARATOR))
-                    .compare(o1.getQualifier(), o2.getQualifier(), new NullableComparator<byte[]>(Bytes.BYTES_COMPARATOR))
+                    .compare(o1.getRow(), o2.getRow(), new NullableComparator<>(Bytes.BYTES_COMPARATOR))
+                    .compare(o1.getFamily(), o2.getFamily(), new NullableComparator<>(Bytes.BYTES_COMPARATOR))
+                    .compare(o1.getQualifier(), o2.getQualifier(), new NullableComparator<>(Bytes.BYTES_COMPARATOR))
                     .compare(o2.getType().getCode() & 0xFF, o1.getType().getCode() & 0xFF)
                     .result();
         }

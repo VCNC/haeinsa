@@ -79,11 +79,9 @@ class HaeinsaRowTransaction {
     }
 
     /**
-     * Return list of {@link HaeinsaKeyValueScanner}s which wrap mutations -
-     * (Put & Delete) contained inside instance. Also assign sequenceID to every
-     * {@link HaeinsaMutation#MutationScanner}.
-     *
-     * @return
+     * Return list of {@link HaeinsaKeyValueScanner}s which wrap mutations
+     * (Put and Delete) contained inside instance. Also assign sequenceID to every
+     * MutationScanner of {@link HaeinsaMutation}.
      */
     public List<HaeinsaKeyValueScanner> getScanners() {
         List<HaeinsaKeyValueScanner> result = Lists.newArrayList();

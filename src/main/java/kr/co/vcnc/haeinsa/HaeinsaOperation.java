@@ -15,5 +15,4 @@
  */
 package kr.co.vcnc.haeinsa;
 
-public abstract class HaeinsaOperation {
-}
+public abstract class HaeinsaOperation {}

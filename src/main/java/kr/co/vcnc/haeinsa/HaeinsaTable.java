@@ -99,10 +99,6 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
      * Get data from HBase without transaction.
      * {@link HaeinsaTransaction#commit()} to check or mutate lock column of the row scanned by this method.
      * This method can be used when read performance is important or strict consistency of the result is not matter.
-     *
-     * @param get
-     * @return
-     * @throws IOException
      */
     private HaeinsaResult getWithoutTx(HaeinsaGet get) throws IOException {
         Get hGet = new Get(get.getRow());
@@ -204,7 +200,7 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
     /**
      * Haeinsa implementation of {@link Scan}.
      * Scan range of row inside defined by {@link HaeinsaScan} in the context of transaction(tx).
-     * Return {@link #ClientScanner} which related to {@link HaeinsaTable} and {@link HaeinsaTransaction}.
+     * Return ClientScanner which related to {@link HaeinsaTable} and {@link HaeinsaTransaction}.
      * <p>
      * Return {@link SimpleClientScanner} which do not support transaction if tx is null.
      * User can use this feature if specific scan operation does not require strong consistency
@@ -272,8 +268,6 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
      * {@link HaeinsaTransaction#commit()} to check or mutate lock column of the row scanned by this method.
      * This method can be used when read performance is important or strict consistency of the result is not matter.
      *
-     * @param scan
-     * @return
      * @throws IOException IOException from HBase.
      */
     private HaeinsaResultScanner getScannerWithoutTx(HaeinsaScan scan) throws IOException {
@@ -297,7 +291,7 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
     /**
      * Haeinsa implementation of {@link ColumnRangeFilter}.
      * Scan range of column inside single row defined by {@link HaeinsaIntraScan} in the context of transaction(tx).
-     * Return {@link #ClientScanner} which related to {@link HaeinsaTable} and {@link HaeinsaTransaction}.
+     * Return {@link ClientScanner} which related to {@link HaeinsaTable} and {@link HaeinsaTransaction}.
      * <p>
      * Return {@link SimpleClientScanner} which do not support transaction if tx is null.
      * User can use this feature if specific intra-scan operation does not require strong consistency.
@@ -313,7 +307,7 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
         }
 
         // scan from startRow ( inclusive ) to startRow + 0x00 ( exclusive )
-        Scan hScan = new Scan(intraScan.getRow(), Bytes.add(intraScan.getRow(), new byte[] { 0x00 }));
+        Scan hScan = new Scan(intraScan.getRow(), Bytes.add(intraScan.getRow(), new byte[]{0x00}));
         hScan.setBatch(intraScan.getBatch());
         hScan.setCacheBlocks(intraScan.getCacheBlocks());
 
@@ -348,12 +342,10 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
      * {@link HaeinsaTransaction#commit()} to check or mutate lock column of the row scanned by this method.
      * This method can be used when read performance is important or strict consistency of the result is not matter.
      *
-     * @param intraScan
-     * @return
      * @throws IOException IOException from HBase.
      */
     private HaeinsaResultScanner getScannerWithoutTx(HaeinsaIntraScan intraScan) throws IOException {
-        Scan hScan = new Scan(intraScan.getRow(), Bytes.add(intraScan.getRow(), new byte[] { 0x00 }));
+        Scan hScan = new Scan(intraScan.getRow(), Bytes.add(intraScan.getRow(), new byte[]{0x00}));
         hScan.setBatch(intraScan.getBatch());
 
         for (byte[] family : intraScan.getFamilies()) {
@@ -388,21 +380,16 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
      * Check rowState and whether it contains {@link TRowLock} already, create one if not.
      * <p>
      * Get {@link TRowLock} of the row from HBase if rowState does not contains it.
-     * If lock is not in stable state, try to recover it first by {@link HaeinsaTrasaction#recover()}.
+     * If lock is not in stable state, try to recover it first by {@link HaeinsaTransaction#recover(boolean)}.
      * <p>
-     * By calling this method proper time, {@link RowTransaction} inside {@link HaeinsaTransaction} can have
+     * By calling this method proper time, {@link HaeinsaRowTransaction} inside {@link HaeinsaTransaction} can have
      * {@link TRowLock} of the row when this method was called first time in the context of the transaction.
      *
-     * @param tx
-     * @param row
-     * @param tableState
-     * @param rowState
-     * @return
      * @throws IOException ConflictException, HBase IOException
      */
     private HaeinsaRowTransaction checkOrRecoverLock(HaeinsaTransaction tx,
-            byte[] row, HaeinsaTableTransaction tableState,
-            @Nullable HaeinsaRowTransaction rowState) throws IOException {
+                                                     byte[] row, HaeinsaTableTransaction tableState,
+                                                     @Nullable HaeinsaRowTransaction rowState) throws IOException {
         if (rowState != null && rowState.getCurrent() != null) {
             // return rowState itself if rowState already exist and contains TRowLock
             return rowState;
@@ -438,11 +425,10 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
      * Return false if rowLock is in {@link TRowLockState#STABLE} state.
      * Throw {@link ConflictException} if rowLock is not in stable state and not expired yet.
      *
-     * @param rowLock
      * @return true - when lock is established but expired. / false - when there
-     *         is no lock ( {@link TRowLockState#STABLE} )
+     * is no lock ( {@link TRowLockState#STABLE} )
      * @throws IOException {@link NotExpiredYetException} if lock is established and
-     *         not expired.
+     * not expired.
      */
     private boolean checkAndIsShouldRecover(TRowLock rowLock) throws IOException {
         if (rowLock.getState() != TRowLockState.STABLE) {
@@ -455,12 +441,10 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
     }
 
     /**
-     * Call {@link HaeinsaTransaction#recover()}.
+     * Call {@link HaeinsaTransaction#recover(boolean)}.
      * Abort or recover when there is failed transaction on the row,
      * throw {@link ConflictException} when there is ongoing transaction.
      *
-     * @param tx
-     * @param row
      * @throws IOException ConflictException, HBase IOException
      */
     private void recover(HaeinsaTransaction tx, byte[] row) throws IOException {
@@ -541,11 +525,8 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
      * If TRowLock is changed, it means transaction is failed, so throw
      * {@link ConflictException}.
      *
-     * @param prevRowLock
-     * @param row
      * @throws IOException ConflictException, HBase IOException.
-     * @throws NullPointException if oldLock is null (haven't read lock from
-     *         HBase)
+     * @throws NullPointerException if oldLock is null (haven't read lock from HBase)
      */
     @Override
     public void checkSingleRowLock(HaeinsaRowTransaction rowState, byte[] row) throws IOException {
@@ -680,8 +661,9 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
                 }
                 break;
             }
-            default:
+            default: {
                 break;
+            }
             }
         }
     }
@@ -798,7 +780,7 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
     }
 
     /**
-     * Implementation of {@link HaeinsaReulstScanner} which is used when scan without transaction.
+     * Implementation of {@link HaeinsaResultScanner} which is used when scan without transaction.
      */
     private class SimpleClientScanner implements HaeinsaResultScanner {
         private final ResultScanner scanner;
@@ -879,29 +861,21 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
         private long maxSeqID = Long.MAX_VALUE;
 
         /**
-         *
-         * @param tx
-         * @param scanners
-         * @param familyMap
          * @param lockInclusive - whether scanners contains {@link TRowLock} inside.
-         *        If not, should bring from {@link RowTransaction} or get from HBase directly.
+         * If not, should bring from {@link HaeinsaRowTransaction} or get from HBase directly.
          */
         public ClientScanner(HaeinsaTransaction tx, Iterable<HaeinsaKeyValueScanner> scanners,
-                Map<byte[], NavigableSet<byte[]>> familyMap, boolean lockInclusive) {
+                             Map<byte[], NavigableSet<byte[]>> familyMap, boolean lockInclusive) {
             this(tx, scanners, familyMap, null, lockInclusive);
         }
 
         /**
-         *
-         * @param tx
-         * @param scanners
-         * @param familyMap
          * @param intraScan - To support to use {@link ColumnRangeFilter}
          * @param lockInclusive - whether scanners contains {@link TRowLock} inside.
-         *        If not, should bring from {@link RowTransaction} or get from HBase directly.
+         * If not, should bring from {@link HaeinsaRowTransaction} or get from HBase directly.
          */
         public ClientScanner(HaeinsaTransaction tx, Iterable<HaeinsaKeyValueScanner> scanners,
-                Map<byte[], NavigableSet<byte[]>> familyMap, HaeinsaIntraScan intraScan, boolean lockInclusive) {
+                             Map<byte[], NavigableSet<byte[]>> familyMap, HaeinsaIntraScan intraScan, boolean lockInclusive) {
             this.tx = tx;
             this.tableState = tx.createOrGetTableState(getTableName());
             for (HaeinsaKeyValueScanner kvScanner : scanners) {
@@ -924,11 +898,10 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
          * Only can be called one time for every ClientScanner.
          * <p>
          * The reason why there are different variables for {@link #scannerList} and {@link #scanners} is that
-         * the way {@link #nextScanner()} implemented is removing {@link HaeinsaKeyValueScanner} one by one form scanners.
+         * the way {@link #nextScanner(HaeinsaKeyValueScanner)} implemented is removing
+         * {@link HaeinsaKeyValueScanner} one by one form scanners.
          * {@link #close()} method needs to close every {@link ClientScanner} when called,
          * so some other variable should preserve every scanner when ClientScanner created.
-         *
-         * @throws IOException
          */
         private void initialize() throws IOException {
             try {
@@ -990,7 +963,7 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
         }
 
         /**
-         * Return {@link TRowLock} for specific row from {@link IOException#scanners}.
+         * Return {@link TRowLock} for specific row from {@link #scanners}.
          * Return null if there is no proper {@link TRowLock}.
          * <p>
          * If one of these {@link #scanners} has row key which is smaller than given row,
@@ -998,10 +971,8 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
          * So proper operation is guaranteed only when every scanner in {@link #scanners} return
          * smaller or equal row key when {@link HaeinsaKeyValueScanner#peek()} is called.
          *
-         * @param row
          * @return null if there is no TRowLock information inside scanners,
-         *         return rowLock otherwise.
-         * @throws IOException
+         * return rowLock otherwise.
          */
         private TRowLock peekLock(byte[] row) throws IOException {
             for (HaeinsaKeyValueScanner scanner : scanners) {
@@ -1101,8 +1072,8 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
                         deleteTracker.add(currentKV, currentScanner.getSequenceID());
                     } else if (prevKV == currentKV
                             || !(Bytes.equals(prevKV.getRow(), currentKV.getRow())
-                                    && Bytes.equals(prevKV.getFamily(), currentKV.getFamily())
-                                    && Bytes.equals(prevKV.getQualifier(), currentKV.getQualifier()))) {
+                            && Bytes.equals(prevKV.getFamily(), currentKV.getFamily())
+                            && Bytes.equals(prevKV.getQualifier(), currentKV.getQualifier()))) {
                         // if reference of prevKV and currentKV is same, the currentKV have new row.
                         // Ignore when prevKV and currentKV is different but row, family,
                         // qualifier of currentKv and prevKv is all same. (not likely)
@@ -1143,9 +1114,6 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
          * Moving index of scanner of currentScanner by one. If there is no more
          * element at the scanner, remove currentScanner from scanners
          * (NavigableSet)
-         *
-         * @param currentScanner
-         * @throws IOException
          */
         private void nextScanner(HaeinsaKeyValueScanner currentScanner) throws IOException {
             scanners.remove(currentScanner);
@@ -1301,8 +1269,8 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
      * So {@link #peek()} method or {@link #next()} method will return value from same row.
      * <p>
      * HBaseGetScanner is now used in two cases.
-     * First, inside {@link HaeinsaTable#get()}, {@link HaeinsaKeyValue}s returned by this class will
-     * always have sequenceId of Long.MAX_VALUE.
+     * First, inside {@link HaeinsaTable#get(HaeinsaTransaction, HaeinsaGet)}, {@link HaeinsaKeyValue}s
+     * returned by this class will always have sequenceId of Long.MAX_VALUE.
      * Second is used inside {@link ClientScanner}. In this case, HBaseGetScanner recover failed transaction and
      * get recovered data from HBase.
      * Recovered {@link HaeinsaKeyValue} should have smaller sequenceId contained in ClientScanner so far
@@ -1366,7 +1334,6 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
         }
 
         @Override
-        public void close() {
-        }
+        public void close() {}
     }
 }

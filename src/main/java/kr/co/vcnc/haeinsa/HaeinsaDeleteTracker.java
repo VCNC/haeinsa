@@ -31,11 +31,10 @@ public class HaeinsaDeleteTracker {
     private final NavigableMap<byte[], NavigableMap<byte[], Long>> cells = Maps.newTreeMap(Bytes.BYTES_COMPARATOR);
 
     /**
-     * Update family map or column map if kv is not exist in map or sequenceId
-     * is lower.
+     * Update family map or column map if kv is not exist in map or sequenceId is lower.
      *
-     * @param kv - HaeinsaKeyValue to track
-     * @param sequenceID - sequence ID, lower is newer.
+     * @param kv  HaeinsaKeyValue to track
+     * @param sequenceID sequence ID, lower is newer.
      */
     public void add(HaeinsaKeyValue kv, long sequenceID) {
         switch (kv.getType()) {
@@ -60,17 +59,14 @@ public class HaeinsaDeleteTracker {
             }
             break;
         }
-        default:
+        default: {
             break;
+        }
         }
     }
 
     /**
-     *
-     * @param kv
-     * @param sequenceID
-     * @return Return true if kv is deleted after sequenceID (lower sequenceID),
-     *         return false otherwise.
+     * @return Return true if kv is deleted after sequenceID (lower sequenceID), return false otherwise.
      */
     public boolean isDeleted(HaeinsaKeyValue kv, long sequenceID) {
         // check family

@@ -44,7 +44,7 @@ import com.google.common.hash.Hashing;
  * and have reference to {@link HaeinsaTransactionManager} which created this instance.
  * <p>
  * HaeinsaTransaction can be generated via calling {@link HaeinsaTransactionManager#begin()}
- * or {@link HaeinsaTransactionManager#getTransaction()}.
+ * or {@link HaeinsaTransactionManager#getTransaction(byte[], byte[])}.
  * Former is used when start new transaction, later is used when try to roll back or retry failed transaction.
  * <p>
  * One {@link HaeinsaTransaction} can't be used after calling {@link #commit()} or {@link #rollback()} is called.
@@ -166,9 +166,8 @@ public class HaeinsaTransaction {
     /**
      * Bring {@link HaeinsaTableTransaction} which have name of tableName.
      * If there is no {@link HaeinsaTableTransaction} have this name,
-     * then create one instance for it and save inside {@link #tableStates} and return.
+     * then create one instance for it and save inside {@link #txStates} and return.
      *
-     * @param tableName
      * @return instance of {@link HaeinsaTableTransaction}
      */
     protected HaeinsaTableTransaction createOrGetTableState(byte[] tableName) {
@@ -266,13 +265,14 @@ public class HaeinsaTransaction {
         case NOTHING: {
             break;
         }
-        default:
+        default: {
             break;
+        }
         }
     }
 
     /**
-     * Use {@link HaeinsaTable#checkSingleRowLock()} to check RowLock on HBase
+     * Use {@link HaeinsaTable#checkSingleRowLock(HaeinsaRowTransaction, byte[])} to check RowLock on HBase
      * of read-only rows of tx. If all lock-checking by get was success,
      * read-only tx was success. Throws ConflictException otherwise.
      *
@@ -309,8 +309,6 @@ public class HaeinsaTransaction {
     /**
      * Commit single row & PUT only (possibly include get/scan, but not Delete)
      * Transaction.
-     *
-     * @throws IOException
      */
     private void commitSingleRowPutOnly() throws IOException {
         HaeinsaTableTransaction primaryTableState = createOrGetTableState(primary.getTableName());
@@ -373,7 +371,7 @@ public class HaeinsaTransaction {
      * 1. In case of {@link #commitMultiRowsMutation()}, after changing primary row to
      * {@link TRowLockState#COMMITTED} and applying all mutations in primary row and secondary rows.
      * <p>
-     * 2. When try to {@link #recover()} failed transaction in the middle of execution.
+     * 2. When try to {@link #recover(boolean)} failed transaction in the middle of execution.
      * This method should be called only when primary row is in the state of {@link TRowLockState#COMMITTED}.
      *
      * @throws IOException ConflictException, HBase IOException.
@@ -419,12 +417,11 @@ public class HaeinsaTransaction {
     }
 
     /**
-     * Reload information of failed transaction and complete it by calling {@link #makStable()}
+     * Reload information of failed transaction and complete it by calling {@link #makeStable()}
      * if already completed one, ( when primaryRow have {@link TRowLockState#COMMITTED} state }
      * or abort by calling {@link #abort()} otherwise.
      *
      * @param ignoreExpiry ignore row lock's expiry
-     * @throws IOException
      */
     protected void recover(boolean ignoreExpiry) throws IOException {
         boolean onRecovery = true;
@@ -470,7 +467,7 @@ public class HaeinsaTransaction {
      * <p>
      * Aborting is executed by following order.
      * <ol>
-     * <li>Abort primary row by calling {@link HaeinsaTableIfaceInternal#abortPrimary()}.</li>
+     * <li>Abort primary row by calling {@link HaeinsaTableIfaceInternal#abortPrimary(HaeinsaRowTransaction, byte[])}.</li>
      * <li>Visit all secondary rows and change from prewritten to stable state.
      * Prewritten data on rows are removed at this state.</li>
      * <li>Change primary row to stable state.</li>
@@ -515,6 +512,7 @@ public class HaeinsaTransaction {
 
     /**
      * for unit test code
+     *
      * @param onRecovery onRecovery
      */
     void classifyAndSortRows(boolean onRecovery) {
@@ -546,7 +544,7 @@ public class HaeinsaTransaction {
          * This method returns false only if there is no changes on data in the transaction.
          *
          * @return true if one or more row state has mutation,
-         *         false if any row does not contains mutation.
+         * false if any row does not contains mutation.
          */
         public boolean hasChanges() {
             for (HaeinsaTableTransaction tableState : tableStates.values()) {
@@ -566,8 +564,6 @@ public class HaeinsaTransaction {
          * <p>
          * Transaction of single row with at least one of {@link HaeinsaDelete}
          * will be considered as {@link CommitMethod#MULTI_ROW_MUTATIONS}.
-         *
-         * @return
          */
         public CommitMethod determineCommitMethod() {
             int count = 0;
@@ -606,8 +602,6 @@ public class HaeinsaTransaction {
 
         /**
          * Return mutation rows which is hash-sorted by TRowKey(table, row).
-         *
-         * @return
          */
         public NavigableMap<TRowKey, HaeinsaRowTransaction> getMutationRowStates() {
             Preconditions.checkNotNull(mutationRowStates, "Should call classifyAndSortRows first.");
@@ -616,8 +610,6 @@ public class HaeinsaTransaction {
 
         /**
          * Return read-only rows which is hash-sorted by TRowKey(table, row).
-         *
-         * @return
          */
         public NavigableMap<TRowKey, HaeinsaRowTransaction> getReadOnlyRowStates() {
             Preconditions.checkNotNull(readOnlyRowStates, "Should call classifyAndSortRows first.");

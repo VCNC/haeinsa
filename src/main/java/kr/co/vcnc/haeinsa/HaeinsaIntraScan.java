@@ -16,10 +16,11 @@
 package kr.co.vcnc.haeinsa;
 
 import java.util.NavigableSet;
-import java.util.TreeSet;
 
 import org.apache.hadoop.hbase.filter.ColumnRangeFilter;
 import org.apache.hadoop.hbase.util.Bytes;
+
+import com.google.common.collect.Sets;
 
 /**
  * Custom integration of {@link ColumnRangeFilter} in Haeinsa. In contrast to
@@ -40,11 +41,11 @@ public class HaeinsaIntraScan extends HaeinsaQuery {
     private int batch = 32;
 
     // if this set is empty, then scan every family
-    private final NavigableSet<byte[]> families = new TreeSet<byte[]>(Bytes.BYTES_COMPARATOR);
+    private final NavigableSet<byte[]> families = Sets.newTreeSet(Bytes.BYTES_COMPARATOR);
 
     public HaeinsaIntraScan(final byte[] row,
-            final byte[] minColumn, boolean minColumnInclusive,
-            final byte[] maxColumn, boolean maxColumnInclusive) {
+                            final byte[] minColumn, boolean minColumnInclusive,
+                            final byte[] maxColumn, boolean maxColumnInclusive) {
         this.row = row;
         this.minColumn = minColumn;
         this.minColumnInclusive = minColumnInclusive;

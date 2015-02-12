@@ -22,11 +22,9 @@ package kr.co.vcnc.haeinsa.exception;
  * because this occurs on failure of write by other transaction.
  */
 public class RecoverableConflictException extends ConflictException {
-
     private static final long serialVersionUID = 3720142235607540830L;
 
-    public RecoverableConflictException() {
-    }
+    public RecoverableConflictException() {}
 
     public RecoverableConflictException(String message) {
         super(message);
