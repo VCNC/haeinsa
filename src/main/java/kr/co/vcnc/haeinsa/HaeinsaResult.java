@@ -39,20 +39,7 @@ public class HaeinsaResult {
      * @param result HBase's result
      */
     public HaeinsaResult(Result result) {
-        if (result.isEmpty()) {
-            List<HaeinsaKeyValue> emptyList = Collections.emptyList();
-            this.sortedKVs = emptyList;
-        } else {
-            List<HaeinsaKeyValue> transformed = Lists.transform(
-                    result.list(),
-                    new Function<KeyValue, HaeinsaKeyValue>() {
-                        @Override
-                        public HaeinsaKeyValue apply(KeyValue kv) {
-                            return new HaeinsaKeyValue(kv);
-                        }
-                    });
-            this.sortedKVs = transformed;
-        }
+        this(toHaeinsaKVs(result));
     }
 
     /**
@@ -101,5 +88,23 @@ public class HaeinsaResult {
 
     public boolean isEmpty() {
         return sortedKVs.size() == 0;
+    }
+
+    /**
+     * Transform HBase result to List of HaeinsaKeyValue
+     */
+    private static List<HaeinsaKeyValue> toHaeinsaKVs(Result result) {
+        List<HaeinsaKeyValue> sorted = Collections.emptyList();
+        if (!result.isEmpty()) {
+            sorted = Lists.transform(
+              result.list(),
+              new Function<KeyValue, HaeinsaKeyValue>() {
+                  @Override
+                  public HaeinsaKeyValue apply(KeyValue kv) {
+                      return new HaeinsaKeyValue(kv);
+                  }
+              });
+        }
+        return sorted;
     }
 }
