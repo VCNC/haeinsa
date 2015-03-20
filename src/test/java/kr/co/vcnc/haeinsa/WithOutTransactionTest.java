@@ -29,7 +29,6 @@ public class WithOutTransactionTest extends HaeinsaTestBase {
         }
         // Get with transaction
         {
-
             HaeinsaTransaction tx = tm.begin();
             HaeinsaGet get = new HaeinsaGet(row);
             get.addFamily(family);
