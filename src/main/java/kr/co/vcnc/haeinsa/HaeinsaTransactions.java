@@ -15,4 +15,10 @@
  */
 package kr.co.vcnc.haeinsa;
 
-public abstract class HaeinsaOperation {}
+final class HaeinsaTransactions {
+    private HaeinsaTransactions() {}
+
+    public static boolean hasSameCommitTimestamp(HaeinsaTransaction tx1, HaeinsaTransaction tx2) {
+        return tx1.getCommitTimestamp() == tx2.getCommitTimestamp();
+    }
+}

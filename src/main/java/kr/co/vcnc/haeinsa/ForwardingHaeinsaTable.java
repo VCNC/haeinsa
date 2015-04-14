@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2013-2014 VCNC Inc.
+ * Copyright (C) 2013-2015 VCNC Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,13 +17,16 @@ package kr.co.vcnc.haeinsa;
 
 import java.io.IOException;
 import java.util.List;
+
 import javax.annotation.Nullable;
+
+import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HTableDescriptor;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ForwardingObject;
-import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HTableDescriptor;
 
 /**
  * Fowarding Object for HaeinsaTable
@@ -31,10 +34,6 @@ import org.apache.hadoop.hbase.HTableDescriptor;
 public class ForwardingHaeinsaTable extends ForwardingObject implements HaeinsaTableIfaceInternal {
     private final HaeinsaTableIfaceInternal delegate;
 
-    /**
-     * Constructor
-     * @param haeinsaTable HaeinsaTable
-     */
     public ForwardingHaeinsaTable(HaeinsaTableIface haeinsaTable) {
         Preconditions.checkArgument(haeinsaTable instanceof HaeinsaTableIfaceInternal);
         this.delegate = (HaeinsaTableIfaceInternal) haeinsaTable;

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2013-2014 VCNC Inc.
+ * Copyright (C) 2013-2015 VCNC Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,18 +15,18 @@
  */
 package kr.co.vcnc.haeinsa;
 
+import java.util.concurrent.TimeUnit;
+
 import kr.co.vcnc.haeinsa.thrift.TRowLocks;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
+
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
-
 import org.testng.Assert;
 import org.testng.annotations.Test;
-
-import java.util.concurrent.TimeUnit;
 
 public class HaeinsaTransactionTest extends HaeinsaTestBase {
 

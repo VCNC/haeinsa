@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2013-2014 VCNC Inc.
+ * Copyright (C) 2013-2015 VCNC Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,11 +20,9 @@ package kr.co.vcnc.haeinsa.exception;
  * This exception extends {@link ConflictException}
  */
 public class NotExpiredYetException extends ConflictException {
-
     private static final long serialVersionUID = -5160271558362505568L;
 
-    public NotExpiredYetException() {
-    }
+    public NotExpiredYetException() {}
 
     public NotExpiredYetException(String message) {
         super(message);

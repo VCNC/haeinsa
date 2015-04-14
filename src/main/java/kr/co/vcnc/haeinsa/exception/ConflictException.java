@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2013-2014 VCNC Inc.
+ * Copyright (C) 2013-2015 VCNC Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,6 @@ import java.io.IOException;
  * explicitly distinguish between failure on HBase IO and conflict.
  */
 public class ConflictException extends IOException {
-
     private static final long serialVersionUID = -6181950952954013762L;
 
     public ConflictException() {

@@ -47,7 +47,7 @@ APIs of Haeinsa is really similar to APIs of HBase. Please see [How to Use] and 
 
 ## License
 
-	Copyright (C) 2013-2014 VCNC Inc.
+	Copyright (C) 2013-2015 VCNC Inc.
 	
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.

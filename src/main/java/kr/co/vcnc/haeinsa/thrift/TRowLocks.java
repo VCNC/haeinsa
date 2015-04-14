@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2013-2014 VCNC Inc.
+ * Copyright (C) 2013-2015 VCNC Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,6 +37,8 @@ import org.apache.thrift.protocol.TProtocolFactory;
  * TRowLock(commitTimestamp = Long.MIN_VALUE) <=> byte[] null
  */
 public final class TRowLocks {
+    private TRowLocks() {}
+
     private static final TProtocolFactory PROTOCOL_FACTORY = new TCompactProtocol.Factory();
 
     private static TSerializer createSerializer() {
@@ -45,9 +47,6 @@ public final class TRowLocks {
 
     private static TDeserializer createDeserializer() {
         return new TDeserializer(PROTOCOL_FACTORY);
-    }
-
-    private TRowLocks() {
     }
 
     public static TRowLock deserialize(byte[] rowLockBytes) throws IOException {
@@ -80,9 +79,18 @@ public final class TRowLocks {
         return !rowLock.isSetPrimary();
     }
 
-    public static boolean isSecondaryOf(TRowLock primaryRowLock, TRowKey secondaryRowKey, TRowLock secondaryRowLock) {
+    public static boolean isSecondaryOf(TRowKey primaryRowKey, TRowLock primaryRowLock, TRowKey secondaryRowKey, TRowLock secondaryRowLock) {
         return primaryRowLock.getCommitTimestamp() == secondaryRowLock.getCommitTimestamp()
-                && containRowKeyAsSecondary(primaryRowLock, secondaryRowKey);
+                && containRowKeyAsSecondary(primaryRowLock, secondaryRowKey)
+                && containsRowKeyAsPrimary(secondaryRowLock, primaryRowKey);
+    }
+
+    public static boolean containsRowKeyAsPrimary(TRowLock secondaryRowLock, TRowKey primaryRowKey) {
+        if (secondaryRowLock.isSetPrimary()) {
+            return Arrays.equals(secondaryRowLock.getPrimary().getTableName(), primaryRowKey.getTableName())
+                    && Arrays.equals(secondaryRowLock.getPrimary().getRow(), primaryRowKey.getRow());
+        }
+        return false;
     }
 
     /**

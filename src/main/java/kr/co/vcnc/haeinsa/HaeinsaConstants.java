@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2013-2014 VCNC Inc.
+ * Copyright (C) 2013-2015 VCNC Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,14 +19,14 @@ import java.util.concurrent.TimeUnit;
 
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
+
 import org.apache.hadoop.hbase.util.Bytes;
 
 /**
  * Static Class of Constants for Haeinsa
  */
 public final class HaeinsaConstants {
-    private HaeinsaConstants() {
-    }
+    private HaeinsaConstants() {}
 
     /**
      * Haeinsa protocol version of this release.

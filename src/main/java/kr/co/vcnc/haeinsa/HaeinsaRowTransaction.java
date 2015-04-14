@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2013-2014 VCNC Inc.
+ * Copyright (C) 2013-2015 VCNC Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -79,11 +79,9 @@ class HaeinsaRowTransaction {
     }
 
     /**
-     * Return list of {@link HaeinsaKeyValueScanner}s which wrap mutations -
-     * (Put & Delete) contained inside instance. Also assign sequenceID to every
-     * {@link HaeinsaMutation#MutationScanner}.
-     *
-     * @return
+     * Return list of {@link HaeinsaKeyValueScanner}s which wrap mutations
+     * (Put and Delete) contained inside instance. Also assign sequenceID to every
+     * MutationScanner of {@link HaeinsaMutation}.
      */
     public List<HaeinsaKeyValueScanner> getScanners() {
         List<HaeinsaKeyValueScanner> result = Lists.newArrayList();

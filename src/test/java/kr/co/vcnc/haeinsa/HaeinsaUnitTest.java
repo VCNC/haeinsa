@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2013-2014 VCNC Inc.
+ * Copyright (C) 2013-2015 VCNC Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -580,8 +580,6 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
 
     /**
      * Unit test for multiple mutations for any rows in {@link HaeinsaTransaction}.
-     *
-     * @throws Exception
      */
     @Test
     public void testMultipleMutations() throws Exception {
@@ -669,8 +667,6 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
 
     /**
      * Unit test for check get/scan without transaction.
-     *
-     * @throws Exception
      */
     @Test
     public void testHaeinsaTableWithoutTx() throws Exception {

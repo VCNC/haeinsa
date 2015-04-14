@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2013-2014 VCNC Inc.
+ * Copyright (C) 2013-2015 VCNC Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,7 +35,6 @@ import com.google.common.collect.ComparisonChain;
  */
 public interface HaeinsaKeyValueScanner {
     Comparator<HaeinsaKeyValueScanner> COMPARATOR = new Comparator<HaeinsaKeyValueScanner>() {
-
         @Override
         public int compare(HaeinsaKeyValueScanner o1, HaeinsaKeyValueScanner o2) {
             return ComparisonChain.start()
@@ -60,9 +59,7 @@ public interface HaeinsaKeyValueScanner {
     HaeinsaKeyValue next() throws IOException;
 
     /**
-     *
      * @return Return TRowLock if exist in HaeinsaKeyValue. Otherwise, return null
-     * @throws IOException
      */
     TRowLock peekLock() throws IOException;
 

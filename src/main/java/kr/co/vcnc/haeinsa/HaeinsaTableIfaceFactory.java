@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2013-2014 VCNC Inc.
+ * Copyright (C) 2013-2015 VCNC Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,8 +35,6 @@ public interface HaeinsaTableIfaceFactory {
 
     /**
      * Release the HaeinsaTable resource represented by the table.
-     * @param table
      */
     void releaseHaeinsaTableIface(final HaeinsaTableIface table) throws IOException;
-
 }

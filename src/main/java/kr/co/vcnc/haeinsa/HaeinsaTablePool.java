@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2013-2014 VCNC Inc.
+ * Copyright (C) 2013-2015 VCNC Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -79,7 +79,7 @@ public class HaeinsaTablePool implements Closeable {
      * @param config configuration
      * @param maxSize maximum number of references to keep for each table
      * @param poolType pool type which is one of {@link PoolType#Reusable} or
-     *        {@link PoolType#ThreadLocal}
+     * {@link PoolType#ThreadLocal}
      */
     public HaeinsaTablePool(final Configuration config, final int maxSize, final PoolType poolType) {
         this(config, maxSize, null, poolType);
@@ -96,10 +96,10 @@ public class HaeinsaTablePool implements Closeable {
      * @param maxSize maximum number of references to keep for each table
      * @param tableFactory table factory
      * @param poolType pool type which is one of {@link PoolType#Reusable} or
-     *        {@link PoolType#ThreadLocal}
+     * {@link PoolType#ThreadLocal}
      */
     public HaeinsaTablePool(final Configuration config, final int maxSize,
-            final HaeinsaTableIfaceFactory tableFactory, PoolType poolType) {
+                            final HaeinsaTableIfaceFactory tableFactory, PoolType poolType) {
         // Make a new configuration instance so I can safely cleanup when
         // done with the pool.
         this.config = config == null ? new Configuration() : config;
@@ -110,12 +110,14 @@ public class HaeinsaTablePool implements Closeable {
         } else {
             switch (poolType) {
             case Reusable:
-            case ThreadLocal:
+            case ThreadLocal: {
                 this.poolType = poolType;
                 break;
-            default:
+            }
+            default: {
                 this.poolType = PoolType.Reusable;
                 break;
+            }
             }
         }
         this.tables = new PoolMap<String, HaeinsaTableIfaceInternal>(this.poolType, this.maxSize);
@@ -235,10 +237,8 @@ public class HaeinsaTablePool implements Closeable {
      * table pool.
      * <p>
      * Note: this is a 'shutdown' of the given table pool and different from
-     * {@link #putTable(HaeinsaTableIface)}, that is used to return the table
+     * {@link #release(HaeinsaTableIface)}, that is used to return the table
      * instance to the pool for future re-use.
-     *
-     * @param tableName
      */
     public void closeTablePool(final String tableName) throws IOException {
         Collection<HaeinsaTableIfaceInternal> tables = this.tables.values(tableName);
@@ -252,8 +252,6 @@ public class HaeinsaTablePool implements Closeable {
 
     /**
      * See {@link #closeTablePool(String)}.
-     *
-     * @param tableName
      */
     public void closeTablePool(final byte[] tableName) throws IOException {
         closeTablePool(Bytes.toString(tableName));

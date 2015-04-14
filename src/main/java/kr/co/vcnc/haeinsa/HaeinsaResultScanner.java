@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2013-2014 VCNC Inc.
+ * Copyright (C) 2013-2015 VCNC Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ public interface HaeinsaResultScanner extends Closeable, Iterable<HaeinsaResult>
      * Grab the next row's worth of values. The scanner will return a Result.
      *
      * @return Result object if there is another row, null if the scanner is
-     *         exhausted.
+     * exhausted.
      * @throws IOException e
      */
     HaeinsaResult next() throws IOException;
@@ -48,5 +48,4 @@ public interface HaeinsaResultScanner extends Closeable, Iterable<HaeinsaResult>
      */
     @Override
     void close();
-
 }

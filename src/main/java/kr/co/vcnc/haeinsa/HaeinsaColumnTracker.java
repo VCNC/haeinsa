@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2013-2014 VCNC Inc.
+ * Copyright (C) 2013-2015 VCNC Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import java.util.TreeMap;
 
 import org.apache.hadoop.hbase.util.Bytes;
 
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 /**
@@ -32,8 +33,7 @@ import com.google.common.collect.Sets;
  */
 public class HaeinsaColumnTracker {
     // { family -> qualifier }
-    private final Map<byte[], NavigableSet<byte[]>> familyMap =
-            new TreeMap<byte[], NavigableSet<byte[]>>(Bytes.BYTES_COMPARATOR);
+    private final Map<byte[], NavigableSet<byte[]>> familyMap = Maps.newTreeMap(Bytes.BYTES_COMPARATOR);
 
     private final byte[] minColumn;
     private final boolean minColumnInclusive;
@@ -44,19 +44,11 @@ public class HaeinsaColumnTracker {
      * Constructor of HaeinsaColumnTracker.
      * <p>
      * If this ColumnTracker track {@link HaeinsaScan}, minColumn, maxColumn
-     * should be null and minColumnInclusive, maxColumnInclusive should be
-     * false.
-     *
-     * @param familyMap
-     *
-     * @param minColumn
-     * @param minColumnInclusive
-     * @param maxColumn
-     * @param maxColumnInclusive
+     * should be null and minColumnInclusive, maxColumnInclusive should be false.
      */
     public HaeinsaColumnTracker(Map<byte[], NavigableSet<byte[]>> familyMap,
-            byte[] minColumn, boolean minColumnInclusive,
-            byte[] maxColumn, boolean maxColumnInclusive) {
+                                byte[] minColumn, boolean minColumnInclusive,
+                                byte[] maxColumn, boolean maxColumnInclusive) {
         this.minColumn = minColumn;
         this.maxColumn = maxColumn;
         this.minColumnInclusive = minColumnInclusive;
@@ -76,9 +68,6 @@ public class HaeinsaColumnTracker {
      * Return true if qualifier of kv is placed between minColumn and maxColumn.
      * <p>
      * Using lexicographical ordering to compare byte[]
-     *
-     * @param kv
-     * @return
      */
     public boolean isColumnInclusive(HaeinsaKeyValue kv) {
         int cmpMin = 1;
@@ -121,7 +110,6 @@ public class HaeinsaColumnTracker {
      * </ol>
      *
      * @param kv HaeinsaKeyValue which will be checked.
-     * @return
      */
     public boolean isMatched(HaeinsaKeyValue kv) {
         // If familyMap is empty, then Haeinsa transaction assumes

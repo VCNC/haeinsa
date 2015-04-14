@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2013-2014 VCNC Inc.
+ * Copyright (C) 2013-2015 VCNC Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,12 +61,12 @@ public interface HaeinsaTableIface extends Closeable {
      * Extracts certain cells from a given row.
      *
      * @param tx HaeinsaTransaction which this operation is participated in.
-     *           It can be null if user don't want to execute get inside transaction.
+     * It can be null if user don't want to execute get inside transaction.
      * @param get The object that specifies what data to fetch and from which row.
      * @return The data coming from the specified row, if it exists. If the row
-     *         specified doesn't exist, the {@link HaeinsaResult} instance returned
-     *         won't contain any {@link HaeinsaKeyValue}, as indicated by
-     *         {@link HaeinsaResult#isEmpty()}.
+     * specified doesn't exist, the {@link HaeinsaResult} instance returned
+     * won't contain any {@link HaeinsaKeyValue}, as indicated by
+     * {@link HaeinsaResult#isEmpty()}.
      * @throws IOException if a remote or network exception occurs.
      */
     HaeinsaResult get(@Nullable HaeinsaTransaction tx, HaeinsaGet get) throws IOException;
@@ -76,7 +76,7 @@ public interface HaeinsaTableIface extends Closeable {
      * Similar with {@link HaeinsaTableIface#getScanner(HaeinsaTransaction, HaeinsaScan)}.
      *
      * @param tx HaeinsaTransaction which this operation is participated in.
-     *        It can be null if user don't want to execute scan inside transaction.
+     * It can be null if user don't want to execute scan inside transaction.
      * @param family The column family to scan.
      * @return A scanner.
      * @throws IOException if a remote or network exception occurs.
@@ -88,7 +88,7 @@ public interface HaeinsaTableIface extends Closeable {
      * Similar with {@link HaeinsaTableIface#getScanner(HaeinsaTransaction, HaeinsaScan)}.
      *
      * @param tx HaeinsaTransaction which this operation is participated in.
-     *           It can be null if user don't want to execute scan inside transaction.
+     * It can be null if user don't want to execute scan inside transaction.
      * @param family The column family to scan.
      * @param qualifier The column qualifier to scan.
      * @return A scanner.
@@ -102,7 +102,7 @@ public interface HaeinsaTableIface extends Closeable {
      * object.
      *
      * @param tx HaeinsaTransaction which this operation is participated in.
-                 It can be null if user don't want to execute scan inside transaction.
+     * It can be null if user don't want to execute scan inside transaction.
      * @param scan A configured {@link HaeinsaScan} object.
      * @return A scanner.
      * @throws IOException if a remote or network exception occurs.
@@ -114,7 +114,7 @@ public interface HaeinsaTableIface extends Closeable {
      * object.
      *
      * @param tx HaeinsaTransaction which this operation is participated in.
-     *           It can be null if user don't want to execute scan inside transaction.
+     * It can be null if user don't want to execute scan inside transaction.
      * @param intraScan A configured {@link HaeinsaIntraScan} object.
      * @return A scanner.
      * @throws IOException if a remote or network exception occurs.
@@ -168,5 +168,4 @@ public interface HaeinsaTableIface extends Closeable {
      */
     @Override
     void close() throws IOException;
-
 }

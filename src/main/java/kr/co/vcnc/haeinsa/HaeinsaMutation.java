@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2013-2014 VCNC Inc.
+ * Copyright (C) 2013-2015 VCNC Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ import org.apache.hadoop.hbase.client.Row;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Maps;
 
 /**
  * HaeinsaMutation is abstract class equivalent to auto-generated thrift class {@link TMutation}.
@@ -41,13 +42,12 @@ import com.google.common.collect.Iterables;
  * These late Get/Scan operations can see the mutated view of specific row
  * even before those mutations are committed to HBase.
  * <p>
- * HaeinsaMutation provides {@link HaeinsaKeyValueScanner} interface by {@link #getScanner()} method.
+ * HaeinsaMutation provides {@link HaeinsaKeyValueScanner} interface by {@link #getScanner(long)} method.
  */
 public abstract class HaeinsaMutation extends HaeinsaOperation {
     protected byte[] row;
     // { family -> HaeinsaKeyValue }
-    protected Map<byte[], NavigableSet<HaeinsaKeyValue>> familyMap =
-            new TreeMap<byte[], NavigableSet<HaeinsaKeyValue>>(Bytes.BYTES_COMPARATOR);
+    protected Map<byte[], NavigableSet<HaeinsaKeyValue>> familyMap = Maps.newTreeMap(Bytes.BYTES_COMPARATOR);
 
     /**
      * Method for retrieving the put's familyMap
@@ -103,11 +103,10 @@ public abstract class HaeinsaMutation extends HaeinsaOperation {
     public abstract TMutation toTMutation();
 
     /**
-     * Return {@link #HaeinsaKeyValueScanner} interface for single row.
+     * Return {@link HaeinsaKeyValueScanner} interface for single row.
      *
      * @param sequenceID sequence id represent which Scanner is newer one. Lower
-     *        id is newer one.
-     * @return
+     * id is newer one.
      */
     public HaeinsaKeyValueScanner getScanner(final long sequenceID) {
         return new MutationScanner(sequenceID);
@@ -136,7 +135,7 @@ public abstract class HaeinsaMutation extends HaeinsaOperation {
          * of values. Otherwise, the way to generate iterator should be changed.
          *
          * @param sequenceID sequence id represent which Scanner is newer one.
-         *        Lower id is newer one.
+         * Lower id is newer one.
          */
         public MutationScanner(long sequenceID) {
             this.sequenceID = sequenceID;
@@ -172,7 +171,6 @@ public abstract class HaeinsaMutation extends HaeinsaOperation {
         }
 
         @Override
-        public void close() {
-        }
+        public void close() {}
     }
 }

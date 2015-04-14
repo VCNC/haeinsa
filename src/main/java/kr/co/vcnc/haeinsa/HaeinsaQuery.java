@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2013-2014 VCNC Inc.
+ * Copyright (C) 2013-2015 VCNC Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ public abstract class HaeinsaQuery extends HaeinsaOperation {
      * cache is disabled for that family or entirely).
      *
      * @param cacheBlocks if false, default settings are overridden and blocks
-     *        will not be cached
+     * will not be cached
      */
     public void setCacheBlocks(boolean cacheBlocks) {
         this.cacheBlocks = cacheBlocks;
@@ -39,7 +39,7 @@ public abstract class HaeinsaQuery extends HaeinsaOperation {
      * Get whether blocks should be cached for this Scan.
      *
      * @return true if default setting of block caching should be used, false if
-     *         blocks should not be cached
+     * blocks should not be cached
      */
     public boolean getCacheBlocks() {
         return cacheBlocks;
