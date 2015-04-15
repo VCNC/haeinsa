@@ -656,7 +656,7 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
 
         get = new HaeinsaGet(Bytes.toBytes("row-abc"));
         HaeinsaResult result = testTable.get(tx, get);
-        Assert.assertTrue(result.list().size() == 1);
+        Assert.assertEquals(result.list().size(), 1);
         Assert.assertEquals(testTable.get(tx, get).getValue(Bytes.toBytes("data"), Bytes.toBytes("col-after")),
                 Bytes.toBytes("value-after"));
 
