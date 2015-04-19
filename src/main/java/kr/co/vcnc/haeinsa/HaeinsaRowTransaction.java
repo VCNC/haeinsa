@@ -87,7 +87,12 @@ class HaeinsaRowTransaction {
         }
     }
 
-    // Put, Delete + Put => (Put + filteredPut), eliminatedDelete, leftPut
+    /**
+     * When new HaeinsaPut added at the end of mutations which is finished by consequent Put and
+     * Delete, new HaeinsaPut could be partially merged with previous HaeinsaPut. At the same time,
+     * last HaeinsaDelete could lose some HaeinsaKeyValues because new HaeinsaPut could overwrite
+     * HaeinsaDelete on specific column. This method will do this merging process.
+     */
     private void mergeHaeinsaPutIfPossible(HaeinsaPut put) {
         if (mutations.size() <= 1) {
             mutations.add(put);
@@ -95,8 +100,8 @@ class HaeinsaRowTransaction {
         }
 
         HaeinsaDelete lastDelete = (HaeinsaDelete) mutations.remove(mutations.size() - 1);
-        HaeinsaPut filteredPut = new HaeinsaPut(put.row);
-        HaeinsaDelete eliminatedDelete = new HaeinsaDelete(lastDelete.row);
+        HaeinsaPut remainedPut = new HaeinsaPut(put.row);
+        HaeinsaDelete remainedDelete = new HaeinsaDelete(lastDelete.row);
         HaeinsaPut leftPut = new HaeinsaPut(put.row);
 
         HaeinsaDeleteTracker familyDeleteTracker = new HaeinsaDeleteTracker();
@@ -116,7 +121,7 @@ class HaeinsaRowTransaction {
                 }
                 case DeleteFamily: {
                     familyDeleteTracker.add(haeinsaKV, 1);
-                    eliminatedDelete.deleteFamily(haeinsaKV.getFamily());
+                    remainedDelete.deleteFamily(haeinsaKV.getFamily());
                     break;
                 }
                 default: {
@@ -136,7 +141,7 @@ class HaeinsaRowTransaction {
                     }
                     cells.put(haeinsaKV.getQualifier(), haeinsaKV);
                 } else {
-                    filteredPut.add(haeinsaKV.getFamily(), haeinsaKV.getQualifier(), haeinsaKV.getValue());
+                    remainedPut.add(haeinsaKV.getFamily(), haeinsaKV.getQualifier(), haeinsaKV.getValue());
                 }
             }
         }
@@ -146,7 +151,7 @@ class HaeinsaRowTransaction {
                 HaeinsaKeyValue kv = entry.getValue();
                 switch (kv.getType()) {
                 case DeleteColumn: {
-                    eliminatedDelete.deleteColumns(kv.getFamily(), kv.getQualifier());
+                    remainedDelete.deleteColumns(kv.getFamily(), kv.getQualifier());
                     break;
                 }
                 case Put: {
@@ -160,9 +165,9 @@ class HaeinsaRowTransaction {
             }
         }
 
-        mutations.get(mutations.size() - 1).add(filteredPut);
-        if (!eliminatedDelete.isEmpty()) {
-            mutations.add(eliminatedDelete);
+        mutations.get(mutations.size() - 1).add(remainedPut);
+        if (!remainedDelete.isEmpty()) {
+            mutations.add(remainedDelete);
             if (!leftPut.isEmpty()) {
                 mutations.add(leftPut);
             }
@@ -173,15 +178,21 @@ class HaeinsaRowTransaction {
         }
     }
 
-    // Delete, Put + Delete => mergedDelete, filteredPut
+    /**
+     * When new HaeinsaDelete added at the end of mutations which is finished by consequent Delete
+     * and Put, new HaeinsaDelete can be merged with previous HeainsaDelete while HaeinsaPut loses
+     * some HaeinsaKeyValues which are deleted by added HaeinsaDelete. This method will do this
+     * merging process.
+     */
     private void mergeHaeinsaDeleteIfPossible(HaeinsaDelete delete) {
         if (mutations.size() <= 1) {
             mutations.add(delete);
             return;
         }
 
+        // prevDelete, lastPut + newDelete => (prevDelete + newDelete), remainedPut
         HaeinsaPut lastPut = (HaeinsaPut) mutations.remove(mutations.size() - 1);
-        HaeinsaPut filteredPut = new HaeinsaPut(lastPut.row);
+        HaeinsaPut remainedPut = new HaeinsaPut(lastPut.row);
 
         HaeinsaDeleteTracker deleteTracker = new HaeinsaDeleteTracker();
         for (Entry<byte[], NavigableSet<HaeinsaKeyValue>> entry : delete.familyMap.entrySet()) {
@@ -193,15 +204,15 @@ class HaeinsaRowTransaction {
         for (Entry<byte[], NavigableSet<HaeinsaKeyValue>> entry : lastPut.familyMap.entrySet()) {
             for (HaeinsaKeyValue haeinsaKV : entry.getValue()) {
                 if (!deleteTracker.isDeleted(haeinsaKV, 0)) {
-                    filteredPut.add(haeinsaKV.getFamily(), haeinsaKV.getQualifier(), haeinsaKV.getValue());
+                    remainedPut.add(haeinsaKV.getFamily(), haeinsaKV.getQualifier(), haeinsaKV.getValue());
                 }
             }
         }
 
         mutations.get(mutations.size() - 1).add(delete);
-        if (!filteredPut.isEmpty()) {
+        if (!remainedPut.isEmpty()) {
             // do not add HaeinsaPut if no HaeinsaKeyValue survived.
-            mutations.add(filteredPut);
+            mutations.add(remainedPut);
         }
     }
 

@@ -665,6 +665,112 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
         testTable.close();
     }
 
+    @Test
+    public void testMultipleMutations2() throws Exception {
+        final HaeinsaTransactionManager tm = context().getTransactionManager();
+        final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
+
+        /*
+         * - beginTransaction
+         * 1. put { row-abc, data, column-a }
+         * 2. put { row-abc, data, column-b }
+         * 3. put { row-d, meta, column-d }
+         * - commit
+         */
+        HaeinsaTransaction tx = tm.begin();
+        HaeinsaPut put = new HaeinsaPut(Bytes.toBytes("row-abc"));
+        put.add(Bytes.toBytes("data"), Bytes.toBytes("column-a"), Bytes.toBytes("value-a"));
+        testTable.put(tx, put);
+
+        put = new HaeinsaPut(Bytes.toBytes("row-abc"));
+        put.add(Bytes.toBytes("data"), Bytes.toBytes("column-b"), Bytes.toBytes("value-b"));
+        testTable.put(tx, put);
+
+        put = new HaeinsaPut(Bytes.toBytes("row-d"));
+        put.add(Bytes.toBytes("meta"), Bytes.toBytes("column-d"), Bytes.toBytes("value-d"));
+        testTable.put(tx, put);
+
+        tx.commit();
+
+        /*
+         * - beginTransaction
+         * 4. put { row-abc, data, column-c }
+         * 5. put { row-e, meta, column-e }
+         * 6. deleteFamily { row-abc, data }
+         * 7. put { row-abc, data, col-after }
+         * 8. delete { row-e, meta, {column-j & column-e} }
+         * 9. put { row-e, meta, column-j }
+         * - commit
+         */
+        tx = tm.begin();
+        put = new HaeinsaPut(Bytes.toBytes("row-abc"));
+        put.add(Bytes.toBytes("data"), Bytes.toBytes("column-c"), Bytes.toBytes("value-c"));
+        testTable.put(tx, put);
+
+        put = new HaeinsaPut(Bytes.toBytes("row-e"));
+        put.add(Bytes.toBytes("meta"), Bytes.toBytes("column-e"), Bytes.toBytes("value-e"));
+        testTable.put(tx, put);
+
+        HaeinsaDelete delete = new HaeinsaDelete(Bytes.toBytes("row-abc"));
+        delete.deleteFamily(Bytes.toBytes("data"));
+        testTable.delete(tx, delete);
+
+        put = new HaeinsaPut(Bytes.toBytes("row-abc"));
+        put.add(Bytes.toBytes("data"), Bytes.toBytes("col-after"), Bytes.toBytes("value-after"));
+        testTable.put(tx, put);
+
+        delete = new HaeinsaDelete(Bytes.toBytes("row-e"));
+        delete.deleteColumns(Bytes.toBytes("meta"), Bytes.toBytes("column-j"));
+        delete.deleteColumns(Bytes.toBytes("meta"), Bytes.toBytes("column-e"));
+        testTable.delete(tx, delete);
+
+        put = new HaeinsaPut(Bytes.toBytes("row-e"));
+        put.add(Bytes.toBytes("meta"), Bytes.toBytes("column-j"), Bytes.toBytes("value-j"));
+        testTable.put(tx, put);
+
+        tx.commit();
+
+        /*
+         * Check the result. There should be data added by 3, 5, 9 operations.
+         * Other data was deleted.
+         * 3. put { row-d, meta, column-d }
+         * 7. put { row-abc, data, col-after } (There should be unique column for row-abc)
+         * 9. put { row-e, meta, column-j }
+         */
+        tx = tm.begin();
+        HaeinsaGet get = new HaeinsaGet(Bytes.toBytes("row-d"));
+        get.addColumn(Bytes.toBytes("meta"), Bytes.toBytes("column-d"));
+        Assert.assertEquals(testTable.get(tx, get).getValue(Bytes.toBytes("meta"), Bytes.toBytes("column-d")),
+                Bytes.toBytes("value-d"));
+
+        get = new HaeinsaGet(Bytes.toBytes("row-abc"));
+        HaeinsaResult result = testTable.get(tx, get);
+        Assert.assertEquals(result.list().size(), 1);
+        Assert.assertEquals(testTable.get(tx, get).getValue(Bytes.toBytes("data"), Bytes.toBytes("col-after")),
+                Bytes.toBytes("value-after"));
+
+        get = new HaeinsaGet(Bytes.toBytes("row-e"));
+        get.addColumn(Bytes.toBytes("meta"), Bytes.toBytes("column-j"));
+        Assert.assertEquals(testTable.get(tx, get).getValue(Bytes.toBytes("meta"), Bytes.toBytes("column-j")),
+                Bytes.toBytes("value-j"));
+
+        get = new HaeinsaGet(Bytes.toBytes("row-abc"));
+        get.addColumn(Bytes.toBytes("meta"), Bytes.toBytes("column-a"));
+        Assert.assertNull(testTable.get(tx, get).getValue(Bytes.toBytes("meta"), Bytes.toBytes("column-a")));
+
+        get = new HaeinsaGet(Bytes.toBytes("row-abc"));
+        get.addColumn(Bytes.toBytes("meta"), Bytes.toBytes("column-b"));
+        Assert.assertNull(testTable.get(tx, get).getValue(Bytes.toBytes("meta"), Bytes.toBytes("column-b")));
+
+        get = new HaeinsaGet(Bytes.toBytes("row-e"));
+        get.addColumn(Bytes.toBytes("meta"), Bytes.toBytes("column-e"));
+        Assert.assertNull(testTable.get(tx, get).getValue(Bytes.toBytes("meta"), Bytes.toBytes("column-e")));
+
+        tx.rollback();
+
+        testTable.close();
+    }
+
     /**
      * Unit test for check get/scan without transaction.
      */
@@ -725,8 +831,8 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
          * 1. ScanWithtoutTx { row-put-a ~ row-put-c }
          * 2. Put { row-put-c, data, col-put-c }
          * - commit
-         *
-         * Lock of row-put-a and row-put-b should not be changed, and lock of row-put-c should be changed.
+         * Lock of row-put-a and row-put-b should not be changed, and lock of row-put-c should be
+         * changed.
          */
         // getScannerWithoutTx ( HaeinsaScan )
         tx = tm.begin();
