@@ -51,8 +51,7 @@ import com.google.common.hash.Hashing;
  */
 public class HaeinsaTransaction {
     private static final Logger LOGGER = LoggerFactory.getLogger(HaeinsaTransaction.class);
-    private final HaeinsaTransactionState txStates = new HaeinsaTransactionState();
-
+    protected final HaeinsaTransactionState txStates = createTransactionState();
     private final HaeinsaTransactionManager manager;
     private TRowKey primary;
     private long commitTimestamp = Long.MIN_VALUE;
@@ -519,6 +518,10 @@ public class HaeinsaTransaction {
         txStates.classifyAndSortRows(onRecovery);
     }
 
+   protected HaeinsaTransactionState createTransactionState() {
+        return new HaeinsaTransactionState();
+    }
+
     /**
      * Container which contain {byte[] : {@link HaeinsaTableTransaction} map.
      * <p>
@@ -529,8 +532,8 @@ public class HaeinsaTransaction {
      * {@link TRowLockState#STABLE}, then that row is MutationRow. ReadOnlyRow
      * otherwise (There is no mutations, and state is STABLE).
      */
-    private static class HaeinsaTransactionState {
-        private final NavigableMap<byte[], HaeinsaTableTransaction> tableStates = Maps.newTreeMap(Bytes.BYTES_COMPARATOR);
+    protected static class HaeinsaTransactionState {
+        protected final NavigableMap<byte[], HaeinsaTableTransaction> tableStates = createTablesStates();
         private final Comparator<TRowKey> comparator = new HashComparator();
         private NavigableMap<TRowKey, HaeinsaRowTransaction> mutationRowStates = null;
         private NavigableMap<TRowKey, HaeinsaRowTransaction> readOnlyRowStates = null;
@@ -644,6 +647,10 @@ public class HaeinsaTransaction {
                     }
                 }
             }
+        }
+
+        protected NavigableMap<byte[], HaeinsaTableTransaction> createTablesStates() {
+            return Maps.newTreeMap(Bytes.BYTES_COMPARATOR);
         }
     }
 

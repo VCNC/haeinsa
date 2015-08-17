@@ -31,8 +31,9 @@ import com.google.common.collect.Maps;
  * {@link HaeinsaTransaction}
  */
 class HaeinsaTableTransaction {
-    private final NavigableMap<byte[], HaeinsaRowTransaction> rowStates = Maps.newTreeMap(Bytes.BYTES_COMPARATOR);
-    private final HaeinsaTransaction transaction;
+    protected final NavigableMap<byte[], HaeinsaRowTransaction> rowStates = createHaeinsaRowTransactionNavigableMap();
+
+    protected final HaeinsaTransaction transaction;
 
     HaeinsaTableTransaction(HaeinsaTransaction transaction) {
         this.transaction = transaction;
@@ -71,5 +72,9 @@ class HaeinsaTableTransaction {
             rowStates.put(row, rowState);
         }
         return rowState;
+    }
+
+    protected NavigableMap<byte[], HaeinsaRowTransaction> createHaeinsaRowTransactionNavigableMap() {
+        return Maps.newTreeMap(Bytes.BYTES_COMPARATOR);
     }
 }

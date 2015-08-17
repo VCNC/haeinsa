@@ -38,6 +38,19 @@ import com.google.common.base.Objects;
  */
 public class HaeinsaTransactionManager {
     private final HaeinsaTablePool tablePool;
+    private static final Boolean IS_TRANSACTION_THREAD_SAFE_DEFAULT = Boolean.FALSE;
+    private final Boolean isTransactionThreadSafe;
+
+    /**
+     * Constructor for TransactionManager
+     *
+     * @param tablePool HaeinsaTablePool to access HBase.
+     * @param isTransactionThreadSafe Will decide which transaction to create..
+     */
+    public HaeinsaTransactionManager(HaeinsaTablePool tablePool, boolean isTransactionThreadSafe) {
+        this.tablePool = tablePool;
+        this.isTransactionThreadSafe = isTransactionThreadSafe;
+    }
 
     /**
      * Constructor for TransactionManager
@@ -45,7 +58,7 @@ public class HaeinsaTransactionManager {
      * @param tablePool HaeinsaTablePool to access HBase.
      */
     public HaeinsaTransactionManager(HaeinsaTablePool tablePool) {
-        this.tablePool = tablePool;
+        this(tablePool, IS_TRANSACTION_THREAD_SAFE_DEFAULT);
     }
 
     /**
@@ -57,6 +70,13 @@ public class HaeinsaTransactionManager {
      * @return new Transaction instance have reference to this manager instance.
      */
     public HaeinsaTransaction begin() {
+        return createHaeinsaTransaction();
+    }
+
+    private HaeinsaTransaction createHaeinsaTransaction(){
+        if (this.isTransactionThreadSafe){
+            return new HaeinsaTransactionThreadSafe(this);
+        }
         return new HaeinsaTransaction(this);
     }
 
@@ -172,7 +192,7 @@ public class HaeinsaTransactionManager {
      * HaeinsaTransaction made by this method do not assign proper values on mutations variable.
      */
     private HaeinsaTransaction getTransactionFromPrimary(TRowKey rowKey, TRowLock primaryRowLock) throws IOException {
-        HaeinsaTransaction transaction = new HaeinsaTransaction(this);
+        HaeinsaTransaction transaction = createHaeinsaTransaction();
         transaction.setPrimary(rowKey);
         transaction.setCommitTimestamp(primaryRowLock.getCommitTimestamp());
         HaeinsaTableTransaction primaryTableTxState = transaction.createOrGetTableState(rowKey.getTableName());
