@@ -31,7 +31,7 @@ class HaeinsaRowTransaction {
     // mutations will be saved in order of executions.
     // If this rowTransaction is created during recovering failed transaction by other client,
     // following mutations variable is empty.
-    private final List<HaeinsaMutation> mutations = createHaeinsaMutations();
+    protected final List<HaeinsaMutation> mutations = createHaeinsaMutations();
 
     private final HaeinsaTableTransaction tableTransaction;
 

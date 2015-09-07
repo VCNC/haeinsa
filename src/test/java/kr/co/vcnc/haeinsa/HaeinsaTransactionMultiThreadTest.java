@@ -20,6 +20,7 @@ import org.junit.Ignore;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -118,4 +119,70 @@ public class HaeinsaTransactionMultiThreadTest extends HaeinsaTestBase {
             Assert.assertEquals(tx.getMutationRowStates().size(), conccurency * 2);
         }
     }
+
+    @Test
+    public void testProtectWritingToTheSameRow() throws Exception {
+        final HaeinsaTransactionManager tm = context().getTransactionManager();
+        final HaeinsaTransactionManager threadSafetm = new HaeinsaTransactionManager(context().getTransactionManager().getTablePool(), true);
+        final HaeinsaTableIface table = context().getHaeinsaTableIface("test");
+        final String key = "key";
+        final Random random = new Random();
+        int conccurency = 4;
+        ExecutorService executor = Executors.newFixedThreadPool(conccurency);
+        FutureTask<Void>[] tasks = new FutureTask[conccurency];
+        {
+            for (int j = 0; j < 5; j++) {
+                final HaeinsaTransaction tx = threadSafetm.begin();
+                for (int i = 0; i < conccurency; i++) {
+                    tasks[i] = new FutureTask<Void>(new Callable<Void>() {
+                        HaeinsaTransaction trx = tx;
+                        final HaeinsaTableIface table = trx.getManager().getTablePool().getTable(context().createContextedTableName("test"));
+
+                        @Override
+                        public Void call() throws Exception {
+                            Thread.sleep(random.nextInt(200));
+                            long counter = 1;
+                            HaeinsaGet get = new HaeinsaGet(Bytes.toBytes(key));
+                            HaeinsaResult result = table.get(tx, get);
+                            byte[] dataAsBytes = result.getValue(Bytes.toBytes("data"), Bytes.toBytes("qualifier"));
+                            if (dataAsBytes != null) {
+                                counter = Bytes.toLong(dataAsBytes) + 1;
+                            }
+                            try {
+                                HaeinsaPut put1 = new HaeinsaPut(Bytes.toBytes(key));
+                                put1.add(Bytes.toBytes("data"), Bytes.toBytes("qualifier"), Bytes.toBytes(counter));
+                                table.put(tx, put1);
+                            } catch (IllegalStateException e) {
+                                Assert.assertTrue(e.getMessage().contains("This row was already changed."));
+                            }
+
+                            table.close();
+                            return null;
+                        }
+                    });
+                }
+                for (int i = 0; i < conccurency; i++) {
+                    //running all tasks
+                    executor.execute(tasks[i]);
+                }
+                for (int i = 0; i < conccurency; i++) {
+                    //waiting for all to finish
+                    tasks[i].get();
+                }
+                tx.classifyAndSortRows(true);
+                Assert.assertEquals(tx.getMutationRowStates().size(), 1);
+                tx.commit();
+            }
+
+            HaeinsaTransaction regularTx = tm.begin();
+
+            HaeinsaGet get = new HaeinsaGet(Bytes.toBytes(key));
+
+            HaeinsaResult result = table.get(regularTx, get);
+            byte[] dataAsBytes = result.getValue(Bytes.toBytes("data"), Bytes.toBytes("qualifier"));
+            Assert.assertEquals(5, Bytes.toLong(dataAsBytes));
+            table.close();
+        }
+    }
+
 }

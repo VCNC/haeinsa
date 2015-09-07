@@ -15,19 +15,24 @@
  */
 package kr.co.vcnc.haeinsa;
 
+import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * Created by ehud on 8/17/15.
  * We might want to consider optimize the addMutation and use java.util.concurrent list such as CopyOnWriteArrayList
  */
 class HaeinsaRowTransactionThreadSafe extends HaeinsaRowTransaction {
 
+    private final AtomicBoolean used = new AtomicBoolean(false);
+
     HaeinsaRowTransactionThreadSafe(HaeinsaTableTransaction tableTransaction) {
         super(tableTransaction);
     }
 
-    @Override
-    public synchronized void addMutation(HaeinsaMutation mutation) {
-        super.addMutation(mutation);
+    public void addMutation(HaeinsaMutation mutation) {
+        if (!used.compareAndSet(false, true)) {
+            throw new IllegalStateException("This row was already changed. " +
+                    "Currently not allowed to write more than once to the same row in thread safe mode");
+        }
+        mutations.add(mutation);
     }
-
 }
