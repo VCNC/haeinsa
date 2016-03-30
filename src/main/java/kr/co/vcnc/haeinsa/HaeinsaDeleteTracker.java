@@ -15,7 +15,9 @@
  */
 package kr.co.vcnc.haeinsa;
 
+import java.util.Map.Entry;
 import java.util.NavigableMap;
+import java.util.NavigableSet;
 
 import org.apache.hadoop.hbase.util.Bytes;
 
@@ -62,6 +64,14 @@ public class HaeinsaDeleteTracker {
         default: {
             break;
         }
+        }
+    }
+
+    public void add(HaeinsaDelete delete, long sequenceID) {
+        for (Entry<byte[], NavigableSet<HaeinsaKeyValue>> entry : delete.getFamilyMap().entrySet()) {
+            for (HaeinsaKeyValue keyValue : entry.getValue()) {
+                add(keyValue, sequenceID);
+            }
         }
     }
 

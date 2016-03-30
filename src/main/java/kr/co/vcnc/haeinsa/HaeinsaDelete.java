@@ -16,6 +16,7 @@
 package kr.co.vcnc.haeinsa;
 
 import java.nio.ByteBuffer;
+import java.util.Map.Entry;
 import java.util.NavigableSet;
 
 import kr.co.vcnc.haeinsa.thrift.generated.TCellKey;
@@ -107,6 +108,22 @@ public class HaeinsaDelete extends HaeinsaMutation {
         }
     }
 
+    FilterResult filter(HaeinsaPut put) {
+        HaeinsaDeleteTracker deleteTracker = new HaeinsaDeleteTracker();
+        deleteTracker.add(this, 0);
+        FilterResult filterResult = new FilterResult(row);
+        for (Entry<byte[], NavigableSet<HaeinsaKeyValue>> entry : put.getFamilyMap().entrySet()) {
+            for (HaeinsaKeyValue keyValue : entry.getValue()) {
+                if (deleteTracker.isDeleted(keyValue, 1)) {
+                    filterResult.getDeleted().add(keyValue.getFamily(), keyValue.getQualifier(), keyValue.getValue());
+                } else {
+                    filterResult.getRemained().add(keyValue.getFamily(), keyValue.getQualifier(), keyValue.getValue());
+                }
+            }
+        }
+        return filterResult;
+    }
+
     @Override
     public TMutation toTMutation() {
         TMutation newTMutation = new TMutation(TMutationType.REMOVE);
@@ -128,5 +145,23 @@ public class HaeinsaDelete extends HaeinsaMutation {
         }
         newTMutation.setRemove(newTRemove);
         return newTMutation;
+    }
+
+    static final class FilterResult {
+        private final HaeinsaPut remained;
+        private final HaeinsaPut deleted;
+
+        private FilterResult(byte[] row) {
+            this.remained = new HaeinsaPut(row);
+            this.deleted = new HaeinsaPut(row);
+        }
+
+        public HaeinsaPut getRemained() {
+            return remained;
+        }
+
+        public HaeinsaPut getDeleted() {
+            return deleted;
+        }
     }
 }
