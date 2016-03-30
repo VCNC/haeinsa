@@ -19,7 +19,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-public class HaeinsaDeleteTest {
+public class HaeinsaRowTransactionTest {
 
     @Test
     public void testFilterColumns() {
@@ -31,7 +31,7 @@ public class HaeinsaDeleteTest {
         put.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-1234-5678"));
         put.add(Bytes.toBytes("data"), Bytes.toBytes("address"), Bytes.toBytes("Seoul"));
 
-        HaeinsaDelete.FilterResult filterResult = delete.filter(put);
+        HaeinsaRowTransaction.FilterResult filterResult = HaeinsaRowTransaction.filter(delete, put);
         Assert.assertFalse(filterResult.getDeleted().isEmpty());
         Assert.assertFalse(filterResult.getRemained().isEmpty());
 
@@ -54,7 +54,7 @@ public class HaeinsaDeleteTest {
         put.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-1234-5678"));
         put.add(Bytes.toBytes("data1"), Bytes.toBytes("address"), Bytes.toBytes("Seoul"));
 
-        HaeinsaDelete.FilterResult filterResult = delete.filter(put);
+        HaeinsaRowTransaction.FilterResult filterResult = HaeinsaRowTransaction.filter(delete, put);
         Assert.assertFalse(filterResult.getDeleted().isEmpty());
         Assert.assertFalse(filterResult.getRemained().isEmpty());
 
