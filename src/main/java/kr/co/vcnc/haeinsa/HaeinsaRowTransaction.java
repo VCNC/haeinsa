@@ -73,9 +73,9 @@ class HaeinsaRowTransaction {
         } else {
             HaeinsaMutation lastMutation = mutations.get(mutations.size() - 1);
             if (lastMutation.getClass() != mutation.getClass()) {
-                if (mutation.getClass() instanceof HaeinsaPut) {
+                if (mutation instanceof HaeinsaPut) {
                     mergeHaeinsaPutIfPossible((HaeinsaPut) mutation);
-                } else if (mutation.getClass() instanceof HaeinsaDelete) {
+                } else if (mutation instanceof HaeinsaDelete) {
                     mergeHaeinsaDeleteIfPossible((HaeinsaDelete) mutation);
                 } else {
                     // not going to happen before any other type of HaeinsaMutation added.
