@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.NavigableSet;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
 
 import com.google.common.collect.Lists;
@@ -95,6 +96,7 @@ class HaeinsaRowTransaction {
             mutations.add(put);
             return;
         }
+        Preconditions.checkArgument(mutations.get(mutations.size() - 2) instanceof HaeinsaPut);
 
         HaeinsaDelete lastDelete = (HaeinsaDelete) mutations.remove(mutations.size() - 1);
         FilterResult filterResult = filter(lastDelete, put);
@@ -116,6 +118,7 @@ class HaeinsaRowTransaction {
             mutations.add(delete);
             return;
         }
+        Preconditions.checkArgument(mutations.get(mutations.size() - 2) instanceof HaeinsaDelete);
 
         // prevDelete, lastPut + newDelete => (prevDelete + newDelete), remainedPut
         HaeinsaPut lastPut = (HaeinsaPut) mutations.remove(mutations.size() - 1);
@@ -133,7 +136,7 @@ class HaeinsaRowTransaction {
         FilterResult filterResult = new FilterResult(delete.getRow());
         for (Map.Entry<byte[], NavigableSet<HaeinsaKeyValue>> entry : put.getFamilyMap().entrySet()) {
             for (HaeinsaKeyValue keyValue : entry.getValue()) {
-                if (deleteTracker.isDeleted(keyValue, 1)) {
+                if (deleteTracker.isDeleted(keyValue)) {
                     filterResult.getDeleted().add(keyValue.getFamily(), keyValue.getQualifier(), keyValue.getValue());
                 } else {
                     filterResult.getRemained().add(keyValue.getFamily(), keyValue.getQualifier(), keyValue.getValue());

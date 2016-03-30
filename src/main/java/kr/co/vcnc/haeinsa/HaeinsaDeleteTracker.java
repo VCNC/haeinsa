@@ -76,6 +76,13 @@ public class HaeinsaDeleteTracker {
     }
 
     /**
+     * @return Return true if kv is deleted, return false otherwise. this function is only used in HaeinsaRowTransaction.filter.
+     */
+    public boolean isDeleted(HaeinsaKeyValue kv) {
+        return isDeleted(kv, Long.MAX_VALUE);
+    }
+
+    /**
      * @return Return true if kv is deleted after sequenceID (lower sequenceID), return false otherwise.
      */
     public boolean isDeleted(HaeinsaKeyValue kv, long sequenceID) {
