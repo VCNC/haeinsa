@@ -32,6 +32,12 @@ public class HaeinsaDeleteTracker {
     // { family -> { column -> sequenceId } }
     private final NavigableMap<byte[], NavigableMap<byte[], Long>> cells = Maps.newTreeMap(Bytes.BYTES_COMPARATOR);
 
+    public HaeinsaDeleteTracker() {}
+
+    public HaeinsaDeleteTracker(HaeinsaDelete delete) {
+        add(delete, 0);
+    }
+
     /**
      * Update family map or column map if kv is not exist in map or sequenceId is lower.
      *

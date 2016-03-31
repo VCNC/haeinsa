@@ -31,7 +31,7 @@ public class HaeinsaRowTransactionTest {
         put.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-1234-5678"));
         put.add(Bytes.toBytes("data"), Bytes.toBytes("address"), Bytes.toBytes("Seoul"));
 
-        HaeinsaRowTransaction.FilterResult filterResult = HaeinsaRowTransaction.filter(delete, put);
+        HaeinsaRowTransaction.FilterResult filterResult = HaeinsaRowTransaction.filter(new HaeinsaDeleteTracker(delete), put);
         Assert.assertFalse(filterResult.getDeleted().isEmpty());
         Assert.assertFalse(filterResult.getRemained().isEmpty());
 
@@ -54,7 +54,7 @@ public class HaeinsaRowTransactionTest {
         put.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-1234-5678"));
         put.add(Bytes.toBytes("data1"), Bytes.toBytes("address"), Bytes.toBytes("Seoul"));
 
-        HaeinsaRowTransaction.FilterResult filterResult = HaeinsaRowTransaction.filter(delete, put);
+        HaeinsaRowTransaction.FilterResult filterResult = HaeinsaRowTransaction.filter(new HaeinsaDeleteTracker(delete), put);
         Assert.assertFalse(filterResult.getDeleted().isEmpty());
         Assert.assertFalse(filterResult.getRemained().isEmpty());
 
@@ -65,5 +65,91 @@ public class HaeinsaRowTransactionTest {
         HaeinsaPut expectedRemained = new HaeinsaPut(row);
         expectedRemained.add(Bytes.toBytes("data1"), Bytes.toBytes("address"), Bytes.toBytes("Seoul"));
         Assert.assertEquals(filterResult.getRemained().toTMutation(), expectedRemained.toTMutation());
+    }
+
+    @Test
+    public void testMerge() throws Exception {
+        byte[] row = Bytes.toBytes("ymkim");
+        HaeinsaRowTransaction.MutationMerger merger = new HaeinsaRowTransaction.MutationMerger(row);
+
+        HaeinsaPut put = new HaeinsaPut(row);
+        put.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-1234-5678"));
+        put.add(Bytes.toBytes("data1"), Bytes.toBytes("address"), Bytes.toBytes("Seoul"));
+
+        merger.merge(put);
+
+        Assert.assertEquals(merger.getFirstMutationPut().toTMutation(), put.toTMutation());
+        Assert.assertTrue(merger.getSecondMutationDelete().isEmpty());
+        Assert.assertTrue(merger.getLastMutationPut().isEmpty());
+
+        HaeinsaDelete delete = new HaeinsaDelete(row);
+        delete.deleteColumns(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"));
+
+        merger.merge(delete);
+
+        HaeinsaPut expectedFirstPut = new HaeinsaPut(row);
+        expectedFirstPut.add(Bytes.toBytes("data1"), Bytes.toBytes("address"), Bytes.toBytes("Seoul"));
+
+        Assert.assertEquals(merger.getFirstMutationPut().toTMutation(), expectedFirstPut.toTMutation());
+        Assert.assertEquals(merger.getSecondMutationDelete().toTMutation(), delete.toTMutation());
+        Assert.assertTrue(merger.getLastMutationPut().isEmpty());
+
+        put = new HaeinsaPut(row);
+        put.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-1234-5678"));
+        put.add(Bytes.toBytes("data2"), Bytes.toBytes("address"), Bytes.toBytes("Seoul"));
+
+        merger.merge(put);
+
+        expectedFirstPut = new HaeinsaPut(row);
+        expectedFirstPut.add(Bytes.toBytes("data1"), Bytes.toBytes("address"), Bytes.toBytes("Seoul"));
+        expectedFirstPut.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-1234-5678"));
+        expectedFirstPut.add(Bytes.toBytes("data2"), Bytes.toBytes("address"), Bytes.toBytes("Seoul"));
+
+        Assert.assertEquals(merger.getFirstMutationPut().toTMutation(), expectedFirstPut.toTMutation());
+        Assert.assertTrue(merger.getSecondMutationDelete().isEmpty());
+        Assert.assertTrue(merger.getLastMutationPut().isEmpty());
+
+        delete = new HaeinsaDelete(row);
+        delete.deleteFamily(Bytes.toBytes("data1"));
+        merger.merge(delete);
+
+        expectedFirstPut = new HaeinsaPut(row);
+        expectedFirstPut.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-1234-5678"));
+        expectedFirstPut.add(Bytes.toBytes("data2"), Bytes.toBytes("address"), Bytes.toBytes("Seoul"));
+
+        Assert.assertEquals(merger.getFirstMutationPut().toTMutation(), expectedFirstPut.toTMutation());
+        Assert.assertEquals(merger.getSecondMutationDelete().toTMutation(), delete.toTMutation());
+        Assert.assertTrue(merger.getLastMutationPut().isEmpty());
+
+        put = new HaeinsaPut(row);
+        put.add(Bytes.toBytes("data1"), Bytes.toBytes("address"), Bytes.toBytes("Seoul"));
+
+        merger.merge(put);
+
+        HaeinsaPut expectedLastPut = new HaeinsaPut(row);
+        expectedLastPut.add(Bytes.toBytes("data1"), Bytes.toBytes("address"), Bytes.toBytes("Seoul"));
+
+        Assert.assertEquals(merger.getFirstMutationPut().toTMutation(), expectedFirstPut.toTMutation());
+        Assert.assertEquals(merger.getSecondMutationDelete().toTMutation(), delete.toTMutation());
+        Assert.assertEquals(merger.getLastMutationPut().toTMutation(), expectedLastPut.toTMutation());
+
+        put = new HaeinsaPut(row);
+        put.add(Bytes.toBytes("data1"), Bytes.toBytes("lastName"), Bytes.toBytes("Kim"));
+        put.add(Bytes.toBytes("data3"), Bytes.toBytes("address"), Bytes.toBytes("Seoul"));
+
+        merger.merge(put);
+
+        expectedFirstPut = new HaeinsaPut(row);
+        expectedFirstPut.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-1234-5678"));
+        expectedFirstPut.add(Bytes.toBytes("data2"), Bytes.toBytes("address"), Bytes.toBytes("Seoul"));
+        expectedFirstPut.add(Bytes.toBytes("data3"), Bytes.toBytes("address"), Bytes.toBytes("Seoul"));
+
+        expectedLastPut = new HaeinsaPut(row);
+        expectedLastPut.add(Bytes.toBytes("data1"), Bytes.toBytes("address"), Bytes.toBytes("Seoul"));
+        expectedLastPut.add(Bytes.toBytes("data1"), Bytes.toBytes("lastName"), Bytes.toBytes("Kim"));
+
+        Assert.assertEquals(merger.getFirstMutationPut().toTMutation(), expectedFirstPut.toTMutation());
+        Assert.assertEquals(merger.getSecondMutationDelete().toTMutation(), delete.toTMutation());
+        Assert.assertEquals(merger.getLastMutationPut().toTMutation(), expectedLastPut.toTMutation());
     }
 }

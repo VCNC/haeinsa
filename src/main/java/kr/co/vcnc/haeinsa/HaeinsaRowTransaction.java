@@ -19,10 +19,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.NavigableSet;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Preconditions;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 
 /**
@@ -54,6 +53,29 @@ class HaeinsaRowTransaction {
         return mutations;
     }
 
+    public void merge() {
+        if (mutations.size() <= 1) {
+            return;
+        }
+
+        byte[] row = mutations.get(0).getRow();
+
+        MutationMerger merger = new MutationMerger(row);
+
+        for (HaeinsaMutation mutation : mutations) {
+            if (mutation instanceof HaeinsaPut) {
+                merger.merge((HaeinsaPut) mutation);
+            } else if (mutation instanceof HaeinsaDelete) {
+                merger.merge((HaeinsaDelete) mutation);
+            } else {
+                throw new IllegalStateException();
+            }
+        }
+
+        mutations.clear();
+        mutations.addAll(merger.toMutations());
+    }
+
     public int getIterationCount() {
         if (mutations.size() > 0) {
             if (mutations.get(0) instanceof HaeinsaPut) {
@@ -71,69 +93,17 @@ class HaeinsaRowTransaction {
         } else {
             HaeinsaMutation lastMutation = mutations.get(mutations.size() - 1);
             if (lastMutation.getClass() != mutation.getClass()) {
-                if (mutation instanceof HaeinsaPut) {
-                    mergeHaeinsaPutIfPossible((HaeinsaPut) mutation);
-                } else if (mutation instanceof HaeinsaDelete) {
-                    mergeHaeinsaDeleteIfPossible((HaeinsaDelete) mutation);
-                } else {
-                    // not going to happen before any other type of HaeinsaMutation added.
-                    mutations.add(mutation);
-                }
+                // not going to happen before any other type of HaeinsaMutation added.
+                mutations.add(mutation);
             } else {
                 lastMutation.add(mutation);
             }
         }
     }
 
-    /**
-     * When new HaeinsaPut added at the end of mutations which is finished by consequent Put and
-     * Delete, new HaeinsaPut could be partially merged with previous HaeinsaPut. At the same time,
-     * last HaeinsaDelete could lose some HaeinsaKeyValues because new HaeinsaPut could overwrite
-     * HaeinsaDelete on specific column. This method will do this merging process.
-     */
-    private void mergeHaeinsaPutIfPossible(HaeinsaPut put) {
-        if (mutations.size() <= 1) {
-            mutations.add(put);
-            return;
-        }
-        Preconditions.checkArgument(mutations.get(mutations.size() - 2) instanceof HaeinsaPut);
-
-        HaeinsaDelete lastDelete = (HaeinsaDelete) mutations.remove(mutations.size() - 1);
-        FilterResult filterResult = filter(lastDelete, put);
-        mutations.get(mutations.size() - 1).add(filterResult.getRemained());
-        mutations.add(lastDelete);
-        if (!filterResult.getDeleted().isEmpty()) {
-            mutations.add(filterResult.getDeleted());
-        }
-    }
-
-    /**
-     * When new HaeinsaDelete added at the end of mutations which is finished by consequent Delete
-     * and Put, new HaeinsaDelete can be merged with previous HeainsaDelete while HaeinsaPut loses
-     * some HaeinsaKeyValues which are deleted by added HaeinsaDelete. This method will do this
-     * merging process.
-     */
-    private void mergeHaeinsaDeleteIfPossible(HaeinsaDelete delete) {
-        if (mutations.size() <= 1) {
-            mutations.add(delete);
-            return;
-        }
-        Preconditions.checkArgument(mutations.get(mutations.size() - 2) instanceof HaeinsaDelete);
-
-        // prevDelete, lastPut + newDelete => (prevDelete + newDelete), remainedPut
-        HaeinsaPut lastPut = (HaeinsaPut) mutations.remove(mutations.size() - 1);
-        FilterResult filterResult = filter(delete, lastPut);
-        mutations.get(mutations.size() - 1).add(delete);
-        if (!filterResult.getRemained().isEmpty()) {
-            mutations.add(filterResult.getRemained());
-        }
-    }
-
     @VisibleForTesting
-    static FilterResult filter(HaeinsaDelete delete, HaeinsaPut put) {
-        HaeinsaDeleteTracker deleteTracker = new HaeinsaDeleteTracker();
-        deleteTracker.add(delete, 0);
-        FilterResult filterResult = new FilterResult(delete.getRow());
+    static FilterResult filter(HaeinsaDeleteTracker deleteTracker, HaeinsaPut put) {
+        FilterResult filterResult = new FilterResult(put.getRow());
         for (Map.Entry<byte[], NavigableSet<HaeinsaKeyValue>> entry : put.getFamilyMap().entrySet()) {
             for (HaeinsaKeyValue keyValue : entry.getValue()) {
                 if (deleteTracker.isDeleted(keyValue)) {
@@ -162,6 +132,81 @@ class HaeinsaRowTransaction {
             result.add(mutation.getScanner(mutations.size() - i));
         }
         return result;
+    }
+
+    @VisibleForTesting
+    static final class MutationMerger {
+        private final byte[] row;
+        private HaeinsaPut firstMutationPut;
+        private HaeinsaDelete secondMutationDelete;
+        private HaeinsaPut lastMutationPut;
+
+        public MutationMerger(byte[] row) {
+            this.row = row;
+            this.firstMutationPut = new HaeinsaPut(row);
+            this.secondMutationDelete = new HaeinsaDelete(row);
+            this.lastMutationPut = new HaeinsaPut(row);
+        }
+
+        @VisibleForTesting
+        public byte[] getRow() {
+            return row;
+        }
+
+        @VisibleForTesting
+        public HaeinsaPut getFirstMutationPut() {
+            return firstMutationPut;
+        }
+
+        @VisibleForTesting
+        public HaeinsaDelete getSecondMutationDelete() {
+            return secondMutationDelete;
+        }
+
+        @VisibleForTesting
+        public HaeinsaPut getLastMutationPut() {
+            return lastMutationPut;
+        }
+
+        @VisibleForTesting
+        void merge(HaeinsaPut put) {
+            secondMutationDelete.remove(put);
+            HaeinsaDeleteTracker deleteTracker = new HaeinsaDeleteTracker(secondMutationDelete);
+            FilterResult filterResult = filter(deleteTracker, put);
+            lastMutationPut.add(filterResult.getDeleted());
+            firstMutationPut.add(filterResult.getRemained());
+            if (secondMutationDelete.isEmpty() && !lastMutationPut.isEmpty()) {
+                firstMutationPut.add(lastMutationPut);
+                lastMutationPut = new HaeinsaPut(row);
+            }
+        }
+
+        @VisibleForTesting
+        void merge(HaeinsaDelete delete) {
+            HaeinsaDeleteTracker deleteTracker = new HaeinsaDeleteTracker(delete);
+
+            FilterResult filterResult = filter(deleteTracker, lastMutationPut);
+            lastMutationPut = filterResult.getRemained();
+
+            secondMutationDelete.add(delete);
+
+            filterResult = filter(deleteTracker, firstMutationPut);
+            firstMutationPut = filterResult.getRemained();
+        }
+
+        List<HaeinsaMutation> toMutations() {
+            List<HaeinsaMutation> result = Lists.newArrayListWithCapacity(3);
+            if (!firstMutationPut.isEmpty()) {
+                result.add(firstMutationPut);
+            }
+            if (!secondMutationDelete.isEmpty()) {
+                result.add(secondMutationDelete);
+            }
+            if (!lastMutationPut.isEmpty()) {
+                result.add(lastMutationPut);
+            }
+            return result;
+        }
     }
 
     @VisibleForTesting
