@@ -1,7 +1,9 @@
 sudo: true
 language: java
 jdk:
-  #- openjdk7
+  # Disable OpenJDK7 temporary on build:
+  # Due to buffer overflows when the host name is too long.
+  # - openjdk7
   - oraclejdk7
 before_install:
   - sudo add-apt-repository -y ppa:wnoronha/thrift
@@ -10,7 +12,3 @@ before_install:
   - which thrift
 install: /bin/true
 script: mvn clean install -B
-addons:
-  # Fix OpenJDK 7 buffer overflows when the host name is too long.
-  # https://docs.travis-ci.com/user/hostname
-  hostname: travis-haeinsa
