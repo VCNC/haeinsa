@@ -15,7 +15,12 @@
  */
 package kr.co.vcnc.haeinsa;
 
+import static org.apache.hadoop.hbase.KeyValue.Type.Maximum;
+import static org.apache.hadoop.hbase.KeyValue.Type.Minimum;
+
 import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.Map;
 import java.util.NavigableSet;
 
 import kr.co.vcnc.haeinsa.thrift.generated.TCellKey;
@@ -27,8 +32,10 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValue.Type;
 import org.apache.hadoop.hbase.client.Delete;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
 /**
@@ -103,6 +110,42 @@ public class HaeinsaDelete extends HaeinsaMutation {
                 deleteFamily(newKV.getFamily());
             } else {
                 deleteColumns(newKV.getFamily(), newKV.getQualifier());
+            }
+        }
+    }
+
+    @VisibleForTesting
+    void remove(HaeinsaPut put) {
+        HaeinsaKeyValue searchFromKV = new HaeinsaKeyValue();
+        // Type is descending ordered in HaeinsaKeyValue.compareTo()
+        searchFromKV.setType(Maximum);
+        searchFromKV.setRow(row);
+
+        HaeinsaKeyValue searchToKV = new HaeinsaKeyValue();
+        searchToKV.setType(Minimum);
+        searchToKV.setRow(row);
+        for (Map.Entry<byte[], NavigableSet<HaeinsaKeyValue>> entry : put.getFamilyMap().entrySet()) {
+            byte[] family = entry.getKey();
+            NavigableSet<HaeinsaKeyValue> currentKeyValues = familyMap.get(family);
+            if (currentKeyValues == null) {
+                continue;
+            }
+            searchFromKV.setFamily(family);
+            searchToKV.setFamily(family);
+            for (HaeinsaKeyValue newKeyValue : entry.getValue()) {
+                if (newKeyValue.getQualifier() == null) {
+                    // Ignore Delete Family
+                    continue;
+                }
+                searchFromKV.setQualifier(newKeyValue.getQualifier());
+                searchToKV.setQualifier(newKeyValue.getQualifier());
+                List<HaeinsaKeyValue> removingList = Lists.newArrayList(currentKeyValues.subSet(searchFromKV, true, searchToKV, true));
+                for (HaeinsaKeyValue removingKV : removingList) {
+                    currentKeyValues.remove(removingKV);
+                }
+            }
+            if (currentKeyValues.isEmpty()) {
+                familyMap.remove(family);
             }
         }
     }

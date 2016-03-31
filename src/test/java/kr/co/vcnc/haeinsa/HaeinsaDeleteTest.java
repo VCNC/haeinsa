@@ -19,7 +19,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-public class HaeinsaMutationTest {
+public class HaeinsaDeleteTest {
     @Test
     public void testRemove() throws Exception {
         HaeinsaDelete delete = new HaeinsaDelete(Bytes.toBytes("ymkim"));

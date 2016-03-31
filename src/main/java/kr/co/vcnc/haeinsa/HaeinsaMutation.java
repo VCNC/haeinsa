@@ -15,14 +15,9 @@
  */
 package kr.co.vcnc.haeinsa;
 
-import static org.apache.hadoop.hbase.KeyValue.Type.Maximum;
-import static org.apache.hadoop.hbase.KeyValue.Type.Minimum;
-
 import java.io.IOException;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.NavigableSet;
 import java.util.Set;
 
@@ -32,9 +27,7 @@ import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
 import org.apache.hadoop.hbase.client.Row;
 import org.apache.hadoop.hbase.util.Bytes;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 /**
@@ -98,42 +91,6 @@ public abstract class HaeinsaMutation extends HaeinsaOperation {
     }
 
     public abstract void add(HaeinsaMutation newMutation);
-
-    @VisibleForTesting
-    void remove(HaeinsaMutation newMutation) {
-        HaeinsaKeyValue searchFromKV = new HaeinsaKeyValue();
-        // Type is descending ordered in HaeinsaKeyValue.compareTo()
-        searchFromKV.setType(Maximum);
-        searchFromKV.setRow(row);
-
-        HaeinsaKeyValue searchToKV = new HaeinsaKeyValue();
-        searchToKV.setType(Minimum);
-        searchToKV.setRow(row);
-        for (Entry<byte[], NavigableSet<HaeinsaKeyValue>> entry : newMutation.getFamilyMap().entrySet()) {
-            byte[] family = entry.getKey();
-            NavigableSet<HaeinsaKeyValue> currentKeyValues = familyMap.get(family);
-            if (currentKeyValues == null) {
-                continue;
-            }
-            searchFromKV.setFamily(family);
-            searchToKV.setFamily(family);
-            for (HaeinsaKeyValue newKeyValue : entry.getValue()) {
-                if (newKeyValue.getQualifier() == null) {
-                    // Ignore Delete Family
-                    continue;
-                }
-                searchFromKV.setQualifier(newKeyValue.getQualifier());
-                searchToKV.setQualifier(newKeyValue.getQualifier());
-                List<HaeinsaKeyValue> removingList = Lists.newArrayList(currentKeyValues.subSet(searchFromKV, true, searchToKV, true));
-                for (HaeinsaKeyValue removingKV : removingList) {
-                    currentKeyValues.remove(removingKV);
-                }
-            }
-            if (currentKeyValues.isEmpty()) {
-                familyMap.remove(family);
-            }
-        }
-    }
 
     /**
      * Change HaeinsaMutation to TMutation (Thrift Class).
