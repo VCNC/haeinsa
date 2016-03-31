@@ -5,6 +5,7 @@ jdk:
   # Due to buffer overflows when the host name is too long.
   # - openjdk7
   - oraclejdk7
+  - oraclejdk8
 before_install:
   - sudo add-apt-repository -y ppa:wnoronha/thrift
   - sudo apt-get update -qq
