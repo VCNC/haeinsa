@@ -205,12 +205,14 @@ public class HaeinsaTransaction {
         boolean onRecovery = false;
         txStates.classifyAndSortRows(onRecovery);
 
+        // Merge all rows' mutations to make this transaction efficient.
         // Determine maxCurrentCommitTimestamp and maxIterationCount, from all participating rows of transaction.
         // It is used in determining prewriteTimestamp and commmitTimestamp of the transaction.
         long maxCurrentCommitTimestamp = System.currentTimeMillis();
         long maxIterationCount = Long.MIN_VALUE;
         for (Entry<byte[], HaeinsaTableTransaction> tableStateEntry : txStates.getTableStates().entrySet()) {
             for (Entry<byte[], HaeinsaRowTransaction> rowStateEntry : tableStateEntry.getValue().getRowStates().entrySet()) {
+                rowStateEntry.getValue().merge();
                 HaeinsaRowTransaction rowState = rowStateEntry.getValue();
                 maxIterationCount = Math.max(maxIterationCount, rowState.getIterationCount());
                 maxCurrentCommitTimestamp = Math.max(maxCurrentCommitTimestamp, rowState.getCurrent().getCommitTimestamp());

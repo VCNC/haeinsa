@@ -20,7 +20,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.NavigableSet;
 import java.util.Set;
-import java.util.TreeMap;
 
 import kr.co.vcnc.haeinsa.thrift.generated.TMutation;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;

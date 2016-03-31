@@ -15,7 +15,9 @@
  */
 package kr.co.vcnc.haeinsa;
 
+import java.util.Map.Entry;
 import java.util.NavigableMap;
+import java.util.NavigableSet;
 
 import org.apache.hadoop.hbase.util.Bytes;
 
@@ -29,6 +31,12 @@ public class HaeinsaDeleteTracker {
     private final NavigableMap<byte[], Long> families = Maps.newTreeMap(Bytes.BYTES_COMPARATOR);
     // { family -> { column -> sequenceId } }
     private final NavigableMap<byte[], NavigableMap<byte[], Long>> cells = Maps.newTreeMap(Bytes.BYTES_COMPARATOR);
+
+    public HaeinsaDeleteTracker() {}
+
+    public HaeinsaDeleteTracker(HaeinsaDelete delete) {
+        add(delete, 0);
+    }
 
     /**
      * Update family map or column map if kv is not exist in map or sequenceId is lower.
@@ -63,6 +71,21 @@ public class HaeinsaDeleteTracker {
             break;
         }
         }
+    }
+
+    public void add(HaeinsaDelete delete, long sequenceID) {
+        for (Entry<byte[], NavigableSet<HaeinsaKeyValue>> entry : delete.getFamilyMap().entrySet()) {
+            for (HaeinsaKeyValue keyValue : entry.getValue()) {
+                add(keyValue, sequenceID);
+            }
+        }
+    }
+
+    /**
+     * @return Return true if kv is deleted, return false otherwise. this function is only used in HaeinsaRowTransaction.filter.
+     */
+    public boolean isDeleted(HaeinsaKeyValue kv) {
+        return isDeleted(kv, Long.MAX_VALUE);
     }
 
     /**

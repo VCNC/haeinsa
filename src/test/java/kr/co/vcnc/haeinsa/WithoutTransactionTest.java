@@ -19,7 +19,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-public class WithOutTransactionTest extends HaeinsaTestBase {
+public class WithoutTransactionTest extends HaeinsaTestBase {
 
     @Test
     public void testGet() throws Exception {

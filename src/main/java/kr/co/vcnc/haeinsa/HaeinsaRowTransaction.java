@@ -16,9 +16,12 @@
 package kr.co.vcnc.haeinsa;
 
 import java.util.List;
+import java.util.Map;
+import java.util.NavigableSet;
 
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 
 /**
@@ -50,6 +53,29 @@ class HaeinsaRowTransaction {
         return mutations;
     }
 
+    public void merge() {
+        if (mutations.size() <= 1) {
+            return;
+        }
+
+        byte[] row = mutations.get(0).getRow();
+
+        MutationMerger merger = new MutationMerger(row);
+
+        for (HaeinsaMutation mutation : mutations) {
+            if (mutation instanceof HaeinsaPut) {
+                merger.merge((HaeinsaPut) mutation);
+            } else if (mutation instanceof HaeinsaDelete) {
+                merger.merge((HaeinsaDelete) mutation);
+            } else {
+                throw new IllegalStateException();
+            }
+        }
+
+        mutations.clear();
+        mutations.addAll(merger.toMutations());
+    }
+
     public int getIterationCount() {
         if (mutations.size() > 0) {
             if (mutations.get(0) instanceof HaeinsaPut) {
@@ -67,11 +93,27 @@ class HaeinsaRowTransaction {
         } else {
             HaeinsaMutation lastMutation = mutations.get(mutations.size() - 1);
             if (lastMutation.getClass() != mutation.getClass()) {
+                // not going to happen before any other type of HaeinsaMutation added.
                 mutations.add(mutation);
             } else {
                 lastMutation.add(mutation);
             }
         }
+    }
+
+    @VisibleForTesting
+    static FilterResult filter(HaeinsaDeleteTracker deleteTracker, HaeinsaPut put) {
+        FilterResult filterResult = new FilterResult(put.getRow());
+        for (Map.Entry<byte[], NavigableSet<HaeinsaKeyValue>> entry : put.getFamilyMap().entrySet()) {
+            for (HaeinsaKeyValue keyValue : entry.getValue()) {
+                if (deleteTracker.isDeleted(keyValue)) {
+                    filterResult.getDeleted().add(keyValue.getFamily(), keyValue.getQualifier(), keyValue.getValue());
+                } else {
+                    filterResult.getRemained().add(keyValue.getFamily(), keyValue.getQualifier(), keyValue.getValue());
+                }
+            }
+        }
+        return filterResult;
     }
 
     public HaeinsaTableTransaction getTableTransaction() {
@@ -90,5 +132,92 @@ class HaeinsaRowTransaction {
             result.add(mutation.getScanner(mutations.size() - i));
         }
         return result;
+    }
+
+    @VisibleForTesting
+    static final class MutationMerger {
+        private final byte[] row;
+
+        private HaeinsaDelete firstDelete;
+        private HaeinsaPut lastPut;
+
+        public MutationMerger(byte[] row) {
+            this.row = row;
+            this.firstDelete = new HaeinsaDelete(row);
+            this.lastPut = new HaeinsaPut(row);
+        }
+
+        @VisibleForTesting
+        public byte[] getRow() {
+            return row;
+        }
+
+        @VisibleForTesting
+        public HaeinsaDelete getFirstDelete() {
+            return firstDelete;
+        }
+
+        @VisibleForTesting
+        public HaeinsaPut getLastPut() {
+            return lastPut;
+        }
+
+        @VisibleForTesting
+        void merge(HaeinsaPut put) {
+            firstDelete.remove(put);
+            lastPut.add(put);
+        }
+
+        @VisibleForTesting
+        void merge(HaeinsaDelete delete) {
+            HaeinsaDeleteTracker deleteTracker = new HaeinsaDeleteTracker(delete);
+
+            FilterResult filterResult = filter(deleteTracker, lastPut);
+            lastPut = filterResult.getRemained();
+
+            firstDelete.add(delete);
+        }
+
+        @VisibleForTesting
+        boolean canExchangeDeleteAndPut() {
+            HaeinsaDeleteTracker deleteTracker = new HaeinsaDeleteTracker(firstDelete);
+            FilterResult filterResult = filter(deleteTracker, lastPut);
+            return filterResult.getDeleted().isEmpty();
+        }
+
+        List<HaeinsaMutation> toMutations() {
+            List<HaeinsaMutation> result = Lists.newArrayListWithCapacity(2);
+            if (!firstDelete.isEmpty()) {
+                result.add(firstDelete);
+            }
+            if (!lastPut.isEmpty()) {
+                result.add(lastPut);
+            }
+            if (result.size() == 2 && canExchangeDeleteAndPut()) {
+                // First put is used at prewrite stage. But delete isn't.
+                // Put + delete is more efficient than delete + put.
+                result = Lists.reverse(result);
+            }
+            return result;
+        }
+    }
+
+    @VisibleForTesting
+    static final class FilterResult {
+        private final HaeinsaPut remained;
+        private final HaeinsaPut deleted;
+
+        private FilterResult(byte[] row) {
+            this.remained = new HaeinsaPut(row);
+            this.deleted = new HaeinsaPut(row);
+        }
+
+        public HaeinsaPut getRemained() {
+            return remained;
+        }
+
+        public HaeinsaPut getDeleted() {
+            return deleted;
+        }
     }
 }
