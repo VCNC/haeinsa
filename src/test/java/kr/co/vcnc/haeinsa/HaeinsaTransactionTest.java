@@ -99,7 +99,7 @@ public class HaeinsaTransactionTest extends HaeinsaTestBase {
         // Tests created, timeout and expiry fields
         {
             HaeinsaTransaction tx = tm.begin();
-            Assert.assertEquals(tx.getCreated(), System.currentTimeMillis());
+            Assert.assertTrue(tx.getCreated() <= System.currentTimeMillis());
             Assert.assertEquals(tx.getExpiry(), tx.getCreated() + tx.getTimeout());
 
             long originalExpiry = tx.getExpiry();
