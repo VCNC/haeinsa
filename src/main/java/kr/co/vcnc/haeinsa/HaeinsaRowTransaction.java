@@ -137,15 +137,14 @@ class HaeinsaRowTransaction {
     @VisibleForTesting
     static final class MutationMerger {
         private final byte[] row;
-        private HaeinsaPut firstMutationPut;
-        private HaeinsaDelete secondMutationDelete;
-        private HaeinsaPut lastMutationPut;
+
+        private HaeinsaDelete firstDelete;
+        private HaeinsaPut lastPut;
 
         public MutationMerger(byte[] row) {
             this.row = row;
-            this.firstMutationPut = new HaeinsaPut(row);
-            this.secondMutationDelete = new HaeinsaDelete(row);
-            this.lastMutationPut = new HaeinsaPut(row);
+            this.firstDelete = new HaeinsaDelete(row);
+            this.lastPut = new HaeinsaPut(row);
         }
 
         @VisibleForTesting
@@ -154,56 +153,50 @@ class HaeinsaRowTransaction {
         }
 
         @VisibleForTesting
-        public HaeinsaPut getFirstMutationPut() {
-            return firstMutationPut;
+        public HaeinsaDelete getFirstDelete() {
+            return firstDelete;
         }
 
         @VisibleForTesting
-        public HaeinsaDelete getSecondMutationDelete() {
-            return secondMutationDelete;
-        }
-
-        @VisibleForTesting
-        public HaeinsaPut getLastMutationPut() {
-            return lastMutationPut;
+        public HaeinsaPut getLastPut() {
+            return lastPut;
         }
 
         @VisibleForTesting
         void merge(HaeinsaPut put) {
-            secondMutationDelete.remove(put);
-            HaeinsaDeleteTracker deleteTracker = new HaeinsaDeleteTracker(secondMutationDelete);
-            FilterResult filterResult = filter(deleteTracker, put);
-            lastMutationPut.add(filterResult.getDeleted());
-            firstMutationPut.add(filterResult.getRemained());
-            if (secondMutationDelete.isEmpty() && !lastMutationPut.isEmpty()) {
-                firstMutationPut.add(lastMutationPut);
-                lastMutationPut = new HaeinsaPut(row);
-            }
+            firstDelete.remove(put);
+            lastPut.add(put);
         }
 
         @VisibleForTesting
         void merge(HaeinsaDelete delete) {
             HaeinsaDeleteTracker deleteTracker = new HaeinsaDeleteTracker(delete);
 
-            FilterResult filterResult = filter(deleteTracker, lastMutationPut);
-            lastMutationPut = filterResult.getRemained();
+            FilterResult filterResult = filter(deleteTracker, lastPut);
+            lastPut = filterResult.getRemained();
 
-            secondMutationDelete.add(delete);
+            firstDelete.add(delete);
+        }
 
-            filterResult = filter(deleteTracker, firstMutationPut);
-            firstMutationPut = filterResult.getRemained();
+        @VisibleForTesting
+        boolean canExchangeDeleteAndPut() {
+            HaeinsaDeleteTracker deleteTracker = new HaeinsaDeleteTracker(firstDelete);
+            FilterResult filterResult = filter(deleteTracker, lastPut);
+            return filterResult.getDeleted().isEmpty();
         }
 
         List<HaeinsaMutation> toMutations() {
             List<HaeinsaMutation> result = Lists.newArrayListWithCapacity(3);
-            if (!firstMutationPut.isEmpty()) {
-                result.add(firstMutationPut);
+            if (!firstDelete.isEmpty()) {
+                result.add(firstDelete);
             }
-            if (!secondMutationDelete.isEmpty()) {
-                result.add(secondMutationDelete);
+            if (!lastPut.isEmpty()) {
+                result.add(lastPut);
             }
-            if (!lastMutationPut.isEmpty()) {
-                result.add(lastMutationPut);
+            if (result.size() == 2 && canExchangeDeleteAndPut()) {
+                // First put is used at prewrite stage. But delete isn't.
+                // Put + delete is more efficient than delete + put.
+                result = Lists.reverse(result);
             }
             return result;
         }
