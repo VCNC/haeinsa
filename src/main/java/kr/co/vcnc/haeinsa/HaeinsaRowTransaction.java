@@ -186,7 +186,7 @@ class HaeinsaRowTransaction {
         }
 
         List<HaeinsaMutation> toMutations() {
-            List<HaeinsaMutation> result = Lists.newArrayListWithCapacity(3);
+            List<HaeinsaMutation> result = Lists.newArrayListWithCapacity(2);
             if (!firstDelete.isEmpty()) {
                 result.add(firstDelete);
             }
