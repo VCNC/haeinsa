@@ -311,7 +311,7 @@
                                     <pluginExecutionFilter>
                                         <groupId>org.apache.thrift.tools</groupId>
                                         <artifactId>maven-thrift-plugin</artifactId>
-                                        <versionRange>[0.1.10,)</versionRange>
+                                        <versionRange>[0.1.11,)</versionRange>
                                         <goals>
                                             <goal>compile</goal>
                                             <goal>testCompile</goal>
@@ -325,7 +325,7 @@
                                     <pluginExecutionFilter>
                                         <groupId>org.apache.maven.plugins</groupId>
                                         <artifactId>maven-checkstyle-plugin</artifactId>
-                                        <versionRange>[0.1.10,)</versionRange>
+                                        <versionRange>[2.10,)</versionRange>
                                         <goals>
                                             <goal>check</goal>
                                         </goals>
