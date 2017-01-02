@@ -10,7 +10,7 @@ The isolation level of transaction is serializable.
 
 Please see Haeinsa [Wiki] for further information.
 
-- **ACID**: Provides multi-row, multi-table transaction with full ACID senantics.
+- **ACID**: Provides multi-row, multi-table transaction with full ACID semantics.
 - **[Linearly scalable]**: Can linearly scale out throughput of transaction as scale out your HBase cluster.
 - **[Serializability]**: Provide isolation level of serializability.
 - **[Low overhead]**: Relatively low overhead compared to other comparable libraries.

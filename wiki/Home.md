@@ -14,7 +14,7 @@ Haeinsa is inspired by Google's [Percolator], but implementation details and iso
 Haeinsa provides isolation level of serializability, so users can make application based on the assumption
 that each transaction executed serially and completely isolated from each other.
 
-- **ACID**: Provides multi-row, multi-table transaction with full ACID senantics.
+- **ACID**: Provides multi-row, multi-table transaction with full ACID semantics.
 - **[Linearly scalable](wiki/Performance)**: Can linearly scale out throughput of transaction as scale out your HBase cluster. No theoretical upper limit of throughput.
 - **[Serializability]**: Provide isolation level of serializability, which is much better environment to make applications than snapshot isolation.
 - **[Low overhead](wiki/Performance)**: Relatively low overhead compared to other comparable libraries.
