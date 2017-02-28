@@ -170,11 +170,7 @@ class HaeinsaRowTransaction {
 
         @VisibleForTesting
         void merge(HaeinsaDelete delete) {
-            HaeinsaDeleteTracker deleteTracker = new HaeinsaDeleteTracker(delete);
-
-            FilterResult filterResult = filter(deleteTracker, lastPut);
-            lastPut = filterResult.getRemained();
-
+            lastPut.remove(delete);
             firstDelete.add(delete);
         }
 

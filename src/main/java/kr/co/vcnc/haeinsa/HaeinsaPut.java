@@ -15,6 +15,10 @@
  */
 package kr.co.vcnc.haeinsa;
 
+import static org.apache.hadoop.hbase.KeyValue.Type.Maximum;
+import static org.apache.hadoop.hbase.KeyValue.Type.Minimum;
+
+import java.util.List;
 import java.util.Map;
 import java.util.NavigableSet;
 
@@ -29,8 +33,10 @@ import org.apache.hadoop.hbase.KeyValue.Type;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
@@ -118,6 +124,45 @@ public class HaeinsaPut extends HaeinsaMutation {
         Preconditions.checkState(newMutation instanceof HaeinsaPut);
         for (HaeinsaKeyValue newKV : Iterables.concat(newMutation.getFamilyMap().values())) {
             add(newKV.getFamily(), newKV.getQualifier(), newKV.getValue());
+        }
+    }
+
+    @VisibleForTesting
+    void remove(HaeinsaDelete delete) {
+        HaeinsaKeyValue searchFromKV = new HaeinsaKeyValue();
+        // Type is descending ordered in HaeinsaKeyValue.compareTo()
+        searchFromKV.setType(Maximum);
+        searchFromKV.setRow(row);
+
+        HaeinsaKeyValue searchToKV = new HaeinsaKeyValue();
+        searchToKV.setType(Minimum);
+        searchToKV.setRow(row);
+
+        for (Map.Entry<byte[], NavigableSet<HaeinsaKeyValue>> deleteEntry : delete.getFamilyMap().entrySet()) {
+            byte[] family = deleteEntry.getKey();
+            NavigableSet<HaeinsaKeyValue> putKeyValues = familyMap.get(family);
+            if (putKeyValues == null) {
+                continue;
+            }
+            searchFromKV.setFamily(family);
+            searchToKV.setFamily(family);
+            for (HaeinsaKeyValue deleteKeyValue : deleteEntry.getValue()) {
+                List<HaeinsaKeyValue> removingList;
+                if (deleteKeyValue.getQualifier() == null) {
+                    // Delete Family
+                    removingList = Lists.newArrayList(putKeyValues);
+                } else {
+                    searchFromKV.setQualifier(deleteKeyValue.getQualifier());
+                    searchToKV.setQualifier(deleteKeyValue.getQualifier());
+                    removingList = Lists.newArrayList(putKeyValues.subSet(searchFromKV, true, searchToKV, true));
+                }
+                for (HaeinsaKeyValue removingKV : removingList) {
+                    putKeyValues.remove(removingKV);
+                }
+            }
+            if (putKeyValues.isEmpty()) {
+                familyMap.remove(family);
+            }
         }
     }
 
