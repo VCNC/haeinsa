@@ -34,6 +34,7 @@ import java.util.Set;
 import javax.annotation.Nullable;
 
 import kr.co.vcnc.haeinsa.exception.ConflictException;
+import kr.co.vcnc.haeinsa.exception.ConflictExceptionLog;
 import kr.co.vcnc.haeinsa.exception.NotExpiredYetException;
 import kr.co.vcnc.haeinsa.exception.RecoverableConflictException;
 import kr.co.vcnc.haeinsa.thrift.TRowLocks;
@@ -397,7 +398,8 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
         int recoverCount = 0;
         while (true) {
             if (recoverCount > RECOVER_MAX_RETRY_COUNT) {
-                throw new ConflictException("recover retry count is exceeded.");
+                throw new ConflictException("recover retry count is exceeded.",
+                        ConflictExceptionLog.from(row, rowState));
             }
             TRowLock currentRowLock = getRowLock(row);
             try {
@@ -514,7 +516,8 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
 
         byte[] currentRowLockBytes = TRowLocks.serialize(rowState.getCurrent());
         if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, put)) {
-            throw new ConflictException("can't acquire row's lock, commitSingleRowPutOnly failed");
+            throw new ConflictException("can't acquire row's lock, commitSingleRowPutOnly failed",
+                    ConflictExceptionLog.from(row, rowState, newRowLock));
         } else {
             rowState.setCurrent(newRowLock);
         }
@@ -539,7 +542,8 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
                     currentTx.recover(true);
                 }
             }
-            throw new ConflictException("this row is modified, checkSingleRow failed");
+            throw new ConflictException("this row is modified, checkSingleRow failed",
+                    ConflictExceptionLog.from(row, rowState, currentRowLock));
         }
     }
 
@@ -600,7 +604,8 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
                     currentTx.recover(true);
                 }
             }
-            throw new ConflictException("can't acquire row's lock");
+            throw new ConflictException("can't acquire row's lock",
+                    ConflictExceptionLog.from(row, rowState, newRowLock));
         } else {
             rowState.setCurrent(newRowLock);
         }
@@ -637,7 +642,8 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
                 }
                 if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, put)) {
                     // Consider as conflict because another transaction might acquire lock of this row.
-                    throw new ConflictException("can't acquire row's lock");
+                    throw new ConflictException("can't acquire row's lock",
+                            ConflictExceptionLog.from(row, rowTxState, newRowLock));
                 } else {
                     rowTxState.setCurrent(newRowLock);
                 }
@@ -657,7 +663,8 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
                 }
                 if (!table.checkAndDelete(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, delete)) {
                     // Consider as conflict because another transaction might acquire lock of this row.
-                    throw new ConflictException("can't acquire row's lock");
+                    throw new ConflictException("can't acquire row's lock",
+                            ConflictExceptionLog.from(row, rowTxState));
                 }
                 break;
             }
@@ -710,7 +717,8 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
         if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, put)) {
             // We don't need abort current transaction. Because the transaction is already aborted.
             // Consider as conflict because another transaction might acquire lock of primary row.
-            throw new ConflictException("can't acquire primary row's lock");
+            throw new ConflictException("can't acquire primary row's lock",
+                    ConflictExceptionLog.from(row, rowTxState, newRowLock));
         } else {
             rowTxState.setCurrent(newRowLock);
         }
@@ -750,7 +758,8 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
 
         if (!table.checkAndPut(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, put)) {
             // Consider as conflict because another transaction might acquire lock of primary row.
-            throw new ConflictException("can't acquire primary row's lock");
+            throw new ConflictException("can't acquire primary row's lock",
+                    ConflictExceptionLog.from(row, rowTxState, newRowLock));
         } else {
             rowTxState.setCurrent(newRowLock);
         }
@@ -771,7 +780,8 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
         }
         if (!table.checkAndDelete(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, delete)) {
             // Consider as conflict because another transaction might acquire lock of this row.
-            throw new ConflictException("can't acquire primary row's lock");
+            throw new ConflictException("can't acquire primary row's lock",
+                    ConflictExceptionLog.from(row, rowTxState));
         }
     }
 

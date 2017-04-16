@@ -28,7 +28,7 @@ import com.google.common.collect.Lists;
  * Contains Transaction information of single row. This information is only
  * saved in client memory until {@link HaeinsaTransaction#commit()} called.
  */
-class HaeinsaRowTransaction {
+public class HaeinsaRowTransaction {
     // current RowLock saved in HBase. null if there is no lock at all.
     private TRowLock current;
     // mutations will be saved in order of executions.
