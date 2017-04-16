@@ -18,6 +18,7 @@ package kr.co.vcnc.haeinsa;
 import java.util.NavigableSet;
 
 import org.apache.hadoop.hbase.filter.ColumnRangeFilter;
+import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.google.common.collect.Sets;
@@ -88,5 +89,11 @@ public class HaeinsaIntraScan extends HaeinsaQuery {
 
     public NavigableSet<byte[]> getFamilies() {
         return families;
+    }
+
+    @Override
+    public HaeinsaIntraScan setFilter(Filter filter) {
+        super.setFilter(filter);
+        return this;
     }
 }
